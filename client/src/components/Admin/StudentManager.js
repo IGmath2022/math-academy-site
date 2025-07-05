@@ -101,7 +101,7 @@ function StudentProgressCalendar({ userId, chapters }) {
   );
 }
 
-// 학생 상세 정보/수정 모달
+// 학생 상세/수정 모달
 function StudentDetailModal({ student, onClose, onUpdate, schools, chapters }) {
   const [edit, setEdit] = useState(false);
   const [form, setForm] = useState({
@@ -122,13 +122,10 @@ function StudentDetailModal({ student, onClose, onUpdate, schools, chapters }) {
 
   const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
-  // schoolId, schools 구조 및 매칭 콘솔로 확인
+  // schoolId → String으로 맞춰 비교
   const getSchoolName = id => {
     if (!id) return "-";
-    const found = schools.find(s => String(s._id) === String(id));
-    // 디버깅용
-    console.log("schoolId찾기", id, "schools:", schools.map(s => s._id), "결과:", found);
-    return found ? found.name : "-";
+    return schools.find(s => String(s._id) === String(id))?.name || "-";
   };
 
   const handleSave = async () => {
@@ -161,9 +158,6 @@ function StudentDetailModal({ student, onClose, onUpdate, schools, chapters }) {
   };
 
   if (!student) return null;
-
-  // 디버깅용: 콘솔로 현재 값 확인
-  console.log("상세 student:", student, "form:", form, "schools:", schools);
 
   return (
     <div style={{
@@ -270,7 +264,7 @@ function StudentDetailModal({ student, onClose, onUpdate, schools, chapters }) {
   );
 }
 
-// 학생 전체 관리
+// 학생 전체 관리 메인
 function StudentManager() {
   const [students, setStudents] = useState([]);
   const [showInactive, setShowInactive] = useState(false);
@@ -282,7 +276,19 @@ function StudentManager() {
     const token = localStorage.getItem("token");
     axios.get(`${API_URL}/api/users?role=student${showInactive ? "&active=false" : ""}`, {
       headers: { Authorization: `Bearer ${token}` }
-    }).then(res => setStudents(res.data));
+    }).then(res => {
+      // schoolId Object → String 강제 변환
+      const data = res.data.map(student => ({
+        ...student,
+        schoolId:
+          student.schoolId && typeof student.schoolId === "object"
+            ? (student.schoolId.toHexString
+                ? student.schoolId.toHexString()
+                : (student.schoolId.$oid || student.schoolId.toString && student.schoolId.toString() || ""))
+            : student.schoolId
+      }));
+      setStudents(data);
+    });
 
     axios.get(`${API_URL}/api/schools`, {
       headers: { Authorization: `Bearer ${token}` }
@@ -293,19 +299,10 @@ function StudentManager() {
     }).then(res => setChapters(res.data));
   }, [showInactive]);
 
-  // schools, students 콘솔 확인
-  useEffect(() => {
-    console.log("학생 전체:", students);
-    console.log("학교 전체:", schools);
-  }, [students, schools]);
-
-  // schoolId 일치 확인
+  // schoolId → String 맞춰 비교
   const getSchoolName = id => {
     if (!id) return "-";
-    const found = schools.find(s => String(s._id) === String(id));
-    // 디버깅용
-    console.log("리스트 getSchoolName", id, "schools:", schools.map(s => s._id), "결과:", found);
-    return found ? found.name : "-";
+    return schools.find(s => String(s._id) === String(id))?.name || "-";
   };
 
   return (
@@ -333,10 +330,7 @@ function StudentManager() {
               fontWeight: s.active ? 600 : 400
             }}>{s.name}</span>
             <span style={{ color: "#888", fontSize: 13 }}>{s.email}</span>
-            {/* schoolId & schools 디버깅 같이 표시 */}
-            <span style={{ color: "#999", fontSize: 13, marginLeft: 7 }}>
-              {getSchoolName(s.schoolId)} ({String(s.schoolId)})
-            </span>
+            <span style={{ color: "#999", fontSize: 13, marginLeft: 7 }}>{getSchoolName(s.schoolId)}</span>
             <span style={{
               fontSize: 12, marginLeft: 10,
               background: s.active ? "#e3faea" : "#f9e1e1",
@@ -356,7 +350,18 @@ function StudentManager() {
             const token = localStorage.getItem("token");
             axios.get(`${API_URL}/api/users?role=student${showInactive ? "&active=false" : ""}`, {
               headers: { Authorization: `Bearer ${token}` }
-            }).then(res => setStudents(res.data));
+            }).then(res => {
+              const data = res.data.map(student => ({
+                ...student,
+                schoolId:
+                  student.schoolId && typeof student.schoolId === "object"
+                    ? (student.schoolId.toHexString
+                        ? student.schoolId.toHexString()
+                        : (student.schoolId.$oid || student.schoolId.toString && student.schoolId.toString() || ""))
+                    : student.schoolId
+              }));
+              setStudents(data);
+            });
           }}
           schools={schools}
           chapters={chapters}
