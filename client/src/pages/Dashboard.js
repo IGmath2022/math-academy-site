@@ -11,8 +11,11 @@ import PopupBannerAdmin from "../components/Admin/PopupBannerAdmin";
 import ProgressManager from "../components/Admin/ProgressManager";
 import SchoolManager from "../components/Admin/SchoolManager";
 import StudentManager from "../components/Admin/StudentManager";
-import SchoolPeriodManager from "../components/Admin/SchoolPeriodManager";;
+import SchoolPeriodManager from "../components/Admin/SchoolPeriodManager";
 import { API_URL } from '../api';
+
+
+
 
 // 학생 대시보드
 function StudentDashboard() {
