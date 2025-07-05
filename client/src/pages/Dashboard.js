@@ -14,9 +14,6 @@ import StudentManager from "../components/Admin/StudentManager";
 import SchoolPeriodManager from "../components/Admin/SchoolPeriodManager";
 import { API_URL } from '../api';
 
-
-
-
 // 학생 대시보드
 function StudentDashboard() {
   const [assignments, setAssignments] = useState([]);
@@ -27,7 +24,7 @@ function StudentDashboard() {
   const [progressMemo, setProgressMemo] = useState({});
   const [saveResult, setSaveResult] = useState("");
   const [myInfo, setMyInfo] = useState(null);
-  const [viewMode, setViewMode] = useState("list"); // "list" 또는 "calendar"
+  const [viewMode, setViewMode] = useState("list");
   const [chaptersMap, setChaptersMap] = useState({});
 
   useEffect(() => {
@@ -36,14 +33,12 @@ function StudentDashboard() {
       .then(res => setMyInfo(res.data));
   }, []);
 
-  // 블로그 노출 여부
   useEffect(() => {
     fetch(`${API_URL}/api/settings/blog_show`)
       .then(res => res.json())
       .then(data => setShowBlog(data.show));
   }, []);
 
-  // 내 강의 할당목록
   useEffect(() => {
     const token = localStorage.getItem("token");
     axios
@@ -55,7 +50,6 @@ function StudentDashboard() {
       .catch(() => setError("강의 정보를 불러오지 못했습니다."));
   }, []);
 
-  // 모든 챕터를 불러와서 id->name 매핑 (calendar에서 강의명 표시용)
   useEffect(() => {
     const token = localStorage.getItem("token");
     axios.get(`${API_URL}/api/chapters`, { headers: { Authorization: `Bearer ${token}` } })
@@ -66,7 +60,6 @@ function StudentDashboard() {
       });
   }, []);
 
-  // 진도상황 불러오기 - useCallback으로 고정
   const fetchProgress = useCallback(() => {
     const token = localStorage.getItem("token");
     const userId = parseJwt(token)?.id;
@@ -81,10 +74,8 @@ function StudentDashboard() {
     fetchProgress();
   }, [fetchProgress]);
 
-  // 오늘 날짜
   const today = new Date().toISOString().slice(0, 10);
 
-  // chapterId별 진도맵
   const progressMap = {};
   progressList.forEach(p => {
     progressMap[p.chapterId] = p;
@@ -98,7 +89,6 @@ function StudentDashboard() {
     }
   }
 
-  // 진도 저장 (체크/메모 모두 여기서)
   const handleProgressSave = async (chapterId) => {
     const token = localStorage.getItem("token");
     const userId = parseJwt(token)?.id;
@@ -142,7 +132,6 @@ function StudentDashboard() {
           marginBottom: 24, borderRadius: 8, background: "#f7fafd", padding: "14px 18px"
         }}>
           <b>내 학교: {myInfo.School.name}</b>
-          {/* === 학교 기간(방학/시험 등) 정보 표시 === */}
           {myInfo.School.SchoolPeriods?.length > 0 && (
             <ul style={{ margin: "8px 0 0 0", padding: 0, fontSize: 15 }}>
               {myInfo.School.SchoolPeriods.map(period => (
@@ -158,7 +147,6 @@ function StudentDashboard() {
         </div>
       )}
 
-      {/* === 뷰모드 전환 버튼 (리스트/달력) === */}
       <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
         <button
           onClick={() => setViewMode("list")}
@@ -186,7 +174,6 @@ function StudentDashboard() {
         >진도 캘린더</button>
       </div>
 
-      {/* === 진도 달력 또는 기존 리스트 === */}
       {viewMode === "calendar" ? (
         <StudentProgressCalendar
           progressList={progressList}
@@ -199,7 +186,7 @@ function StudentDashboard() {
           width: "100%",
           margin: 0
         }}>
-          {assignments.map(a => (
+          {assignments.filter(a => a.Chapter).map(a => (
             <li key={a.id} style={{
               marginBottom: 18,
               borderBottom: "1px solid #eee",
@@ -209,9 +196,9 @@ function StudentDashboard() {
               alignItems: "flex-start"
             }}>
               <div>
-                <b>{a.Chapter?.name}</b>
+                <b>{a.Chapter.name}</b>
                 <span style={{ color: "#888", fontSize: 14, marginLeft: 7 }}>
-                  {a.Chapter?.description}
+                  {a.Chapter.description}
                 </span>
                 <button
                   style={{
@@ -234,7 +221,7 @@ function StudentDashboard() {
                 <label style={{ fontSize: 15, fontWeight: 500 }}>
                   <input
                     type="checkbox"
-                    checked={a.Chapter?.id && progressMap[a.Chapter.id]?.date === today}
+                    checked={a.Chapter.id && progressMap[a.Chapter.id]?.date === today}
                     onChange={e => {
                       setProgressList(prev => {
                         if (!progressMap[a.Chapter.id]) return prev;
@@ -250,20 +237,20 @@ function StudentDashboard() {
                   오늘 진도 완료
                 </label>
                 <input
-  type="text"
-  value={
-    progressMemo[a.Chapter?.id] ??
-    progressMap[a.Chapter?.id]?.memo ??
-    ""
-  }
-  onChange={e => setProgressMemo(prev => (
-    a.Chapter?.id
-      ? { ...prev, [a.Chapter.id]: e.target.value }
-      : prev // id가 없으면 업데이트하지 않음
-  ))}
-  placeholder="메모(선택)"
-  style={{ marginLeft: 12, padding: "5px 8px", borderRadius: 7, border: "1px solid #ccc", minWidth: 130 }}
-/>
+                  type="text"
+                  value={
+                    progressMemo[a.Chapter.id] ??
+                    progressMap[a.Chapter.id]?.memo ??
+                    ""
+                  }
+                  onChange={e => setProgressMemo(prev => (
+                    a.Chapter.id
+                      ? { ...prev, [a.Chapter.id]: e.target.value }
+                      : prev
+                  ))}
+                  placeholder="메모(선택)"
+                  style={{ marginLeft: 12, padding: "5px 8px", borderRadius: 7, border: "1px solid #ccc", minWidth: 130 }}
+                />
                 <button
                   style={{
                     marginLeft: 8,
@@ -293,7 +280,7 @@ function StudentDashboard() {
           할당된 강의가 없습니다.
         </div>
       )}
-      
+
       {selected && (
         <div style={{
           marginTop: 34,
@@ -325,8 +312,7 @@ function StudentDashboard() {
   );
 }
 
-
-// 운영자 대시보드
+// 이하 AdminDashboard, Dashboard (원본과 동일)
 function AdminDashboard() {
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [chapterList, setChapterList] = useState([]);
@@ -348,21 +334,13 @@ function AdminDashboard() {
         운영자 대시보드{" "}
         <span style={{ color: "#678", fontSize: 15 }}>(관리자용)</span>
       </h2>
-      {/* 블로그 노출 설정 */}
       <BlogSettingSwitch />
-      {/* 팝업배너 관리 */}
       <PopupBannerAdmin />
-      {/* 공지사항 관리 */}
       <NewsAdmin />
-       {/* ⬇️ 학생 관리 추가 */}
-       <StudentManager />
-      {/* 학생 진도 현황 (경고 해결) */}
+      <StudentManager />
       <ProgressManager />
-      {/* 학교 관리 */}
-      <SchoolManager /> 
-      {/* 학교 일정 관리 */}
+      <SchoolManager />
       <SchoolPeriodManager />
-      {/* 과목 및 단원/학생 할당 */}
       <SubjectManager
         onSelectSubject={setSelectedSubject}
         selectedSubject={selectedSubject}
@@ -392,7 +370,6 @@ function AdminDashboard() {
   );
 }
 
-// 역할에 따라 자동 분기
 function Dashboard() {
   const [role, setRole] = useState("");
   const [loading, setLoading] = useState(true);
