@@ -1,11 +1,9 @@
-const { StudentProgress } = require("../models");
+const StudentProgress = require('../models/StudentProgress');
 
 exports.checkProgress = async (req, res) => {
   const { userId, chapterId, memo } = req.body;
   const today = new Date().toISOString().slice(0, 10);
-
-  // 이미 오늘 체크했으면 update, 아니면 insert
-  let progress = await StudentProgress.findOne({ where: { userId, chapterId, date: today } });
+  let progress = await StudentProgress.findOne({ userId, chapterId, date: today });
   if (progress) {
     progress.memo = memo;
     await progress.save();
@@ -18,6 +16,6 @@ exports.checkProgress = async (req, res) => {
 exports.listProgress = async (req, res) => {
   const { userId } = req.query;
   const where = userId ? { userId } : {};
-  const list = await StudentProgress.findAll({ where });
+  const list = await StudentProgress.find(where);
   res.json(list);
 };

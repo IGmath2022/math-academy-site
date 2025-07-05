@@ -1,13 +1,6 @@
-const { DataTypes } = require("sequelize");
-module.exports = (sequelize) => {
-  const Setting = sequelize.define("Setting", {
-    key: {
-      type: DataTypes.STRING,
-      primaryKey: true,
-    },
-    value: {
-      type: DataTypes.STRING,
-    },
-  });
-  return Setting;
-};
+const mongoose = require('mongoose');
+const SettingSchema = new mongoose.Schema({
+  key: { type: String, required: true, unique: true },
+  value: String
+});
+module.exports = mongoose.model('Setting', SettingSchema);

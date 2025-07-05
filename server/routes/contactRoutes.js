@@ -2,8 +2,7 @@ const express = require("express");
 const router = express.Router();
 const nodemailer = require("nodemailer");
 
-// 실제 메일 주소와 앱 비밀번호 등 보안정보는 .env 사용 권장!
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL; // IG수학 운영자 메일
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 const ADMIN_PASS = process.env.ADMIN_PASS;
 
 const transporter = nodemailer.createTransport({

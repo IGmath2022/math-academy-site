@@ -1,9 +1,8 @@
-const { DataTypes } = require('sequelize');
-module.exports = (sequelize) => {
-  const Material = sequelize.define('Material', {
-    title: { type: DataTypes.STRING, allowNull: false },
-    description: { type: DataTypes.TEXT },
-    file: { type: DataTypes.STRING, allowNull: false }
-  });
-  return Material;
-};
+const mongoose = require('mongoose');
+const MaterialSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  description: String,
+  file: { type: String, required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }
+});
+module.exports = mongoose.model('Material', MaterialSchema);

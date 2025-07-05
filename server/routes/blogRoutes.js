@@ -3,17 +3,16 @@ const router = express.Router();
 const Parser = require("rss-parser");
 const parser = new Parser();
 
-const NAVER_BLOG_RSS = "https://rss.blog.naver.com/igmath2022.xml"; // ← 본인 블로그 ID로 수정
+const NAVER_BLOG_RSS = "https://rss.blog.naver.com/igmath2022.xml";
 
 router.get("/", async (req, res) => {
   try {
     const feed = await parser.parseURL(NAVER_BLOG_RSS);
-    // 최대 5~8개 정도만 노출
     const list = feed.items.slice(0, 7).map(item => ({
       title: item.title,
       link: item.link,
       pubDate: item.pubDate,
-      summary: item.contentSnippet, // 요약
+      summary: item.contentSnippet,
     }));
     res.json(list);
   } catch (e) {

@@ -1,11 +1,10 @@
-const { DataTypes } = require("sequelize");
-module.exports = (sequelize) => {
-  const SchoolPeriod = sequelize.define("SchoolPeriod", {
-    name: { type: DataTypes.STRING, allowNull: false }, // 기간명: 방학/시험/행사명 등
-    start: { type: DataTypes.DATEONLY, allowNull: false },
-    end: { type: DataTypes.DATEONLY, allowNull: false },
-    type: { type: DataTypes.STRING }, // '방학', '시험', '행사' 등 구분
-    note: { type: DataTypes.TEXT }, // 비고/설명
-  });
-  return SchoolPeriod;
-};
+const mongoose = require('mongoose');
+const SchoolPeriodSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  start: { type: String, required: true }, // YYYY-MM-DD
+  end: { type: String, required: true },
+  type: String,
+  note: String,
+  schoolId: { type: mongoose.Schema.Types.ObjectId, ref: 'School', required: true }
+});
+module.exports = mongoose.model('SchoolPeriod', SchoolPeriodSchema);

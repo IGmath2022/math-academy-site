@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const { Material } = require('../models'); // ✅
+const Material = require('../models/Material');
 const { isAdmin } = require('../middleware/auth');
 
 const router = express.Router();
@@ -17,7 +17,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 router.get('/', async (req, res) => {
-  const list = await Material.findAll({ order: [['createdAt', 'DESC']] });
+  const list = await Material.find().sort({ createdAt: -1 });
   res.json(list);
 });
 
@@ -37,9 +37,9 @@ router.get('/download/:filename', (req, res) => {
 });
 
 router.delete('/:id', isAdmin, async (req, res) => {
-  const mat = await Material.findByPk(req.params.id);
+  const mat = await Material.findById(req.params.id);
   if (!mat) return res.status(404).json({ message: '자료 없음' });
-  await mat.destroy();
+  await Material.deleteOne({ _id: req.params.id });
   res.json({ message: '삭제 완료' });
 });
 

@@ -1,7 +1,7 @@
-const { School } = require("../models");
+const School = require('../models/School');
 
 exports.list = async (req, res) => {
-  const schools = await School.findAll({ order: [['name', 'ASC']] });
+  const schools = await School.find().sort({ name: 1 });
   res.json(schools);
 };
 
@@ -18,8 +18,8 @@ exports.create = async (req, res) => {
 
 exports.remove = async (req, res) => {
   const { id } = req.params;
-  const school = await School.findByPk(id);
+  const school = await School.findById(id);
   if (!school) return res.status(404).json({ message: "학교 없음" });
-  await school.destroy();
+  await School.deleteOne({ _id: id });
   res.json({ message: "삭제 완료" });
 };

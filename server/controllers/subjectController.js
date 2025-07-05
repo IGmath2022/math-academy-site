@@ -1,8 +1,8 @@
-const { Subject } = require("../models");
+const Subject = require('../models/Subject');
 
 // 과목 전체 조회
 exports.getSubjects = async (req, res) => {
-  const subjects = await Subject.findAll();
+  const subjects = await Subject.find();
   res.json(subjects);
 };
 
@@ -16,7 +16,7 @@ exports.createSubject = async (req, res) => {
 // 과목 수정
 exports.updateSubject = async (req, res) => {
   const { name, description } = req.body;
-  const subject = await Subject.findByPk(req.params.id);
+  const subject = await Subject.findById(req.params.id);
   if (!subject) return res.status(404).json({ message: '과목 없음' });
   subject.name = name;
   subject.description = description;
@@ -26,8 +26,8 @@ exports.updateSubject = async (req, res) => {
 
 // 과목 삭제
 exports.deleteSubject = async (req, res) => {
-  const subject = await Subject.findByPk(req.params.id);
+  const subject = await Subject.findById(req.params.id);
   if (!subject) return res.status(404).json({ message: '과목 없음' });
-  await subject.destroy();
+  await Subject.deleteOne({ _id: req.params.id });
   res.json({ message: '삭제 완료' });
 };

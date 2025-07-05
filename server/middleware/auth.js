@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const SECRET = 'mathacademy_secret_key'; // authController와 동일하게
+const SECRET = process.env.JWT_SECRET || 'mathacademy_secret_key';
 
 exports.isAuthenticated = (req, res, next) => {
   const authHeader = req.headers.authorization;
