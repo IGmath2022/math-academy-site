@@ -7,14 +7,14 @@ function BlogSettingSwitch() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios.get(`${API_URL}/api//settings/blog_show`)
+    axios.get(`${API_URL}/api/settings/blog_show`)
       .then(res => setShow(res.data.show))
       .finally(() => setLoading(false));
   }, []);
 
   const handleChange = async (e) => {
     setShow(e.target.checked);
-    await axios.post(`${API_URL}/api//settings/blog_show`, { show: e.target.checked });
+    await axios.post(`${API_URL}/api/settings/blog_show`, { show: e.target.checked });
   };
 
   if (loading) return <span>로딩 중...</span>;

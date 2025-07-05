@@ -9,7 +9,7 @@ function AdminNoticeManager() {
 
   // 목록 불러오기
   useEffect(() => {
-    axios.get(`${API_URL}/api//news`).then(r => setNews(r.data));
+    axios.get(`${API_URL}/api/news`).then(r => setNews(r.data));
   }, []);
 
   // 등록/수정 입력 핸들
@@ -36,14 +36,14 @@ function AdminNoticeManager() {
         headers: { Authorization: `Bearer ${token}` }
       });
     } else {
-      await axios.post(`${API_URL}/api//news`, data, {
+      await axios.post(`${API_URL}/api/news`, data, {
         headers: { Authorization: `Bearer ${token}` }
       });
     }
     setForm({ title: "", content: "", author: "", file: null });
     setEditId(null);
     // 새로고침
-    axios.get(`${API_URL}/api//news`).then(r => setNews(r.data));
+    axios.get(`${API_URL}/api/news`).then(r => setNews(r.data));
   };
 
   // 삭제
@@ -53,7 +53,7 @@ function AdminNoticeManager() {
     await axios.delete(`${API_URL}/api/news/${id}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
-    axios.get(`${API_URL}/api//news`).then(r => setNews(r.data));
+    axios.get(`${API_URL}/api/news`).then(r => setNews(r.data));
   };
 
   // 수정

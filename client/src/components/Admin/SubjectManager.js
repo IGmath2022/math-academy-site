@@ -17,7 +17,7 @@ function SubjectManager({ onSelectSubject, selectedSubject }) {
   }, []);
 
   const fetchSubjects = async () => {
-    const res = await axios.get(`${API_URL}/api//subjects`);
+    const res = await axios.get(`${API_URL}/api/subjects`);
     setSubjects(res.data);
   };
 
@@ -40,7 +40,7 @@ function SubjectManager({ onSelectSubject, selectedSubject }) {
       }
     } else {
       await axios.post(
-        `${API_URL}/api//subjects`,
+        `${API_URL}/api/subjects`,
         { name, description },
         { headers: { Authorization: `Bearer ${token}` } }
       );

@@ -8,7 +8,7 @@ function SchoolManager() {
   const [newSchool, setNewSchool] = useState("");
 
   const fetchSchools = async () => {
-    const res = await axios.get(`${API_URL}/api//schools`);
+    const res = await axios.get(`${API_URL}/api/schools`);
     setSchools(res.data);
   };
 
@@ -18,7 +18,7 @@ function SchoolManager() {
     if (!newSchool.trim()) return;
     const token = localStorage.getItem("token");
     await axios.post(
-      `${API_URL}/api//schools`,
+      `${API_URL}/api/schools`,
       { name: newSchool },
       { headers: { Authorization: `Bearer ${token}` } }
     );

@@ -8,13 +8,13 @@ function News() {
   const [showBlog, setShowBlog] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_URL}/api//settings/blog_show`)
+    fetch(`${API_URL}/api/settings/blog_show`)
       .then(res => res.json())
       .then(data => setShowBlog(data.show));
   }, []);
 
   useEffect(() => {
-    axios.get(`${API_URL}/api//news`).then(res => setList(res.data));
+    axios.get(`${API_URL}/api/news`).then(res => setList(res.data));
   }, []);
 
   return (

@@ -32,13 +32,13 @@ function StudentDashboard() {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    axios.get(`${API_URL}/api//users/me`, { headers: { Authorization: `Bearer ${token}` } })
+    axios.get(`${API_URL}/api/users/me`, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => setMyInfo(res.data));
   }, []);
 
   // 블로그 노출 여부
   useEffect(() => {
-    fetch(`${API_URL}/api//settings/blog_show`)
+    fetch(`${API_URL}/api/settings/blog_show`)
       .then(res => res.json())
       .then(data => setShowBlog(data.show));
   }, []);
@@ -47,7 +47,7 @@ function StudentDashboard() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     axios
-      .get(`${API_URL}/api//assignments`, {
+      .get(`${API_URL}/api/assignments`, {
         params: { userId: parseJwt(token)?.id },
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -58,7 +58,7 @@ function StudentDashboard() {
   // 모든 챕터를 불러와서 id->name 매핑 (calendar에서 강의명 표시용)
   useEffect(() => {
     const token = localStorage.getItem("token");
-    axios.get(`${API_URL}/api//chapters`, { headers: { Authorization: `Bearer ${token}` } })
+    axios.get(`${API_URL}/api/chapters`, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => {
         const map = {};
         res.data.forEach(c => { map[c.id] = c; });
@@ -105,7 +105,7 @@ function StudentDashboard() {
     const memo = progressMemo[chapterId] || "";
     const checked = progressMap[chapterId]?.date === today ? true : false;
     try {
-      await axios.post(`${API_URL}/api//progress`, {
+      await axios.post(`${API_URL}/api/progress`, {
         userId,
         chapterId,
         memo,

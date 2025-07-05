@@ -27,9 +27,9 @@ function BannerAdmin() {
 
   // 저장 핸들러
   const handleSave = async (i) => {
-    await axios.post(`${API_URL}/api//settings`, { key: `banner${i+1}_text`, value: banners[i].text });
-    await axios.post(`${API_URL}/api//settings`, { key: 'banner${i+1}_on', value: String(banners[i].on) });
-    await axios.post(`${API_URL}/api//settings`, { key: 'banner${i+1}_img', value: banners[i].img });
+    await axios.post(`${API_URL}/api/settings`, { key: `banner${i+1}_text`, value: banners[i].text });
+    await axios.post(`${API_URL}/api/settings`, { key: 'banner${i+1}_on', value: String(banners[i].on) });
+    await axios.post(`${API_URL}/api/settings`, { key: 'banner${i+1}_img', value: banners[i].img });
     alert(`배너${i+1} 저장됨!`);
   };
 
@@ -39,7 +39,7 @@ function BannerAdmin() {
     if (!file) return;
     const form = new FormData();
     form.append("file", file);
-    const res = await axios.post(`${API_URL}/api//materials/upload`, form, {
+    const res = await axios.post(`${API_URL}/api/materials/upload`, form, {
       headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${localStorage.getItem("token")}` }
     });
     // 업로드된 파일명 저장
