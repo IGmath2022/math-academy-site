@@ -250,14 +250,20 @@ function StudentDashboard() {
                   오늘 진도 완료
                 </label>
                 <input
-                  type="text"
-                  value={progressMemo[a.Chapter.id] ?? progressMap[a.Chapter.id]?.memo ?? ""}
-                  onChange={e => setProgressMemo(prev => ({
-                    ...prev, [a.Chapter.id]: e.target.value
-                  }))}
-                  placeholder="메모(선택)"
-                  style={{ marginLeft: 12, padding: "5px 8px", borderRadius: 7, border: "1px solid #ccc", minWidth: 130 }}
-                />
+  type="text"
+  value={
+    progressMemo[a.Chapter?.id] ??
+    progressMap[a.Chapter?.id]?.memo ??
+    ""
+  }
+  onChange={e => setProgressMemo(prev => (
+    a.Chapter?.id
+      ? { ...prev, [a.Chapter.id]: e.target.value }
+      : prev // id가 없으면 업데이트하지 않음
+  ))}
+  placeholder="메모(선택)"
+  style={{ marginLeft: 12, padding: "5px 8px", borderRadius: 7, border: "1px solid #ccc", minWidth: 130 }}
+/>
                 <button
                   style={{
                     marginLeft: 8,
