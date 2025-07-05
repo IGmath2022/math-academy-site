@@ -33,7 +33,7 @@ function SubjectManager({ onSelectSubject, selectedSubject }) {
       if (
         onSelectSubject &&
         selectedSubject &&
-        selectedSubject.id === editingId
+        selectedSubject._id === editingId
       ) {
         const updated = { ...selectedSubject, name, description };
         onSelectSubject(updated);
@@ -44,7 +44,6 @@ function SubjectManager({ onSelectSubject, selectedSubject }) {
         { name, description },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      // if (onSelectSubject) onSelectSubject(res.data);
     }
     setName("");
     setDescription("");
@@ -54,7 +53,7 @@ function SubjectManager({ onSelectSubject, selectedSubject }) {
 
   // 수정모드 진입
   const handleEdit = (subject) => {
-    setEditingId(subject.id);
+    setEditingId(subject._id);
     setName(subject.name);
     setDescription(subject.description);
   };
@@ -66,7 +65,7 @@ function SubjectManager({ onSelectSubject, selectedSubject }) {
       headers: { Authorization: `Bearer ${token}` },
     });
     fetchSubjects();
-    if (onSelectSubject && selectedSubject?.id === id) {
+    if (onSelectSubject && selectedSubject?._id === id) {
       onSelectSubject(null);
     }
   };
@@ -165,7 +164,7 @@ function SubjectManager({ onSelectSubject, selectedSubject }) {
       <ul style={{ padding: 0, listStyle: "none", margin: 0, width: "100%" }}>
         {subjects.map((s) => (
           <li
-            key={s.id}
+            key={s._id}
             style={{
               marginBottom: 12,
               padding: "10px 0",
@@ -208,7 +207,7 @@ function SubjectManager({ onSelectSubject, selectedSubject }) {
                 fontWeight: 600,
                 marginRight: 5,
               }}
-              onClick={() => handleDelete(s.id)}
+              onClick={() => handleDelete(s._id)}
             >
               삭제
             </button>

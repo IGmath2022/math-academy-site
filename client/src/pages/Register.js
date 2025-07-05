@@ -7,8 +7,8 @@ function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [schoolId, setSchoolId] = useState(""); // 추가!
-  const [schools, setSchools] = useState([]);   // 추가!
+  const [schoolId, setSchoolId] = useState("");
+  const [schools, setSchools] = useState([]);
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
@@ -20,13 +20,21 @@ function Register() {
     e.preventDefault();
     setError("");
     try {
-      await axios.post(`${API_URL}/api/auth/register`, { name, email, password, schoolId });
+      await axios.post(`${API_URL}/api/auth/register`, {
+        name: name.trim(),
+        email: email.trim(),
+        password: password.trim(),
+        schoolId: schoolId.trim()
+      });
       alert("회원가입 성공! 로그인 해주세요.");
       navigate("/login");
     } catch (err) {
       setError(err.response?.data?.message || "회원가입 실패");
     }
   };
+
+  // id와 _id 모두 지원
+  const getId = (school) => school.id || school._id;
 
   return (
     <div
@@ -68,7 +76,7 @@ function Register() {
         <select value={schoolId} onChange={e => setSchoolId(e.target.value)} required>
           <option value="">학교 선택</option>
           {schools.map(s => (
-            <option key={s.id} value={s.id}>{s.name}</option>
+            <option key={getId(s)} value={getId(s)}>{s.name}</option>
           ))}
         </select>
         <button

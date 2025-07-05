@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react"; 
 import Calendar from "react-calendar"; // npm install react-calendar
 import "react-calendar/dist/Calendar.css";
 import axios from "axios";
@@ -25,7 +25,7 @@ function StudentProgressCalendar({ userId, chapters = [] }) {
   }
   // 챕터명
   const getChapterName = id =>
-    chapters.find(c => c.id === id)?.name || id;
+    chapters.find(c => c._id === id)?.name || id;
 
   return (
     <div style={{ margin: "18px 0" }}>
@@ -48,7 +48,7 @@ function StudentProgressCalendar({ userId, chapters = [] }) {
               <li style={{ color: "#888" }}>기록 없음</li>
             ) : (
               progressOnDate(selectedDate).map((p) => (
-                <li key={p.id} style={{ marginBottom: 4 }}>
+                <li key={p._id}>
                   <b>{getChapterName(p.chapterId)}</b>
                   {p.memo && <span style={{ color: "#444" }}> — {p.memo}</span>}
                 </li>

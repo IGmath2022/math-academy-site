@@ -6,6 +6,7 @@ import { API_URL } from '../../api';
 function SchoolManager() {
   const [schools, setSchools] = useState([]);
   const [newSchool, setNewSchool] = useState("");
+  const [selectedSchoolId, setSelectedSchoolId] = useState(null);
 
   const fetchSchools = async () => {
     const res = await axios.get(`${API_URL}/api/schools`);
@@ -26,16 +27,15 @@ function SchoolManager() {
     fetchSchools();
   };
 
-  const handleDelete = async id => {
+  const handleDelete = async _id => {
     if (!window.confirm("정말 삭제할까요?")) return;
     const token = localStorage.getItem("token");
     await axios.delete(
-      `${API_URL}/api/schools/${id}`,
+      `${API_URL}/api/schools/${_id}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
     fetchSchools();
   };
-  const [selectedSchoolId, setSelectedSchoolId] = useState(null);
 
   return (
     <div style={{
@@ -55,25 +55,26 @@ function SchoolManager() {
         </button>
       </div>
       <ul>
-      {schools.map(s => (
-        <li key={s.id} onClick={() => setSelectedSchoolId(s.id)}
-            style={{ cursor: "pointer", fontWeight: selectedSchoolId === s.id ? 700 : 400 }}>
-          {s.name}
-        </li>
-      ))}
-    </ul>
+        {schools.map(s => (
+          <li key={s._id}
+              onClick={() => setSelectedSchoolId(s._id)}
+              style={{ cursor: "pointer", fontWeight: selectedSchoolId === s._id ? 700 : 400 }}>
+            {s.name}
+          </li>
+        ))}
+      </ul>
       <ul style={{ padding: 0, margin: 0 }}>
         {schools.map(s => (
-          <li key={s.id} style={{ display: "flex", alignItems: "center", marginBottom: 6 }}>
+          <li key={s._id} style={{ display: "flex", alignItems: "center", marginBottom: 6 }}>
             <span style={{ flex: 1 }}>{s.name}</span>
-            <button onClick={() => handleDelete(s.id)} style={{ marginLeft: 10, color: "#e14", background: "none", border: "none", fontWeight: 700, cursor: "pointer" }}>
+            <button onClick={() => handleDelete(s._id)} style={{ marginLeft: 10, color: "#e14", background: "none", border: "none", fontWeight: 700, cursor: "pointer" }}>
               삭제
             </button>
           </li>
         ))}
       </ul>
       {/* 해당 학교의 기간 관리 UI */}
-    {selectedSchoolId && <SchoolPeriodManager schoolId={selectedSchoolId} />}
+      {selectedSchoolId && <SchoolPeriodManager schoolId={selectedSchoolId} />}
     </div>
   );
 }

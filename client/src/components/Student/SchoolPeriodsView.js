@@ -15,7 +15,7 @@ function SchoolPeriodsView({ schoolId }) {
       <b style={{ color: "#226ad6" }}>학교별 기간 안내</b>
       <ul style={{ paddingLeft: 0, listStyle: "none", margin: 0 }}>
         {periods.map(p => (
-          <li key={p.id} style={{ margin: "7px 0" }}>
+          <li key={p._id} style={{ margin: "7px 0" }}>
             <span style={{ fontWeight: 600 }}>{p.name}</span> ({p.type})<br />
             <span style={{ color: "#888" }}>{p.start} ~ {p.end}</span>
             {p.note && <div style={{ fontSize: 13, color: "#666" }}>{p.note}</div>}

@@ -56,7 +56,10 @@ function SchoolPeriodManager() {
       return;
     }
     try {
-      await axios.post(`${API_URL}/api/school-periods`, newPeriod, getAuthConfig());
+      await axios.post(`${API_URL}/api/school-periods`, {
+        ...newPeriod,
+        schoolId: newPeriod.schoolId // 반드시 _id 값 전달
+      }, getAuthConfig());
       setNewPeriod({ schoolId: "", name: "", type: "방학", start: "", end: "", note: "" });
       fetchPeriods(selectedSchoolId);
     } catch (e) {
@@ -65,10 +68,10 @@ function SchoolPeriodManager() {
   };
 
   // 삭제
-  const handleDelete = async id => {
+  const handleDelete = async _id => {
     if (!window.confirm("정말 삭제할까요?")) return;
     try {
-      await axios.delete(`${API_URL}/api/school-periods/${id}`, getAuthConfig());
+      await axios.delete(`${API_URL}/api/school-periods/${_id}`, getAuthConfig());
       fetchPeriods(selectedSchoolId);
     } catch (e) {
       alert("삭제 실패: " + (e.response?.data?.message || e.message));
@@ -90,7 +93,7 @@ function SchoolPeriodManager() {
       >
         <option value="">전체 학교 보기</option>
         {schools.map(s =>
-          <option key={s.id} value={s.id}>{s.name}</option>
+          <option key={s._id} value={s._id}>{s.name}</option>
         )}
       </select>
 
@@ -103,7 +106,7 @@ function SchoolPeriodManager() {
           style={{ padding: "6px 8px", borderRadius: 7, flex: 1 }}
         >
           <option value="">학교선택</option>
-          {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          {schools.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
         </select>
         <input name="name" value={newPeriod.name} onChange={handleNewPeriodChange} placeholder="기간명(예: 여름방학)" style={{ flex: 2, padding: "6px 8px", borderRadius: 7 }} />
         <select name="type" value={newPeriod.type} onChange={handleNewPeriodChange} style={{ padding: "6px 8px", borderRadius: 7 }}>
@@ -121,12 +124,12 @@ function SchoolPeriodManager() {
       {/* 일정 목록 */}
       <ul style={{ padding: 0, margin: 0 }}>
         {periods.map(p => (
-          <li key={p.id} style={{ display: "flex", alignItems: "center", marginBottom: 6, fontSize: 15 }}>
+          <li key={p._id} style={{ display: "flex", alignItems: "center", marginBottom: 6, fontSize: 15 }}>
             <span style={{ flex: 2 }}>
-              [{p.School?.name}] {p.name} ({p.type}) {p.start} ~ {p.end}
+              [{p.School?.name || p.school?.name || ""}] {p.name} ({p.type}) {p.start} ~ {p.end}
               {p.note && <> - <span style={{ color: "#567" }}>{p.note}</span></>}
             </span>
-            <button onClick={() => handleDelete(p.id)} style={{ marginLeft: 10, color: "#e14", background: "none", border: "none", fontWeight: 700, cursor: "pointer" }}>
+            <button onClick={() => handleDelete(p._id)} style={{ marginLeft: 10, color: "#e14", background: "none", border: "none", fontWeight: 700, cursor: "pointer" }}>
               삭제
             </button>
           </li>

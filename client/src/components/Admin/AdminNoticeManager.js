@@ -4,7 +4,7 @@ import { API_URL } from '../../api';
 
 function AdminNoticeManager() {
   const [news, setNews] = useState([]);
-  const [form, setForm] = useState({ title: "", content: "", author: "", file: null });
+  const [form, setForm] = useState({ title: "", content: "", author: "", files: [] });
   const [editId, setEditId] = useState(null);
 
   // 목록 불러오기
@@ -17,7 +17,7 @@ function AdminNoticeManager() {
     const { name, value, files } = e.target;
     setForm(f => ({
       ...f,
-      [name]: files ? files[0] : value
+      [name]: files ? Array.from(files) : value
     }));
   };
 
@@ -29,7 +29,10 @@ function AdminNoticeManager() {
     data.append("title", form.title);
     data.append("content", form.content);
     data.append("author", form.author);
-    if (form.file) data.append("file", form.file);
+    // 여러 파일 첨부 지원 (files 배열)
+    if (form.files && form.files.length > 0) {
+      form.files.forEach(f => data.append("files", f));
+    }
 
     if (editId) {
       await axios.put(`${API_URL}/api/news/${editId}`, data, {
@@ -40,17 +43,16 @@ function AdminNoticeManager() {
         headers: { Authorization: `Bearer ${token}` }
       });
     }
-    setForm({ title: "", content: "", author: "", file: null });
+    setForm({ title: "", content: "", author: "", files: [] });
     setEditId(null);
-    // 새로고침
     axios.get(`${API_URL}/api/news`).then(r => setNews(r.data));
   };
 
   // 삭제
-  const handleDelete = async id => {
+  const handleDelete = async (_id) => {
     if (!window.confirm("정말 삭제?")) return;
     const token = localStorage.getItem("token");
-    await axios.delete(`${API_URL}/api/news/${id}`, {
+    await axios.delete(`${API_URL}/api/news/${_id}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     axios.get(`${API_URL}/api/news`).then(r => setNews(r.data));
@@ -58,8 +60,8 @@ function AdminNoticeManager() {
 
   // 수정
   const handleEdit = n => {
-    setEditId(n.id);
-    setForm({ title: n.title, content: n.content, author: n.author, file: null });
+    setEditId(n._id);
+    setForm({ title: n.title, content: n.content, author: n.author, files: [] });
   };
 
   return (
@@ -69,27 +71,44 @@ function AdminNoticeManager() {
         <input name="title" value={form.title} onChange={handleChange} placeholder="제목" required style={{ marginRight: 7 }} />
         <input name="author" value={form.author} onChange={handleChange} placeholder="작성자" required style={{ marginRight: 7 }} />
         <textarea name="content" value={form.content} onChange={handleChange} placeholder="내용" required style={{ marginRight: 7 }} />
-        <input name="file" type="file" onChange={handleChange} accept="image/*,.pdf,.doc,.docx,.hwp" />
+        <input
+          name="files"
+          type="file"
+          onChange={handleChange}
+          accept="image/*,.pdf,.doc,.docx,.hwp"
+          multiple
+        />
         <button type="submit">{editId ? "수정" : "등록"}</button>
       </form>
       <ul>
         {news.map(n => (
-          <li key={n.id} style={{ marginBottom: 16 }}>
+          <li key={n._id} style={{ marginBottom: 16 }}>
             <b>{n.title}</b> ({n.author})<br />
             <span style={{ color: "#456" }}>{n.content}</span>
-            {n.file &&
-              <div>
-                <a href={`/uploads/news/${n.file}`} download target="_blank" rel="noopener noreferrer">
-                  [첨부파일 다운로드]
-                </a>
-                {/* 이미지 미리보기(이미지일 때만) */}
-                {/\.(jpg|jpeg|png|gif)$/i.test(n.file) &&
-                  <img src={`/uploads/news/${n.file}`} style={{ maxWidth: 120, marginTop: 5 }} alt="" />}
+            {/* 첨부파일(배열) */}
+            {n.files && n.files.length > 0 &&
+              <div style={{ marginTop: 5 }}>
+                {n.files.map(f =>
+                  <div key={f.name}>
+                    <a
+                      href={`${API_URL}/api/news/download/${f.name}`}
+                      download
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      [첨부파일: {f.originalName}]
+                    </a>
+                    {/* 이미지 미리보기(이미지일 때만) */}
+                    {/\.(jpg|jpeg|png|gif)$/i.test(f.name) &&
+                      <img src={`${API_URL}/api/news/download/${f.name}`}
+                        style={{ maxWidth: 120, marginTop: 5 }} alt="" />}
+                  </div>
+                )}
               </div>
             }
             <div>
               <button onClick={() => handleEdit(n)}>수정</button>
-              <button onClick={() => handleDelete(n.id)}>삭제</button>
+              <button onClick={() => handleDelete(n._id)}>삭제</button>
             </div>
           </li>
         ))}

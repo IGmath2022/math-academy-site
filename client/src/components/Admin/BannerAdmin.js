@@ -6,7 +6,10 @@ const MAX_BANNERS = 3;
 const initialBanner = { text: "", on: false, img: "" };
 
 function BannerAdmin() {
-  const [banners, setBanners] = useState(Array(MAX_BANNERS).fill(initialBanner));
+  // 각 배너가 객체를 독립적으로 가질 수 있게
+  const [banners, setBanners] = useState(
+    Array(MAX_BANNERS).fill(null).map(() => ({ ...initialBanner }))
+  );
 
   // 초기값 불러오기
   useEffect(() => {
@@ -27,9 +30,16 @@ function BannerAdmin() {
 
   // 저장 핸들러
   const handleSave = async (i) => {
-    await axios.post(`${API_URL}/api/settings`, { key: `banner${i+1}_text`, value: banners[i].text });
-    await axios.post(`${API_URL}/api/settings`, { key: 'banner${i+1}_on', value: String(banners[i].on) });
-    await axios.post(`${API_URL}/api/settings`, { key: 'banner${i+1}_img', value: banners[i].img });
+    const token = localStorage.getItem("token");
+    await axios.post(`${API_URL}/api/settings`, { key: `banner${i+1}_text`, value: banners[i].text }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    await axios.post(`${API_URL}/api/settings`, { key: `banner${i+1}_on`, value: String(banners[i].on) }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    await axios.post(`${API_URL}/api/settings`, { key: `banner${i+1}_img`, value: banners[i].img }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
     alert(`배너${i+1} 저장됨!`);
   };
 
@@ -39,8 +49,10 @@ function BannerAdmin() {
     if (!file) return;
     const form = new FormData();
     form.append("file", file);
+    const token = localStorage.getItem("token");
+    // 업로드 API 경로는 실제 서버와 맞춰주세요!
     const res = await axios.post(`${API_URL}/api/materials/upload`, form, {
-      headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${localStorage.getItem("token")}` }
+      headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${token}` }
     });
     // 업로드된 파일명 저장
     const next = banners.slice();
@@ -76,7 +88,7 @@ function BannerAdmin() {
           <input type="file" accept="image/*" onChange={e => handleFile(e, i)} />
           {b.img &&
             <div style={{marginTop: 8}}>
-              <img src={`/uploads/${b.img}`} alt="배너이미지" style={{maxWidth: 200, borderRadius: 6, boxShadow: "0 1px 6px #0002"}} />
+              <img src={`${API_URL}/uploads/${b.img}`} alt="배너이미지" style={{maxWidth: 200, borderRadius: 6, boxShadow: "0 1px 6px #0002"}} />
               <button type="button" style={{marginLeft: 8}} onClick={() => handleChange(i, "img", "")}>삭제</button>
             </div>
           }

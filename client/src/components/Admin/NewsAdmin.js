@@ -9,10 +9,10 @@ function NewsAdmin() {
   const [files, setFiles] = useState([]);
   const [editingId, setEditingId] = useState(null);
 
-  const token = localStorage.getItem("token");
-  const author = localStorage.getItem("role") === "admin" ? "운영자" : "";
-
   const fileInput = useRef(null);
+
+  // author 동적 생성 (관리자/일반)
+  const author = localStorage.getItem("role") === "admin" ? "운영자" : "";
 
   useEffect(() => { fetchNews(); }, []);
 
@@ -42,6 +42,7 @@ function NewsAdmin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const token = localStorage.getItem("token");
     const formData = new FormData();
     formData.append("title", title);
     formData.append("content", content);
@@ -68,7 +69,7 @@ function NewsAdmin() {
   };
 
   const handleEdit = (item) => {
-    setEditingId(item.id);
+    setEditingId(item._id); // 수정: _id로!
     setTitle(item.title);
     setContent(item.content);
     setFiles([]); // 기존 첨부파일 유지하려면 별도 구현 필요
@@ -77,6 +78,7 @@ function NewsAdmin() {
 
   const handleDelete = async (id) => {
     if (!window.confirm("정말 삭제하시겠습니까?")) return;
+    const token = localStorage.getItem("token");
     await axios.delete(`${API_URL}/api/news/${id}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -201,7 +203,7 @@ function NewsAdmin() {
       <ul style={{ padding: 0, listStyle: "none", margin: 0 }}>
         {list.map(item => (
           <li
-            key={item.id}
+            key={item._id} // 수정: _id로!
             style={{
               marginBottom: 28,
               borderBottom: "1px solid #eaeaea",
@@ -267,7 +269,7 @@ function NewsAdmin() {
                   cursor: "pointer",
                   fontWeight: 600
                 }}
-                onClick={() => handleDelete(item.id)}
+                onClick={() => handleDelete(item._id)}
               >
                 삭제
               </button>

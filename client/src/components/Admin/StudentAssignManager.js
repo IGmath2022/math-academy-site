@@ -30,16 +30,16 @@ function StudentAssignManager({ chapterList }) {
 
   const fetchAssigned = async () => {
     const res = await axios.get(`${API_URL}/api/assignments`, {
-      params: { userId: selectedStudent.id },
+      params: { userId: selectedStudent._id },
       headers: { Authorization: `Bearer ${token}` }
     });
-    setAssigned(res.data.map(a => a.Chapter?.id));
+    setAssigned(res.data.map(a => a.Chapter?._id));
   };
 
   // 학생에게 단원(강의) 할당
   const handleAssign = async (chapterId) => {
     await axios.post(`${API_URL}/api/assignments`,
-      { userId: selectedStudent.id, chapterId },
+      { userId: selectedStudent._id, chapterId },
       { headers: { Authorization: `Bearer ${token}` } }
     );
     setRefresh(r => !r);
@@ -48,12 +48,12 @@ function StudentAssignManager({ chapterList }) {
   // 할당 해제
   const handleUnassign = async (chapterId) => {
     const res = await axios.get(`${API_URL}/api/assignments`, {
-      params: { userId: selectedStudent.id },
+      params: { userId: selectedStudent._id },
       headers: { Authorization: `Bearer ${token}` }
     });
-    const found = res.data.find(a => a.Chapter?.id === chapterId);
+    const found = res.data.find(a => a.Chapter?._id === chapterId);
     if (found) {
-      await axios.delete(`${API_URL}/api/assignments/${found.id}`, {
+      await axios.delete(`${API_URL}/api/assignments/${found._id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setRefresh(r => !r);
@@ -78,9 +78,9 @@ function StudentAssignManager({ chapterList }) {
       <h4 style={{ marginTop: 0, marginBottom: 17, fontSize: 17 }}>학생별 강의 할당</h4>
       <div style={{ marginBottom: 14 }}>
         <select
-          value={selectedStudent?.id || ""}
+          value={selectedStudent?._id || ""}
           onChange={e => {
-            const stu = students.find(s => String(s.id) === e.target.value);
+            const stu = students.find(s => String(s._id) === e.target.value);
             setSelectedStudent(stu);
           }}
           style={{
@@ -94,7 +94,7 @@ function StudentAssignManager({ chapterList }) {
         >
           <option value="">학생 선택</option>
           {students.map(s =>
-            <option key={s.id} value={s.id}>{s.name} ({s.email})</option>
+            <option key={s._id} value={s._id}>{s.name} ({s.email})</option>
           )}
         </select>
       </div>
@@ -102,7 +102,7 @@ function StudentAssignManager({ chapterList }) {
         <ul style={{ padding: 0, listStyle: "none", margin: 0 }}>
           {chapterList.map(c => (
             <li
-              key={c.id}
+              key={c._id}
               style={{
                 marginBottom: 12,
                 padding: "10px 0",
@@ -116,7 +116,7 @@ function StudentAssignManager({ chapterList }) {
               <span style={{ color: "#888", marginLeft: 7, fontSize: 14 }}>
                 {c.description}
               </span>
-              {assigned.includes(c.id)
+              {assigned.includes(c._id)
                 ? (
                   <button
                     style={{
@@ -130,7 +130,7 @@ function StudentAssignManager({ chapterList }) {
                       cursor: "pointer",
                       fontWeight: 600,
                     }}
-                    onClick={() => handleUnassign(c.id)}
+                    onClick={() => handleUnassign(c._id)}
                   >
                     할당 해제
                   </button>
@@ -148,7 +148,7 @@ function StudentAssignManager({ chapterList }) {
                       cursor: "pointer",
                       fontWeight: 600,
                     }}
-                    onClick={() => handleAssign(c.id)}
+                    onClick={() => handleAssign(c._id)}
                   >
                     할당
                   </button>

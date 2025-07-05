@@ -6,7 +6,7 @@ const MAX_BANNERS = 3;
 
 function PopupBannerAdmin() {
   const [banners, setBanners] = useState(
-    Array.from({ length: MAX_BANNERS }, (_, i) => ({
+    Array.from({ length: MAX_BANNERS }, () => ({
       text: "", on: false, img: "", file: null
     }))
   );
@@ -46,6 +46,8 @@ function PopupBannerAdmin() {
       if (banners[i].file) {
         const form = new FormData();
         form.append("file", banners[i].file);
+        // 토큰이 필요한 경우 아래처럼 추가
+        // const res = await axios.post(`${API_URL}/api/settings/upload`, form, { headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${localStorage.getItem("token")}` } });
         const res = await axios.post(`${API_URL}/api/settings/upload`, form, { headers: { "Content-Type": "multipart/form-data" } });
         if (res.data?.filename) {
           await axios.post(`${API_URL}/api/settings`, { key: `banner${i+1}_img`, value: res.data.filename });

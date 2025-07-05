@@ -18,8 +18,9 @@ function ChapterManager({ subject, onChapterListChange }) {
   }, [subject]);
 
   const fetchChapters = async () => {
+    if (!subject?._id) return;
     const res = await axios.get(
-      `${API_URL}/api/chapters/subject/${subject.id}`
+      `${API_URL}/api/chapters/subject/${subject._id}`
     );
     setChapters(res.data);
     if (typeof onChapterListChange === "function") onChapterListChange(res.data);
@@ -47,7 +48,7 @@ function ChapterManager({ subject, onChapterListChange }) {
       );
     } else {
       await axios.post(
-        `${API_URL}/api/chapters/subject/${subject.id}`,
+        `${API_URL}/api/chapters/subject/${subject._id}`,
         { name, description, video_url: embedUrl },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -61,7 +62,7 @@ function ChapterManager({ subject, onChapterListChange }) {
 
   // 수정모드 진입
   const handleEdit = (chapter) => {
-    setEditingId(chapter.id);
+    setEditingId(chapter._id);
     setName(chapter.name);
     setDescription(chapter.description);
     setVideoUrl(chapter.video_url);
@@ -188,7 +189,7 @@ function ChapterManager({ subject, onChapterListChange }) {
       <ul style={{ padding: 0, listStyle: "none", margin: 0, width: "100%" }}>
         {chapters.map((c) => (
           <li
-            key={c.id}
+            key={c._id}
             style={{
               marginBottom: 12,
               padding: "10px 0",
@@ -245,7 +246,7 @@ function ChapterManager({ subject, onChapterListChange }) {
                 fontWeight: 600,
                 marginRight: 5,
               }}
-              onClick={() => handleDelete(c.id)}
+              onClick={() => handleDelete(c._id)}
             >
               삭제
             </button>

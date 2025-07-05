@@ -14,7 +14,13 @@ function BlogSettingSwitch() {
 
   const handleChange = async (e) => {
     setShow(e.target.checked);
-    await axios.post(`${API_URL}/api/settings/blog_show`, { show: e.target.checked });
+    const token = localStorage.getItem("token");
+    await axios.post(`${API_URL}/api/settings/blog_show`, 
+      { show: e.target.checked }, 
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    );
   };
 
   if (loading) return <span>로딩 중...</span>;
