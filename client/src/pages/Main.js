@@ -2,11 +2,12 @@ import React, { useEffect, useState } from "react";
 import Blog from "./Blog";
 import KakaoMap from "../components/KakaoMap";
 import PopupBanners from "../components/PopupBanners";
+import { API_URL } from './api';
 
 function Main() {
   const [showBlog, setShowBlog] = useState(true);
   useEffect(() => {
-    fetch("/api/settings/blog_show")
+    fetch("${API_URL}/api/settings/blog_show")
       .then(res => res.json())
       .then(data => setShowBlog(data.show));
   }, []);

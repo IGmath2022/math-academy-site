@@ -1,19 +1,20 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import Blog from "./Blog";
+import { API_URL } from './api';
 
 function News() {
   const [list, setList] = useState([]);
   const [showBlog, setShowBlog] = useState(true);
 
   useEffect(() => {
-    fetch("/api/settings/blog_show")
+    fetch("${API_URL}/api/settings/blog_show")
       .then(res => res.json())
       .then(data => setShowBlog(data.show));
   }, []);
 
   useEffect(() => {
-    axios.get("/api/news").then(res => setList(res.data));
+    axios.get("${API_URL}/api/news").then(res => setList(res.data));
   }, []);
 
   return (
@@ -70,7 +71,7 @@ function News() {
                   <span key={f.name}>
                     &nbsp;
                     <a
-  href={`/api/news/download/${encodeURIComponent(f.name)}`}
+  href={`${API_URL}/api/news/download/${encodeURIComponent(f.name)}`}
   download={f.originalName} // 이 속성도 가능
   style={{ color: "#226ad6", textDecoration: "underline" }}
   target="_blank" rel="noopener noreferrer"

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
+import { API_URL } from './api';
 
 // 진도 리스트 (간단)
 function StudentProgressHistory({ userId, chapters }) {
@@ -9,7 +10,7 @@ function StudentProgressHistory({ userId, chapters }) {
   useEffect(() => {
     if (!userId) return;
     const token = localStorage.getItem("token");
-    axios.get(`/api/progress?userId=${userId}`, {
+    axios.get(`${API_URL}/api/progress?userId=${userId}`, {
       headers: { Authorization: `Bearer ${token}` }
     }).then(r => setProgress(r.data));
   }, [userId]);
@@ -42,7 +43,7 @@ function StudentProgressCalendar({ userId, chapters }) {
   useEffect(() => {
     if (!userId) return;
     const token = localStorage.getItem("token");
-    axios.get(`/api/progress?userId=${userId}`, {
+    axios.get(`${API_URL}/api/progress?userId=${userId}`, {
       headers: { Authorization: `Bearer ${token}` }
     }).then(r => setProgress(r.data));
   }, [userId]);
@@ -117,7 +118,7 @@ function StudentDetailModal({ student, onClose, onUpdate, schools, chapters }) {
   const getSchoolName = id => schools.find(s => s.id === id)?.name || "-";
   const handleSave = async () => {
     const token = localStorage.getItem("token");
-    await axios.put(`/api/users/${student.id}`, form, {
+    await axios.put(`${API_URL}/api/users/${student.id}`, form, {
       headers: { Authorization: `Bearer ${token}` }
     });
     onUpdate();
@@ -127,7 +128,7 @@ function StudentDetailModal({ student, onClose, onUpdate, schools, chapters }) {
   const handleDelete = async () => {
     if (!window.confirm("정말 삭제하시겠습니까? 복구할 수 없습니다.")) return;
     const token = localStorage.getItem("token");
-    await axios.delete(`/api/users/${student.id}`, {
+    await axios.delete(`${API_URL}/api/users/${student.id}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     onUpdate();
@@ -136,7 +137,7 @@ function StudentDetailModal({ student, onClose, onUpdate, schools, chapters }) {
   // 활성/비활성 토글
   const handleActiveToggle = async () => {
     const token = localStorage.getItem("token");
-    await axios.patch(`/api/users/${student.id}/active`, {
+    await axios.patch(`${API_URL}/api/users/${student.id}/active`, {
       active: !student.active
     }, { headers: { Authorization: `Bearer ${token}` } });
     onUpdate();
@@ -245,11 +246,11 @@ function StudentManager() {
   const [chapters, setChapters] = useState([]);
   useEffect(() => {
     const token = localStorage.getItem("token");
-    axios.get(`/api/users?role=student${showInactive ? "&active=false" : ""}`, { headers: { Authorization: `Bearer ${token}` } })
+    axios.get(`${API_URL}/api/users?role=student${showInactive ? "&active=false" : ""}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => setStudents(res.data));
-    axios.get("/api/schools", { headers: { Authorization: `Bearer ${token}` } })
+    axios.get("${API_URL}/api/schools", { headers: { Authorization: `Bearer ${token}` } })
       .then(res => setSchools(res.data));
-    axios.get("/api/chapters", { headers: { Authorization: `Bearer ${token}` } })
+    axios.get("${API_URL}/api/chapters", { headers: { Authorization: `Bearer ${token}` } })
       .then(res => setChapters(res.data));
   }, [showInactive]);
   const getSchoolName = id => schools.find(s => s.id === id)?.name || "-";
@@ -303,7 +304,7 @@ function StudentManager() {
           onClose={() => setSelected(null)}
           onUpdate={() => {
             const token = localStorage.getItem("token");
-            axios.get(`/api/users?role=student${showInactive ? "&active=false" : ""}`, { headers: { Authorization: `Bearer ${token}` } })
+            axios.get(`${API_URL}/api/users?role=student${showInactive ? "&active=false" : ""}`, { headers: { Authorization: `Bearer ${token}` } })
               .then(res => setStudents(res.data));
           }}
           schools={schools}

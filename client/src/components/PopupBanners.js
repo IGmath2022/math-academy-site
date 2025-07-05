@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { API_URL } from './api';
 
 const MAX_BANNERS = 3;
 
@@ -43,9 +44,9 @@ function PopupBanners() {
       let arr = [];
       for (let i = 1; i <= MAX_BANNERS; ++i) {
         const [text, on, img] = await Promise.all([
-          axios.get(`/api/settings/banner${i}_text`).then(r => r.data?.value || ""),
-          axios.get(`/api/settings/banner${i}_on`).then(r => r.data?.value === "true"),
-          axios.get(`/api/settings/banner${i}_img`).then(r => r.data?.value || "")
+          axios.get(`${API_URL}/api/settings/banner${i}_text`).then(r => r.data?.value || ""),
+          axios.get(`${API_URL}/api/settings/banner${i}_on`).then(r => r.data?.value === "true"),
+          axios.get(`${API_URL}/api/settings/banner${i}_img`).then(r => r.data?.value || "")
         ]);
         arr.push({ text, img, on });
       }

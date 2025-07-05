@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
+import { API_URL } from './api';
 
 function NewsAdmin() {
   const [list, setList] = useState([]);
@@ -16,7 +17,7 @@ function NewsAdmin() {
   useEffect(() => { fetchNews(); }, []);
 
   const fetchNews = async () => {
-    const res = await axios.get("/api/news");
+    const res = await axios.get("${API_URL}/api/news");
     setList(res.data);
   };
 
@@ -50,13 +51,13 @@ function NewsAdmin() {
     }
     if (editingId) {
       await axios.put(
-        `/api/news/${editingId}`,
+        `${API_URL}/api/news/${editingId}`,
         formData,
         { headers: { "Authorization": `Bearer ${token}`, "Content-Type": "multipart/form-data" } }
       );
     } else {
       await axios.post(
-        "/api/news",
+        "${API_URL}/api/news",
         formData,
         { headers: { "Authorization": `Bearer ${token}`, "Content-Type": "multipart/form-data" } }
       );
@@ -76,7 +77,7 @@ function NewsAdmin() {
 
   const handleDelete = async (id) => {
     if (!window.confirm("정말 삭제하시겠습니까?")) return;
-    await axios.delete(`/api/news/${id}`, {
+    await axios.delete(`${API_URL}/api/news/${id}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     fetchNews();
@@ -228,7 +229,7 @@ function NewsAdmin() {
                   <span key={f.name}>
                     &nbsp;
                     <a
-                      href={`/api/news/download/${encodeURIComponent(f.name)}`}
+                      href={`${API_URL}/api/news/download/${encodeURIComponent(f.name)}`}
                       style={{ color: "#226ad6", textDecoration: "underline" }}
                       target="_blank" rel="noopener noreferrer"
                     >

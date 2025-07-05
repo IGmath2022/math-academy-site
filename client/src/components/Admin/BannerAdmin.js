@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { API_URL } from './api';
 
 const MAX_BANNERS = 3;
 const initialBanner = { text: "", on: false, img: "" };
@@ -13,9 +14,9 @@ function BannerAdmin() {
       let arr = [];
       for (let i = 1; i <= MAX_BANNERS; ++i) {
         const [text, on, img] = await Promise.all([
-          axios.get(`/api/settings/banner${i}_text`).then(r => r.data?.value || ""),
-          axios.get(`/api/settings/banner${i}_on`).then(r => r.data?.value === "true"),
-          axios.get(`/api/settings/banner${i}_img`).then(r => r.data?.value || "")
+          axios.get(`${API_URL}/api/settings/banner${i}_text`).then(r => r.data?.value || ""),
+          axios.get(`${API_URL}/api/settings/banner${i}_on`).then(r => r.data?.value === "true"),
+          axios.get(`${API_URL}/api/settings/banner${i}_img`).then(r => r.data?.value || "")
         ]);
         arr.push({ text, on, img });
       }
@@ -26,9 +27,9 @@ function BannerAdmin() {
 
   // 저장 핸들러
   const handleSave = async (i) => {
-    await axios.post("/api/settings", { key: `banner${i+1}_text`, value: banners[i].text });
-    await axios.post("/api/settings", { key: 'banner${i+1}_on', value: String(banners[i].on) });
-    await axios.post("/api/settings", { key: 'banner${i+1}_img', value: banners[i].img });
+    await axios.post("${API_URL}/api/settings", { key: `banner${i+1}_text`, value: banners[i].text });
+    await axios.post("${API_URL}/api/settings", { key: 'banner${i+1}_on', value: String(banners[i].on) });
+    await axios.post("${API_URL}/api/settings", { key: 'banner${i+1}_img', value: banners[i].img });
     alert(`배너${i+1} 저장됨!`);
   };
 
@@ -38,7 +39,7 @@ function BannerAdmin() {
     if (!file) return;
     const form = new FormData();
     form.append("file", file);
-    const res = await axios.post("/api/materials/upload", form, {
+    const res = await axios.post("${API_URL}/api/materials/upload", form, {
       headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${localStorage.getItem("token")}` }
     });
     // 업로드된 파일명 저장

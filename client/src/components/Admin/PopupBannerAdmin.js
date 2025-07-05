@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { API_URL } from './api';
 
 const MAX_BANNERS = 3;
 
@@ -17,9 +18,9 @@ function PopupBannerAdmin() {
       const arr = [];
       for (let i = 1; i <= MAX_BANNERS; ++i) {
         const [text, on, img] = await Promise.all([
-          axios.get(`/api/settings/banner${i}_text`).then(r => r.data?.value || "").catch(()=> ""),
-          axios.get(`/api/settings/banner${i}_on`).then(r => r.data?.value === "true").catch(()=> false),
-          axios.get(`/api/settings/banner${i}_img`).then(r => r.data?.value || "").catch(()=> ""),
+          axios.get(`${API_URL}/api/settings/banner${i}_text`).then(r => r.data?.value || "").catch(()=> ""),
+          axios.get(`${API_URL}/api/settings/banner${i}_on`).then(r => r.data?.value === "true").catch(()=> false),
+          axios.get(`${API_URL}/api/settings/banner${i}_img`).then(r => r.data?.value || "").catch(()=> ""),
         ]);
         arr.push({ text, on, img, file: null });
       }
@@ -38,16 +39,16 @@ function PopupBannerAdmin() {
     setSaving(true);
     for (let i = 0; i < MAX_BANNERS; ++i) {
       // 텍스트/ONOFF 저장
-      await axios.post("/api/settings", { key: `banner${i+1}_text`, value: banners[i].text });
-      await axios.post("/api/settings", { key: `banner${i+1}_on`, value: String(banners[i].on) });
+      await axios.post("${API_URL}/api/settings", { key: `banner${i+1}_text`, value: banners[i].text });
+      await axios.post("${API_URL}/api/settings", { key: `banner${i+1}_on`, value: String(banners[i].on) });
 
       // 이미지 파일 업로드 (있을 때만)
       if (banners[i].file) {
         const form = new FormData();
         form.append("file", banners[i].file);
-        const res = await axios.post("/api/settings/upload", form, { headers: { "Content-Type": "multipart/form-data" } });
+        const res = await axios.post("${API_URL}/api/settings/upload", form, { headers: { "Content-Type": "multipart/form-data" } });
         if (res.data?.filename) {
-          await axios.post("/api/settings", { key: `banner${i+1}_img`, value: res.data.filename });
+          await axios.post("${API_URL}/api/settings", { key: `banner${i+1}_img`, value: res.data.filename });
         }
       }
     }

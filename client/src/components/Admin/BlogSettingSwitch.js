@@ -1,19 +1,20 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { API_URL } from './api';
 
 function BlogSettingSwitch() {
   const [show, setShow] = useState(true);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios.get("/api/settings/blog_show")
+    axios.get("${API_URL}/api/settings/blog_show")
       .then(res => setShow(res.data.show))
       .finally(() => setLoading(false));
   }, []);
 
   const handleChange = async (e) => {
     setShow(e.target.checked);
-    await axios.post("/api/settings/blog_show", { show: e.target.checked });
+    await axios.post("${API_URL}/api/settings/blog_show", { show: e.target.checked });
   };
 
   if (loading) return <span>로딩 중...</span>;

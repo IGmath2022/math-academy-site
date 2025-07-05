@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import Calendar from "react-calendar"; // npm install react-calendar
 import "react-calendar/dist/Calendar.css";
 import axios from "axios";
+import { API_URL } from './api';
 
 function StudentProgressCalendar({ userId, chapters = [] }) {
   const [progressList, setProgressList] = useState([]);
@@ -11,7 +12,7 @@ function StudentProgressCalendar({ userId, chapters = [] }) {
     if (!userId) return;
     const token = localStorage.getItem("token");
     axios
-      .get(`/api/progress?userId=${userId}`, {
+      .get(`${API_URL}/api/progress?userId=${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => setProgressList(res.data));

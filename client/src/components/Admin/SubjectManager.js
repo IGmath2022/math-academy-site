@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { API_URL } from './api';
 
 function SubjectManager({ onSelectSubject, selectedSubject }) {
   const [subjects, setSubjects] = useState([]);
@@ -16,7 +17,7 @@ function SubjectManager({ onSelectSubject, selectedSubject }) {
   }, []);
 
   const fetchSubjects = async () => {
-    const res = await axios.get("http://localhost:4000/api/subjects");
+    const res = await axios.get("${API_URL}/api/subjects");
     setSubjects(res.data);
   };
 
@@ -25,7 +26,7 @@ function SubjectManager({ onSelectSubject, selectedSubject }) {
     e.preventDefault();
     if (editingId) {
       await axios.put(
-        `http://localhost:4000/api/subjects/${editingId}`,
+        `${API_URL}/api/subjects/${editingId}`,
         { name, description },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -39,7 +40,7 @@ function SubjectManager({ onSelectSubject, selectedSubject }) {
       }
     } else {
       await axios.post(
-        "http://localhost:4000/api/subjects",
+        "${API_URL}/api/subjects",
         { name, description },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -61,7 +62,7 @@ function SubjectManager({ onSelectSubject, selectedSubject }) {
   // 삭제
   const handleDelete = async (id) => {
     if (!window.confirm("정말 삭제하시겠습니까?")) return;
-    await axios.delete(`http://localhost:4000/api/subjects/${id}`, {
+    await axios.delete(`${API_URL}/api/subjects/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     fetchSubjects();

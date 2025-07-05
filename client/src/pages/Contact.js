@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { API_URL } from './api';
 
 function Contact() {
   const [form, setForm] = useState({
@@ -20,7 +21,7 @@ function Contact() {
     setLoading(true);
     setResult("");
     try {
-      await axios.post("/api/contact", form);
+      await axios.post("${API_URL}/api/contact", form);
       setResult("신청이 완료되었습니다! 빠른 상담 드릴게요.");
       setForm({ name: "", contact: "", date: "", message: "" });
     } catch {

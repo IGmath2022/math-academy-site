@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { API_URL } from './api';
 
 function AdminNoticeManager() {
   const [news, setNews] = useState([]);
@@ -8,7 +9,7 @@ function AdminNoticeManager() {
 
   // 목록 불러오기
   useEffect(() => {
-    axios.get("/api/news").then(r => setNews(r.data));
+    axios.get("${API_URL}/api/news").then(r => setNews(r.data));
   }, []);
 
   // 등록/수정 입력 핸들
@@ -31,28 +32,28 @@ function AdminNoticeManager() {
     if (form.file) data.append("file", form.file);
 
     if (editId) {
-      await axios.put(`/api/news/${editId}`, data, {
+      await axios.put(`${API_URL}/api/news/${editId}`, data, {
         headers: { Authorization: `Bearer ${token}` }
       });
     } else {
-      await axios.post("/api/news", data, {
+      await axios.post("${API_URL}/api/news", data, {
         headers: { Authorization: `Bearer ${token}` }
       });
     }
     setForm({ title: "", content: "", author: "", file: null });
     setEditId(null);
     // 새로고침
-    axios.get("/api/news").then(r => setNews(r.data));
+    axios.get("${API_URL}/api/news").then(r => setNews(r.data));
   };
 
   // 삭제
   const handleDelete = async id => {
     if (!window.confirm("정말 삭제?")) return;
     const token = localStorage.getItem("token");
-    await axios.delete(`/api/news/${id}`, {
+    await axios.delete(`${API_URL}/api/news/${id}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
-    axios.get("/api/news").then(r => setNews(r.data));
+    axios.get("${API_URL}/api/news").then(r => setNews(r.data));
   };
 
   // 수정

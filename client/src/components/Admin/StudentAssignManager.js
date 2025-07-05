@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { API_URL } from './api';
 
 function StudentAssignManager({ chapterList }) {
   const [students, setStudents] = useState([]);
@@ -21,14 +22,14 @@ function StudentAssignManager({ chapterList }) {
   }, [selectedStudent, refresh]);
 
   const fetchStudents = async () => {
-    const res = await axios.get("/api/users?role=student", {
+    const res = await axios.get("${API_URL}/api/users?role=student", {
       headers: { Authorization: `Bearer ${token}` }
     });
     setStudents(res.data);
   };
 
   const fetchAssigned = async () => {
-    const res = await axios.get("/api/assignments", {
+    const res = await axios.get("${API_URL}/api/assignments", {
       params: { userId: selectedStudent.id },
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -37,7 +38,7 @@ function StudentAssignManager({ chapterList }) {
 
   // 학생에게 단원(강의) 할당
   const handleAssign = async (chapterId) => {
-    await axios.post("/api/assignments",
+    await axios.post("${API_URL}/api/assignments",
       { userId: selectedStudent.id, chapterId },
       { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -46,13 +47,13 @@ function StudentAssignManager({ chapterList }) {
 
   // 할당 해제
   const handleUnassign = async (chapterId) => {
-    const res = await axios.get("/api/assignments", {
+    const res = await axios.get("${API_URL}/api/assignments", {
       params: { userId: selectedStudent.id },
       headers: { Authorization: `Bearer ${token}` }
     });
     const found = res.data.find(a => a.Chapter?.id === chapterId);
     if (found) {
-      await axios.delete(`/api/assignments/${found.id}`, {
+      await axios.delete(`${API_URL}/api/assignments/${found.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setRefresh(r => !r);

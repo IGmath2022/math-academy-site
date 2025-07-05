@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { API_URL } from './api';
 
 function ChapterManager({ subject, onChapterListChange }) {
   const [chapters, setChapters] = useState([]);
@@ -18,7 +19,7 @@ function ChapterManager({ subject, onChapterListChange }) {
 
   const fetchChapters = async () => {
     const res = await axios.get(
-      `/api/chapters/subject/${subject.id}`
+      `${API_URL}/api/chapters/subject/${subject.id}`
     );
     setChapters(res.data);
     if (typeof onChapterListChange === "function") onChapterListChange(res.data);
@@ -40,13 +41,13 @@ function ChapterManager({ subject, onChapterListChange }) {
 
     if (editingId) {
       await axios.put(
-        `/api/chapters/${editingId}`,
+        `${API_URL}/api/chapters/${editingId}`,
         { name, description, video_url: embedUrl },
         { headers: { Authorization: `Bearer ${token}` } }
       );
     } else {
       await axios.post(
-        `/api/chapters/subject/${subject.id}`,
+        `${API_URL}/api/chapters/subject/${subject.id}`,
         { name, description, video_url: embedUrl },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -69,7 +70,7 @@ function ChapterManager({ subject, onChapterListChange }) {
   // 삭제
   const handleDelete = async (id) => {
     if (!window.confirm("정말 삭제하시겠습니까?")) return;
-    await axios.delete(`/api/chapters/${id}`, {
+    await axios.delete(`${API_URL}/api/chapters/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     fetchChapters();

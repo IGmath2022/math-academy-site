@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import SchoolPeriodManager from "./SchoolPeriodManager";
+import { API_URL } from './api';
 
 function SchoolManager() {
   const [schools, setSchools] = useState([]);
   const [newSchool, setNewSchool] = useState("");
 
   const fetchSchools = async () => {
-    const res = await axios.get("/api/schools");
+    const res = await axios.get("${API_URL}/api/schools");
     setSchools(res.data);
   };
 
@@ -17,7 +18,7 @@ function SchoolManager() {
     if (!newSchool.trim()) return;
     const token = localStorage.getItem("token");
     await axios.post(
-      "/api/schools",
+      "${API_URL}/api/schools",
       { name: newSchool },
       { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -29,7 +30,7 @@ function SchoolManager() {
     if (!window.confirm("정말 삭제할까요?")) return;
     const token = localStorage.getItem("token");
     await axios.delete(
-      `/api/schools/${id}`,
+      `${API_URL}/api/schools/${id}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
     fetchSchools();

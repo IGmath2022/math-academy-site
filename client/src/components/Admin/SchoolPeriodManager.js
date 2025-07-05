@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { API_URL } from './api';
 
 function SchoolPeriodManager() {
   const [schools, setSchools] = useState([]);
@@ -24,13 +25,13 @@ function SchoolPeriodManager() {
 
   // 학교 리스트 로딩 (인증 필요)
   useEffect(() => {
-    axios.get("/api/schools", getAuthConfig())
+    axios.get("${API_URL}/api/schools", getAuthConfig())
       .then(res => setSchools(res.data));
   }, []);
 
   // 일정(기간) 리스트 로딩
   const fetchPeriods = async (schoolId = "") => {
-    const url = schoolId ? `/api/school-periods?schoolId=${schoolId}` : `/api/school-periods`;
+    const url = schoolId ? `${API_URL}/api/school-periods?schoolId=${schoolId}` : `${API_URL}/api/school-periods`;
     const res = await axios.get(url, getAuthConfig());
     setPeriods(res.data);
   };
@@ -55,7 +56,7 @@ function SchoolPeriodManager() {
       return;
     }
     try {
-      await axios.post("/api/school-periods", newPeriod, getAuthConfig());
+      await axios.post("${API_URL}/api/school-periods", newPeriod, getAuthConfig());
       setNewPeriod({ schoolId: "", name: "", type: "방학", start: "", end: "", note: "" });
       fetchPeriods(selectedSchoolId);
     } catch (e) {
@@ -67,7 +68,7 @@ function SchoolPeriodManager() {
   const handleDelete = async id => {
     if (!window.confirm("정말 삭제할까요?")) return;
     try {
-      await axios.delete(`/api/school-periods/${id}`, getAuthConfig());
+      await axios.delete(`${API_URL}/api/school-periods/${id}`, getAuthConfig());
       fetchPeriods(selectedSchoolId);
     } catch (e) {
       alert("삭제 실패: " + (e.response?.data?.message || e.message));

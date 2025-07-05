@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { API_URL } from './api';
+
 function SchoolPeriodsView({ schoolId }) {
   const [periods, setPeriods] = useState([]);
   useEffect(() => {
     if (schoolId)
-      axios.get("/api/school-periods", { params: { schoolId } }).then(r => setPeriods(r.data));
+      axios.get("${API_URL}/api/school-periods", { params: { schoolId } }).then(r => setPeriods(r.data));
   }, [schoolId]);
   if (!schoolId) return null;
   if (periods.length === 0) return <div style={{ color: "#888", margin: "10px 0" }}>기간 기록 없음</div>;

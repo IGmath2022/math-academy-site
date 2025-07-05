@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { API_URL } from './api';
 
 function Materials() {
   const [list, setList] = useState([]);
@@ -12,7 +13,7 @@ function Materials() {
   const role = localStorage.getItem("role");
 
   useEffect(() => {
-    axios.get("/api/materials").then(res => setList(res.data));
+    axios.get("${API_URL}/api/materials").then(res => setList(res.data));
   }, [refresh]);
 
   const handleSubmit = async (e) => {
@@ -22,7 +23,7 @@ function Materials() {
     form.append("description", description);
     form.append("file", file);
 
-    await axios.post("/api/materials", form, {
+    await axios.post("${API_URL}/api/materials", form, {
       headers: {
         "Content-Type": "multipart/form-data",
         Authorization: `Bearer ${token}`
@@ -34,7 +35,7 @@ function Materials() {
 
   const handleDelete = async (id) => {
     if (!window.confirm("정말 삭제하시겠습니까?")) return;
-    await axios.delete(`/api/materials/${id}`, {
+    await axios.delete(`${API_URL}/api/materials/${id}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     setRefresh(r => !r);

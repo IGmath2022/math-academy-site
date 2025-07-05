@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
+import { API_URL } from './api';
 
 function Register() {
   const [name, setName] = useState("");
@@ -12,14 +13,14 @@ function Register() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    axios.get("/api/schools").then(res => setSchools(res.data));
+    axios.get("${API_URL}/api/schools").then(res => setSchools(res.data));
   }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     try {
-      await axios.post("/api/auth/register", { name, email, password, schoolId });
+      await axios.post("${API_URL}/api/auth/register", { name, email, password, schoolId });
       alert("회원가입 성공! 로그인 해주세요.");
       navigate("/login");
     } catch (err) {

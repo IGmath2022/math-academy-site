@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { API_URL } from './api';
 
 // 학생+강의+날짜별 진도 리스트
 
@@ -14,9 +15,9 @@ function ProgressManager() {
         setLoading(true);
         const token = localStorage.getItem("token");
         const [progressRes, userRes, chapterRes] = await Promise.all([
-          axios.get("/api/progress", { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get("/api/users?role=student", { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get("/api/chapters", { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get("${API_URL}/api/progress", { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get("${API_URL}/api/users?role=student", { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get("${API_URL}/api/chapters", { headers: { Authorization: `Bearer ${token}` } }),
         ]);
         setProgressList(progressRes.data);
         setStudents(userRes.data);
