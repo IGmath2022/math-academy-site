@@ -129,7 +129,7 @@ function Materials() {
         width: "100%"
       }}>
         {list.map(item => (
-          <li key={item.id} style={{
+          <li key={item._id} style={{
             display: "flex",
             flexWrap: "wrap",
             alignItems: "center",
@@ -167,7 +167,7 @@ function Materials() {
                   color: "#444",
                   cursor: "pointer"
                 }}
-                onClick={() => handleDelete(item.id)}
+                onClick={() => handleDelete(item._id)}
               >
                 삭제
               </button>

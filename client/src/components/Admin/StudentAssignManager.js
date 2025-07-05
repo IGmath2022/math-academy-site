@@ -30,7 +30,7 @@ function StudentAssignManager({ chapterList }) {
 
   const fetchAssigned = async () => {
     const res = await axios.get(`${API_URL}/api/assignments`, {
-      params: { userId: selectedStudent.id },
+      params: { userId: selectedStudent._id },
       headers: { Authorization: `Bearer ${token}` }
     });
     setAssigned(res.data.map(a => a.Chapter?._id));
@@ -39,7 +39,7 @@ function StudentAssignManager({ chapterList }) {
   // 학생에게 단원(강의) 할당
   const handleAssign = async (chapterId) => {
     await axios.post(`${API_URL}/api/assignments`,
-      { userId: selectedStudent.id, chapterId },
+      { userId: selectedStudent._id, chapterId },
       { headers: { Authorization: `Bearer ${token}` } }
     );
     setRefresh(r => !r);
@@ -48,7 +48,7 @@ function StudentAssignManager({ chapterList }) {
   // 할당 해제
   const handleUnassign = async (chapterId) => {
     const res = await axios.get(`${API_URL}/api/assignments`, {
-      params: { userId: selectedStudent.id },
+      params: { userId: selectedStudent._id },
       headers: { Authorization: `Bearer ${token}` }
     });
     const found = res.data.find(a => a.Chapter?._id === chapterId);
@@ -78,7 +78,7 @@ function StudentAssignManager({ chapterList }) {
       <h4 style={{ marginTop: 0, marginBottom: 17, fontSize: 17 }}>학생별 강의 할당</h4>
       <div style={{ marginBottom: 14 }}>
         <select
-          value={selectedStudent?.id || ""}
+          value={selectedStudent?._id || ""}
           onChange={e => {
             const stu = students.find(s => String(s._id) === e.target.value);
             setSelectedStudent(stu);
