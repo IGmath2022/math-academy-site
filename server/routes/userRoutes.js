@@ -4,28 +4,41 @@ const User = require('../models/User');
 const School = require('../models/School');
 const { isAuthenticated, isAdmin } = require('../middleware/auth');
 
+// 내 정보 조회 (schoolId는 학교 객체로 내려감. 필요시 아래 방식 적용)
 router.get('/me', isAuthenticated, async (req, res) => {
   const user = await User.findById(req.user.id).populate('schoolId');
   if (!user) return res.status(404).json({ message: "사용자 없음" });
   res.json(user);
 });
 
+// 학생/유저 리스트 (schoolId → string, schoolName 추가 변환)
 router.get('/', isAdmin, async (req, res) => {
   const where = {};
   if (req.query.role) where.role = req.query.role;
   if (req.query.active === "false") where.active = false;
   else if (req.query.active === "true") where.active = true;
   else if (!("active" in req.query)) where.active = true;
-  const users = await User.find(where).populate('schoolId');
-  res.json(users);
+  
+  // 핵심: lean(), map()으로 schoolId 변환
+  const users = await User.find(where).populate('schoolId').lean();
+  const patched = users.map(u => ({
+    ...u,
+    schoolId: u.schoolId ? u.schoolId._id.toString() : "",
+    schoolName: u.schoolId ? u.schoolId.name : ""
+  }));
+  res.json(patched);
 });
 
+// 학생/유저 단일 조회 (schoolId → string, schoolName 추가 변환)
 router.get('/:id', isAdmin, async (req, res) => {
-  const user = await User.findById(req.params.id).populate('schoolId');
+  const user = await User.findById(req.params.id).populate('schoolId').lean();
   if (!user) return res.status(404).json({ message: '유저 없음' });
+  user.schoolId = user.schoolId ? user.schoolId._id.toString() : "";
+  user.schoolName = user.schoolId ? user.schoolId.name : "";
   res.json(user);
 });
 
+// 수정
 router.put('/:id', isAdmin, async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -46,6 +59,7 @@ router.put('/:id', isAdmin, async (req, res) => {
   }
 });
 
+// 삭제
 router.delete('/:id', isAdmin, async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -57,6 +71,7 @@ router.delete('/:id', isAdmin, async (req, res) => {
   }
 });
 
+// 활성/비활성
 router.patch('/:id/active', isAdmin, async (req, res) => {
   try {
     const user = await User.findById(req.params.id);

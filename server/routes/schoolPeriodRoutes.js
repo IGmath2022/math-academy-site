@@ -4,11 +4,23 @@ const { isAdmin } = require("../middleware/auth");
 const SchoolPeriod = require("../models/SchoolPeriod");
 const School = require("../models/School");
 
+// [수정] 학교명 포함해서 반환
 router.get("/", async (req, res) => {
   const { schoolId } = req.query;
   const where = schoolId ? { schoolId } : {};
-  const periods = await SchoolPeriod.find(where).populate('schoolId').sort({ start: 1 });
-  res.json(periods);
+  const periods = await SchoolPeriod.find(where)
+    .populate('schoolId')
+    .sort({ start: 1 })
+    .lean();
+
+  // schoolName 추가!
+  const patched = periods.map(p => ({
+    ...p,
+    schoolId: p.schoolId ? p.schoolId._id.toString() : "",
+    schoolName: p.schoolId ? p.schoolId.name : ""
+  }));
+
+  res.json(patched);
 });
 
 router.post("/", isAdmin, async (req, res) => {

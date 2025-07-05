@@ -14,8 +14,14 @@ exports.assignChapterToStudent = async (req, res) => {
 // 학생별 할당된 단원 전체 조회 (학생 대시보드)
 exports.getMyAssignments = async (req, res) => {
   const { userId } = req.query;
-  const assignments = await Assignment.find({ userId }).populate('chapterId');
-  res.json(assignments);
+  const assignments = await Assignment.find({ userId }).populate('chapterId').lean();
+  // chapterId는 string, chapterName도 함께 내려줌
+  const patched = assignments.map(a => ({
+    ...a,
+    chapterId: a.chapterId && a.chapterId._id ? a.chapterId._id.toString() : "",
+    chapterName: a.chapterId && a.chapterId.name ? a.chapterId.name : ""
+  }));
+  res.json(patched);
 };
 
 // (선택) 학생별 할당 해제 (운영자)
