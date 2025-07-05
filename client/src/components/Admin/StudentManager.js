@@ -4,6 +4,7 @@ import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import { API_URL } from '../../api';
 
+// 진도/메모 기록 컴포넌트
 function StudentProgressHistory({ userId, chapters }) {
   const [progress, setProgress] = useState([]);
   useEffect(() => {
@@ -14,7 +15,7 @@ function StudentProgressHistory({ userId, chapters }) {
     }).then(r => setProgress(r.data));
   }, [userId]);
 
-  const getChapterName = id => chapters.find(c => String(c._id) === String(id))?.name || id;
+  const getChapterName = id => chapters.find(c => c._id === id)?.name || id;
 
   return (
     <div style={{ marginTop: 22, padding: "10px 0 0", borderTop: "1px solid #eee" }}>
@@ -36,6 +37,7 @@ function StudentProgressHistory({ userId, chapters }) {
   );
 }
 
+// 진도 달력 컴포넌트
 function StudentProgressCalendar({ userId, chapters }) {
   const [progress, setProgress] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
@@ -88,7 +90,7 @@ function StudentProgressCalendar({ userId, chapters }) {
           <ul style={{ margin: 6, padding: 0 }}>
             {progressMap[selectedDate].map(p => (
               <li key={p._id}>
-                <b>{chapters.find(c => String(c._id) === String(p.chapterId))?.name || p.chapterId}</b>
+                <b>{chapters.find(c => c._id === p.chapterId)?.name || p.chapterId}</b>
                 {p.memo && <> - <span style={{ color: "#457" }}>{p.memo}</span></>}
               </li>
             ))}
@@ -99,6 +101,7 @@ function StudentProgressCalendar({ userId, chapters }) {
   );
 }
 
+// 학생 상세/수정 모달
 function StudentDetailModal({ student, onClose, onUpdate, schools, chapters }) {
   const [edit, setEdit] = useState(false);
   const [form, setForm] = useState({
@@ -119,6 +122,7 @@ function StudentDetailModal({ student, onClose, onUpdate, schools, chapters }) {
 
   const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
+  // schoolId 타입 일치시켜서 비교!
   const getSchoolName = id => schools.find(s => String(s._id) === String(id))?.name || "-";
 
   const handleSave = async () => {
@@ -209,11 +213,15 @@ function StudentDetailModal({ student, onClose, onUpdate, schools, chapters }) {
             <div style={{ marginBottom: 10 }}>
               <b>학교:</b> {edit
                 ? (
-                  <select name="schoolId" value={form.schoolId} onChange={handleChange}
-                    style={{ marginLeft: 7, padding: "4px 6px", borderRadius: 7 }}>
+                  <select
+                    name="schoolId"
+                    value={String(form.schoolId)}
+                    onChange={handleChange}
+                    style={{ marginLeft: 7, padding: "4px 6px", borderRadius: 7 }}
+                  >
                     <option value="">학교 선택</option>
                     {schools.map(s => (
-                      <option value={s._id} key={s._id}>{s.name}</option>
+                      <option value={String(s._id)} key={s._id}>{s.name}</option>
                     ))}
                   </select>
                 )
@@ -253,6 +261,7 @@ function StudentDetailModal({ student, onClose, onUpdate, schools, chapters }) {
   );
 }
 
+// 학생 리스트 & 상세 관리 메인 컴포넌트
 function StudentManager() {
   const [students, setStudents] = useState([]);
   const [showInactive, setShowInactive] = useState(false);
@@ -275,6 +284,7 @@ function StudentManager() {
     }).then(res => setChapters(res.data));
   }, [showInactive]);
 
+  // schoolId 타입 일치시켜서 비교!
   const getSchoolName = id => schools.find(s => String(s._id) === String(id))?.name || "-";
 
   return (
