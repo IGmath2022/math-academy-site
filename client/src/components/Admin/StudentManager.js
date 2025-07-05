@@ -14,7 +14,7 @@ function StudentProgressHistory({ userId, chapters }) {
     }).then(r => setProgress(r.data));
   }, [userId]);
 
-  const getChapterName = id => chapters.find(c => c._id === id)?.name || id;
+  const getChapterName = id => chapters.find(c => String(c._id) === String(id))?.name || id;
 
   return (
     <div style={{ marginTop: 22, padding: "10px 0 0", borderTop: "1px solid #eee" }}>
@@ -88,7 +88,7 @@ function StudentProgressCalendar({ userId, chapters }) {
           <ul style={{ margin: 6, padding: 0 }}>
             {progressMap[selectedDate].map(p => (
               <li key={p._id}>
-                <b>{chapters.find(c => c._id === p.chapterId)?.name || p.chapterId}</b>
+                <b>{chapters.find(c => String(c._id) === String(p.chapterId))?.name || p.chapterId}</b>
                 {p.memo && <> - <span style={{ color: "#457" }}>{p.memo}</span></>}
               </li>
             ))}
@@ -119,7 +119,7 @@ function StudentDetailModal({ student, onClose, onUpdate, schools, chapters }) {
 
   const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
-  const getSchoolName = id => schools.find(s => s._id === id)?.name || "-";
+  const getSchoolName = id => schools.find(s => String(s._id) === String(id))?.name || "-";
 
   const handleSave = async () => {
     const token = localStorage.getItem("token");
@@ -275,7 +275,7 @@ function StudentManager() {
     }).then(res => setChapters(res.data));
   }, [showInactive]);
 
-  const getSchoolName = id => schools.find(s => s._id === id)?.name || "-";
+  const getSchoolName = id => schools.find(s => String(s._id) === String(id))?.name || "-";
 
   return (
     <div style={{
