@@ -33,16 +33,24 @@ function StudentAssignManager({ chapterList }) {
       params: { userId: selectedStudent._id },
       headers: { Authorization: `Bearer ${token}` }
     });
-    setAssigned(res.data.map(a => a.Chapter?._id));
+    setAssigned(res.data.map(a => String(a.chapterId))); // string 변환
   };
 
   // 학생에게 단원(강의) 할당
   const handleAssign = async (chapterId) => {
-    await axios.post(`${API_URL}/api/assignments`,
-      { userId: selectedStudent._id, chapterId },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    setRefresh(r => !r);
+    try {
+      await axios.post(`${API_URL}/api/assignments`,
+        { userId: selectedStudent._id, chapterId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setRefresh(r => !r);
+    } catch (e) {
+      if (e.response?.status === 409) {
+        alert("이미 할당된 강의입니다.");
+      } else {
+        alert("할당 오류: " + (e.message || "알 수 없는 오류"));
+      }
+    }
   };
 
   // 할당 해제
@@ -51,7 +59,7 @@ function StudentAssignManager({ chapterList }) {
       params: { userId: selectedStudent._id },
       headers: { Authorization: `Bearer ${token}` }
     });
-    const found = res.data.find(a => a.Chapter?._id === chapterId);
+    const found = res.data.find(a => String(a.chapterId) === String(chapterId));
     if (found) {
       await axios.delete(`${API_URL}/api/assignments/${found._id}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -116,7 +124,7 @@ function StudentAssignManager({ chapterList }) {
               <span style={{ color: "#888", marginLeft: 7, fontSize: 14 }}>
                 {c.description}
               </span>
-              {assigned.includes(c._id)
+              {assigned.includes(String(c._id))
                 ? (
                   <button
                     style={{

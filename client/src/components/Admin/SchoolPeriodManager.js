@@ -126,9 +126,9 @@ function SchoolPeriodManager() {
         {periods.map(p => (
           <li key={p._id} style={{ display: "flex", alignItems: "center", marginBottom: 6, fontSize: 15 }}>
             <span style={{ flex: 2 }}>
-              [{p.School?.name || p.school?.name || ""}] {p.name} ({p.type}) {p.start} ~ {p.end}
-              {p.note && <> - <span style={{ color: "#567" }}>{p.note}</span></>}
-            </span>
+  [{p.schoolName}] {p.name} ({p.type}) {p.start} ~ {p.end}
+  {p.note && <> - <span style={{ color: "#567" }}>{p.note}</span></>}
+</span>
             <button onClick={() => handleDelete(p._id)} style={{ marginLeft: 10, color: "#e14", background: "none", border: "none", fontWeight: 700, cursor: "pointer" }}>
               삭제
             </button>
