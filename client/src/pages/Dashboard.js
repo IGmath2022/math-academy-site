@@ -234,7 +234,7 @@ function StudentDashboard() {
                 <label style={{ fontSize: 15, fontWeight: 500 }}>
                   <input
                     type="checkbox"
-                    checked={progressMap[a.Chapter.id]?.date === today}
+                    checked={a.Chapter?.id && progressMap[a.Chapter.id]?.date === today}
                     onChange={e => {
                       setProgressList(prev => {
                         if (!progressMap[a.Chapter.id]) return prev;
