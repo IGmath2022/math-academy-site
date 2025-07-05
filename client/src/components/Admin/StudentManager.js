@@ -4,7 +4,7 @@ import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import { API_URL } from '../../api';
 
-// 진도/메모 기록 컴포넌트
+// 진도/메모 기록
 function StudentProgressHistory({ userId, chapters }) {
   const [progress, setProgress] = useState([]);
   useEffect(() => {
@@ -37,7 +37,7 @@ function StudentProgressHistory({ userId, chapters }) {
   );
 }
 
-// 진도 달력 컴포넌트
+// 진도 달력
 function StudentProgressCalendar({ userId, chapters }) {
   const [progress, setProgress] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
@@ -101,7 +101,7 @@ function StudentProgressCalendar({ userId, chapters }) {
   );
 }
 
-// 학생 상세/수정 모달
+// 학생 상세 정보/수정 모달
 function StudentDetailModal({ student, onClose, onUpdate, schools, chapters }) {
   const [edit, setEdit] = useState(false);
   const [form, setForm] = useState({
@@ -122,8 +122,14 @@ function StudentDetailModal({ student, onClose, onUpdate, schools, chapters }) {
 
   const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
-  // schoolId 타입 일치시켜서 비교!
-  const getSchoolName = id => schools.find(s => String(s._id) === String(id))?.name || "-";
+  // schoolId, schools 구조 및 매칭 콘솔로 확인
+  const getSchoolName = id => {
+    if (!id) return "-";
+    const found = schools.find(s => String(s._id) === String(id));
+    // 디버깅용
+    console.log("schoolId찾기", id, "schools:", schools.map(s => s._id), "결과:", found);
+    return found ? found.name : "-";
+  };
 
   const handleSave = async () => {
     const token = localStorage.getItem("token");
@@ -155,6 +161,9 @@ function StudentDetailModal({ student, onClose, onUpdate, schools, chapters }) {
   };
 
   if (!student) return null;
+
+  // 디버깅용: 콘솔로 현재 값 확인
+  console.log("상세 student:", student, "form:", form, "schools:", schools);
 
   return (
     <div style={{
@@ -261,7 +270,7 @@ function StudentDetailModal({ student, onClose, onUpdate, schools, chapters }) {
   );
 }
 
-// 학생 리스트 & 상세 관리 메인 컴포넌트
+// 학생 전체 관리
 function StudentManager() {
   const [students, setStudents] = useState([]);
   const [showInactive, setShowInactive] = useState(false);
@@ -284,8 +293,20 @@ function StudentManager() {
     }).then(res => setChapters(res.data));
   }, [showInactive]);
 
-  // schoolId 타입 일치시켜서 비교!
-  const getSchoolName = id => schools.find(s => String(s._id) === String(id))?.name || "-";
+  // schools, students 콘솔 확인
+  useEffect(() => {
+    console.log("학생 전체:", students);
+    console.log("학교 전체:", schools);
+  }, [students, schools]);
+
+  // schoolId 일치 확인
+  const getSchoolName = id => {
+    if (!id) return "-";
+    const found = schools.find(s => String(s._id) === String(id));
+    // 디버깅용
+    console.log("리스트 getSchoolName", id, "schools:", schools.map(s => s._id), "결과:", found);
+    return found ? found.name : "-";
+  };
 
   return (
     <div style={{
@@ -312,7 +333,10 @@ function StudentManager() {
               fontWeight: s.active ? 600 : 400
             }}>{s.name}</span>
             <span style={{ color: "#888", fontSize: 13 }}>{s.email}</span>
-            <span style={{ color: "#999", fontSize: 13, marginLeft: 7 }}>{getSchoolName(s.schoolId)}</span>
+            {/* schoolId & schools 디버깅 같이 표시 */}
+            <span style={{ color: "#999", fontSize: 13, marginLeft: 7 }}>
+              {getSchoolName(s.schoolId)} ({String(s.schoolId)})
+            </span>
             <span style={{
               fontSize: 12, marginLeft: 10,
               background: s.active ? "#e3faea" : "#f9e1e1",
