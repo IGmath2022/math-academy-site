@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
-import { API_URL } from './api';
+import { API_URL } from '../../api';
 
 function NewsAdmin() {
   const [list, setList] = useState([]);

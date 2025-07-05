@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import Blog from "./Blog";
 import KakaoMap from "../components/KakaoMap";
 import PopupBanners from "../components/PopupBanners";
-import { API_URL } from './api';
+import { API_URL } from '../api';
 
 function Main() {
   const [showBlog, setShowBlog] = useState(true);

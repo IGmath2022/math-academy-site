@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
-import { API_URL } from './api';
+import { API_URL } from '../../api';
 
 // 진도 리스트 (간단)
 function StudentProgressHistory({ userId, chapters }) {

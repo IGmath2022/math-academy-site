@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { API_URL } from './api';
+import { API_URL } from '../api';
 
 function Blog({limit=7}) {
   const [list, setList] = useState([]);

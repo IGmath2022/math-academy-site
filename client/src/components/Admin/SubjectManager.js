@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { API_URL } from './api';
+import { API_URL } from '../../api';
 
 function SubjectManager({ onSelectSubject, selectedSubject }) {
   const [subjects, setSubjects] = useState([]);

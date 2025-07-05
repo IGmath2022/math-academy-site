@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import Blog from "./Blog";
-import { API_URL } from './api';
+import { API_URL } from '../api';
 
 function News() {
   const [list, setList] = useState([]);

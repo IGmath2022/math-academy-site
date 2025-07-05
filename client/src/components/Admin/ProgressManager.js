@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { API_URL } from './api';
+import { API_URL } from '../../api';
 
 // 학생+강의+날짜별 진도 리스트
 

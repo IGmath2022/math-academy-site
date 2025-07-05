@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import SchoolPeriodManager from "./SchoolPeriodManager";
-import { API_URL } from './api';
+import { API_URL } from '../../api';
 
 function SchoolManager() {
   const [schools, setSchools] = useState([]);

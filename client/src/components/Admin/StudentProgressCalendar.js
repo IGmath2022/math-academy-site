@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import Calendar from "react-calendar"; // npm install react-calendar
 import "react-calendar/dist/Calendar.css";
 import axios from "axios";
-import { API_URL } from './api';
+import { API_URL } from '../../api';
 
 function StudentProgressCalendar({ userId, chapters = [] }) {
   const [progressList, setProgressList] = useState([]);
