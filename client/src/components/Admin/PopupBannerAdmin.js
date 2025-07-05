@@ -39,16 +39,16 @@ function PopupBannerAdmin() {
     setSaving(true);
     for (let i = 0; i < MAX_BANNERS; ++i) {
       // 텍스트/ONOFF 저장
-      await axios.post("${API_URL}/api/settings", { key: `banner${i+1}_text`, value: banners[i].text });
-      await axios.post("${API_URL}/api/settings", { key: `banner${i+1}_on`, value: String(banners[i].on) });
+      await axios.post(`${API_URL}/api//settings`, { key: `banner${i+1}_text`, value: banners[i].text });
+      await axios.post(`${API_URL}/api//settings`, { key: `banner${i+1}_on`, value: String(banners[i].on) });
 
       // 이미지 파일 업로드 (있을 때만)
       if (banners[i].file) {
         const form = new FormData();
         form.append("file", banners[i].file);
-        const res = await axios.post("${API_URL}/api/settings/upload", form, { headers: { "Content-Type": "multipart/form-data" } });
+        const res = await axios.post(`${API_URL}/api//settings/upload`, form, { headers: { "Content-Type": "multipart/form-data" } });
         if (res.data?.filename) {
-          await axios.post("${API_URL}/api/settings", { key: `banner${i+1}_img`, value: res.data.filename });
+          await axios.post(`${API_URL}/api//settings`, { key: `banner${i+1}_img`, value: res.data.filename });
         }
       }
     }

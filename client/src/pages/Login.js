@@ -13,7 +13,7 @@ function Login() {
     e.preventDefault();
     setError("");
     try {
-      const res = await axios.post("${API_URL}/api/auth/login", { email, password });
+      const res = await axios.post(`${API_URL}/api//auth/login`, { email, password });
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("role", res.data.role);
       navigate("/dashboard");

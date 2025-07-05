@@ -7,7 +7,7 @@ import { API_URL } from '../api';
 function Main() {
   const [showBlog, setShowBlog] = useState(true);
   useEffect(() => {
-    fetch("${API_URL}/api/settings/blog_show")
+    fetch(`${API_URL}/api//settings/blog_show`)
       .then(res => res.json())
       .then(data => setShowBlog(data.show));
   }, []);

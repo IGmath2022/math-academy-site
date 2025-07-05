@@ -22,14 +22,14 @@ function StudentAssignManager({ chapterList }) {
   }, [selectedStudent, refresh]);
 
   const fetchStudents = async () => {
-    const res = await axios.get("${API_URL}/api/users?role=student", {
+    const res = await axios.get(`${API_URL}/api//users?role=student`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     setStudents(res.data);
   };
 
   const fetchAssigned = async () => {
-    const res = await axios.get("${API_URL}/api/assignments", {
+    const res = await axios.get(`${API_URL}/api//assignments`, {
       params: { userId: selectedStudent.id },
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -38,7 +38,7 @@ function StudentAssignManager({ chapterList }) {
 
   // 학생에게 단원(강의) 할당
   const handleAssign = async (chapterId) => {
-    await axios.post("${API_URL}/api/assignments",
+    await axios.post(`${API_URL}/api//assignments`,
       { userId: selectedStudent.id, chapterId },
       { headers: { Authorization: `Bearer ${token}` } }
     );
@@ -47,7 +47,7 @@ function StudentAssignManager({ chapterList }) {
 
   // 할당 해제
   const handleUnassign = async (chapterId) => {
-    const res = await axios.get("${API_URL}/api/assignments", {
+    const res = await axios.get(`${API_URL}/api//assignments`, {
       params: { userId: selectedStudent.id },
       headers: { Authorization: `Bearer ${token}` }
     });

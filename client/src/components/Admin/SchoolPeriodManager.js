@@ -25,7 +25,7 @@ function SchoolPeriodManager() {
 
   // 학교 리스트 로딩 (인증 필요)
   useEffect(() => {
-    axios.get("${API_URL}/api/schools", getAuthConfig())
+    axios.get(`${API_URL}/api//schools`, getAuthConfig())
       .then(res => setSchools(res.data));
   }, []);
 
@@ -56,7 +56,7 @@ function SchoolPeriodManager() {
       return;
     }
     try {
-      await axios.post("${API_URL}/api/school-periods", newPeriod, getAuthConfig());
+      await axios.post(`${API_URL}/api//school-periods`, newPeriod, getAuthConfig());
       setNewPeriod({ schoolId: "", name: "", type: "방학", start: "", end: "", note: "" });
       fetchPeriods(selectedSchoolId);
     } catch (e) {

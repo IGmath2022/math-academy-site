@@ -6,7 +6,7 @@ function Blog({limit=7}) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("${API_URL}/api/blog")
+    fetch(`${API_URL}/api//blog`)
       .then(res => res.json())
       .then(list => setList(list.slice(0, limit)))
       .catch(() => setError("블로그 데이터를 불러오지 못했습니다."));

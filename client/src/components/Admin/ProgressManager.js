@@ -15,9 +15,9 @@ function ProgressManager() {
         setLoading(true);
         const token = localStorage.getItem("token");
         const [progressRes, userRes, chapterRes] = await Promise.all([
-          axios.get("${API_URL}/api/progress", { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get("${API_URL}/api/users?role=student", { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get("${API_URL}/api/chapters", { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`${API_URL}/api//progress`, { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`${API_URL}/api//users?role=student`, { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`${API_URL}/api//chapters`, { headers: { Authorization: `Bearer ${token}` } }),
         ]);
         setProgressList(progressRes.data);
         setStudents(userRes.data);

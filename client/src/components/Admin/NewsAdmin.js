@@ -17,7 +17,7 @@ function NewsAdmin() {
   useEffect(() => { fetchNews(); }, []);
 
   const fetchNews = async () => {
-    const res = await axios.get("${API_URL}/api/news");
+    const res = await axios.get(`${API_URL}/api//news`);
     setList(res.data);
   };
 
@@ -57,7 +57,7 @@ function NewsAdmin() {
       );
     } else {
       await axios.post(
-        "${API_URL}/api/news",
+        `${API_URL}/api//news`,
         formData,
         { headers: { "Authorization": `Bearer ${token}`, "Content-Type": "multipart/form-data" } }
       );

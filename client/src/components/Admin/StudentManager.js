@@ -248,9 +248,9 @@ function StudentManager() {
     const token = localStorage.getItem("token");
     axios.get(`${API_URL}/api/users?role=student${showInactive ? "&active=false" : ""}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => setStudents(res.data));
-    axios.get("${API_URL}/api/schools", { headers: { Authorization: `Bearer ${token}` } })
+    axios.get(`${API_URL}/api//schools`, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => setSchools(res.data));
-    axios.get("${API_URL}/api/chapters", { headers: { Authorization: `Bearer ${token}` } })
+    axios.get(`${API_URL}/api//chapters`, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => setChapters(res.data));
   }, [showInactive]);
   const getSchoolName = id => schools.find(s => s.id === id)?.name || "-";

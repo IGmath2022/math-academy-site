@@ -13,7 +13,7 @@ function Materials() {
   const role = localStorage.getItem("role");
 
   useEffect(() => {
-    axios.get("${API_URL}/api/materials").then(res => setList(res.data));
+    axios.get(`${API_URL}/api//materials`).then(res => setList(res.data));
   }, [refresh]);
 
   const handleSubmit = async (e) => {
@@ -23,7 +23,7 @@ function Materials() {
     form.append("description", description);
     form.append("file", file);
 
-    await axios.post("${API_URL}/api/materials", form, {
+    await axios.post(`${API_URL}/api//materials`, form, {
       headers: {
         "Content-Type": "multipart/form-data",
         Authorization: `Bearer ${token}`
