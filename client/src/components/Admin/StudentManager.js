@@ -118,7 +118,7 @@ function StudentDetailModal({ student, onClose, onUpdate, schools, chapters }) {
   const getSchoolName = id => schools.find(s => s.id === id)?.name || "-";
   const handleSave = async () => {
     const token = localStorage.getItem("token");
-    await axios.put(`${API_URL}/api/users/${student.id}`, form, {
+    await axios.put(`${API_URL}/api/users/${student._id}`, form, {
       headers: { Authorization: `Bearer ${token}` }
     });
     onUpdate();
@@ -128,7 +128,7 @@ function StudentDetailModal({ student, onClose, onUpdate, schools, chapters }) {
   const handleDelete = async () => {
     if (!window.confirm("정말 삭제하시겠습니까? 복구할 수 없습니다.")) return;
     const token = localStorage.getItem("token");
-    await axios.delete(`${API_URL}/api/users/${student.id}`, {
+    await axios.delete(`${API_URL}/api/users/${student._id}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     onUpdate();
@@ -137,7 +137,7 @@ function StudentDetailModal({ student, onClose, onUpdate, schools, chapters }) {
   // 활성/비활성 토글
   const handleActiveToggle = async () => {
     const token = localStorage.getItem("token");
-    await axios.patch(`${API_URL}/api/users/${student.id}/active`, {
+    await axios.patch(`${API_URL}/api/users/${student._id}/active`, {
       active: !student.active
     }, { headers: { Authorization: `Bearer ${token}` } });
     onUpdate();
