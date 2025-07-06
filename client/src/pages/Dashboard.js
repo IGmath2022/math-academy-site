@@ -14,6 +14,9 @@ import StudentManager from "../components/Admin/StudentManager";
 import SchoolPeriodManager from "../components/Admin/SchoolPeriodManager";
 import { API_URL } from '../api';
 
+// ★★★ 모든 챕터ID는 여기서 추출! (id/_id/문자열 커버) ★★★
+const getChapterId = chapter => chapter?.id || chapter?._id || chapter;
+
 // 학생 대시보드
 function StudentDashboard() {
   const [assignments, setAssignments] = useState([]);
@@ -55,7 +58,7 @@ function StudentDashboard() {
     axios.get(`${API_URL}/api/chapters`, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => {
         const map = {};
-        res.data.forEach(c => { map[c.id] = c; });
+        res.data.forEach(c => { map[getChapterId(c)] = c; });
         setChaptersMap(map);
       });
   }, []);
@@ -76,12 +79,11 @@ function StudentDashboard() {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  // chapterId 기준으로 진도 map 구성
+  // chapterId 기준 진도 map (id/_id 자동 지원)
   const progressMap = {};
   progressList.forEach(p => {
-    // p.chapterId가 populate된 객체면, p.chapterId.id 또는 p.chapterId._id
-    // 보통 그냥 ID라면
-    progressMap[String(p.chapterId?._id || p.chapterId)] = p;
+    const id = getChapterId(p.chapterId);
+    progressMap[String(id)] = p;
   });
 
   function parseJwt(token) {
@@ -92,16 +94,12 @@ function StudentDashboard() {
     }
   }
 
-  // 진도 저장 (체크/메모 모두)
+  // 진도 저장 (체크/메모)
   const handleProgressSave = async (chapterId) => {
     const token = localStorage.getItem("token");
     const userId = parseJwt(token)?.id;
     const memo = progressMemo[chapterId] || "";
-    // 체크박스: 오늘 완료 표시
     const checked = progressMap[chapterId]?.date === today ? true : false;
-    // 디버깅용
-    console.log("진도 저장 요청", { userId, chapterId, memo, checked });
-
     try {
       await axios.post(`${API_URL}/api/progress`, {
         userId,
@@ -195,93 +193,96 @@ function StudentDashboard() {
           width: "100%",
           margin: 0
         }}>
-          {assignments.filter(a => a.Chapter).map(a => (
-            <li key={a.id} style={{
-              marginBottom: 18,
-              borderBottom: "1px solid #eee",
-              padding: "12px 0 8px 0",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "flex-start"
-            }}>
-              <div>
-                <b>{a.Chapter.name}</b>
-                <span style={{ color: "#888", fontSize: 14, marginLeft: 7 }}>
-                  {a.Chapter.description}
-                </span>
-                <button
-                  style={{
-                    marginLeft: 14,
-                    padding: "6px 14px",
-                    fontSize: 15,
-                    borderRadius: 7,
-                    border: "none",
-                    background: "#226ad6",
-                    color: "#fff",
-                    fontWeight: "bold",
-                    cursor: "pointer"
-                  }}
-                  onClick={() => setSelected(a.Chapter)}
-                >
-                  강의 보기
-                </button>
-              </div>
-              <div style={{ marginTop: 8, display: "flex", alignItems: "center", flexWrap: "wrap" }}>
-                <label style={{ fontSize: 15, fontWeight: 500 }}>
-                  <input
-                    type="checkbox"
-                    checked={a.Chapter.id && progressMap[a.Chapter.id]?.date === today}
-                    onChange={e => {
-                      setProgressList(prev => {
-                        if (!progressMap[a.Chapter.id]) return prev;
-                        return prev.map(p =>
-                          p.chapterId === a.Chapter.id
-                            ? { ...p, date: e.target.checked ? today : "" }
-                            : p
-                        );
-                      });
-                    }}
-                    style={{ marginRight: 7 }}
-                  />
-                  오늘 진도 완료
-                </label>
-                <input
-                  type="text"
-                  value={
-                    progressMemo[a.Chapter.id] ??
-                    progressMap[a.Chapter.id]?.memo ??
-                    ""
-                  }
-                  onChange={e => setProgressMemo(prev => (
-                    a.Chapter.id
-                      ? { ...prev, [a.Chapter.id]: e.target.value }
-                      : prev
-                  ))}
-                  placeholder="메모(선택)"
-                  style={{ marginLeft: 12, padding: "5px 8px", borderRadius: 7, border: "1px solid #ccc", minWidth: 130 }}
-                />
-                <button
-                  style={{
-                    marginLeft: 8,
-                    padding: "6px 14px",
-                    borderRadius: 7,
-                    background: "#eee",
-                    border: "none",
-                    fontWeight: 600,
-                    cursor: "pointer"
-                  }}
-                  onClick={() => handleProgressSave(a.Chapter.id)}
-                >
-                  저장
-                </button>
-                {progressMap[a.Chapter.id]?.date === today && (
-                  <span style={{ color: "#227a22", marginLeft: 10, fontWeight: 500, fontSize: 14 }}>
-                    오늘 완료
+          {assignments.filter(a => a.Chapter).map(a => {
+            const chapterId = getChapterId(a.Chapter);
+            return (
+              <li key={a.id} style={{
+                marginBottom: 18,
+                borderBottom: "1px solid #eee",
+                padding: "12px 0 8px 0",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-start"
+              }}>
+                <div>
+                  <b>{a.Chapter.name}</b>
+                  <span style={{ color: "#888", fontSize: 14, marginLeft: 7 }}>
+                    {a.Chapter.description}
                   </span>
-                )}
-              </div>
-            </li>
-          ))}
+                  <button
+                    style={{
+                      marginLeft: 14,
+                      padding: "6px 14px",
+                      fontSize: 15,
+                      borderRadius: 7,
+                      border: "none",
+                      background: "#226ad6",
+                      color: "#fff",
+                      fontWeight: "bold",
+                      cursor: "pointer"
+                    }}
+                    onClick={() => setSelected(a.Chapter)}
+                  >
+                    강의 보기
+                  </button>
+                </div>
+                <div style={{ marginTop: 8, display: "flex", alignItems: "center", flexWrap: "wrap" }}>
+                  <label style={{ fontSize: 15, fontWeight: 500 }}>
+                    <input
+                      type="checkbox"
+                      checked={chapterId && progressMap[chapterId]?.date === today}
+                      onChange={e => {
+                        setProgressList(prev => {
+                          if (!progressMap[chapterId]) return prev;
+                          return prev.map(p =>
+                            getChapterId(p.chapterId) === chapterId
+                              ? { ...p, date: e.target.checked ? today : "" }
+                              : p
+                          );
+                        });
+                      }}
+                      style={{ marginRight: 7 }}
+                    />
+                    오늘 진도 완료
+                  </label>
+                  <input
+                    type="text"
+                    value={
+                      progressMemo[chapterId] ??
+                      progressMap[chapterId]?.memo ??
+                      ""
+                    }
+                    onChange={e => setProgressMemo(prev => (
+                      chapterId
+                        ? { ...prev, [chapterId]: e.target.value }
+                        : prev
+                    ))}
+                    placeholder="메모(선택)"
+                    style={{ marginLeft: 12, padding: "5px 8px", borderRadius: 7, border: "1px solid #ccc", minWidth: 130 }}
+                  />
+                  <button
+                    style={{
+                      marginLeft: 8,
+                      padding: "6px 14px",
+                      borderRadius: 7,
+                      background: "#eee",
+                      border: "none",
+                      fontWeight: 600,
+                      cursor: "pointer"
+                    }}
+                    onClick={() => handleProgressSave(chapterId)}
+                  >
+                    저장
+                  </button>
+                  {progressMap[chapterId]?.date === today && (
+                    <span style={{ color: "#227a22", marginLeft: 10, fontWeight: 500, fontSize: 14 }}>
+                      오늘 완료
+                    </span>
+                  )}
+                </div>
+              </li>
+            )
+          })}
         </ul>
       )}
       {assignments.length === 0 && (
@@ -321,7 +322,7 @@ function StudentDashboard() {
   );
 }
 
-// 이하 관리자 대시보드, 자동 분기 (동일)
+// 이하 AdminDashboard, Dashboard (기존과 동일, 수정X)
 function AdminDashboard() {
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [chapterList, setChapterList] = useState([]);
