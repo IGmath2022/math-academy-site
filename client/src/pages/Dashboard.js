@@ -76,9 +76,12 @@ function StudentDashboard() {
 
   const today = new Date().toISOString().slice(0, 10);
 
+  // chapterId 기준으로 진도 map 구성
   const progressMap = {};
   progressList.forEach(p => {
-    progressMap[p.chapterId] = p;
+    // p.chapterId가 populate된 객체면, p.chapterId.id 또는 p.chapterId._id
+    // 보통 그냥 ID라면
+    progressMap[String(p.chapterId?._id || p.chapterId)] = p;
   });
 
   function parseJwt(token) {
@@ -89,11 +92,16 @@ function StudentDashboard() {
     }
   }
 
+  // 진도 저장 (체크/메모 모두)
   const handleProgressSave = async (chapterId) => {
     const token = localStorage.getItem("token");
     const userId = parseJwt(token)?.id;
     const memo = progressMemo[chapterId] || "";
+    // 체크박스: 오늘 완료 표시
     const checked = progressMap[chapterId]?.date === today ? true : false;
+    // 디버깅용
+    console.log("진도 저장 요청", { userId, chapterId, memo, checked });
+
     try {
       await axios.post(`${API_URL}/api/progress`, {
         userId,
@@ -106,9 +114,10 @@ function StudentDashboard() {
       setSaveResult("저장되었습니다!");
       fetchProgress();
       setTimeout(() => setSaveResult(""), 1800);
-    } catch {
+    } catch (e) {
       setSaveResult("저장에 실패했습니다.");
       setTimeout(() => setSaveResult(""), 1800);
+      console.error("진도 저장 오류", e?.response?.data || e);
     }
   };
 
@@ -312,7 +321,7 @@ function StudentDashboard() {
   );
 }
 
-// 이하 AdminDashboard, Dashboard (원본과 동일)
+// 이하 관리자 대시보드, 자동 분기 (동일)
 function AdminDashboard() {
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [chapterList, setChapterList] = useState([]);
