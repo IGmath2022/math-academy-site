@@ -10,7 +10,6 @@ function StudentAssignManager({ chapterList }) {
 
   const token = localStorage.getItem("token");
 
-  // 학생 목록 불러오기
   useEffect(() => {
     fetchStudents();
     // eslint-disable-next-line
@@ -28,15 +27,18 @@ function StudentAssignManager({ chapterList }) {
     setStudents(res.data);
   };
 
+  // 핵심: chapterId가 객체이든 문자열이든 무조건 id만 배열에 담는다!
   const fetchAssigned = async () => {
     const res = await axios.get(`${API_URL}/api/assignments`, {
       params: { userId: selectedStudent._id },
       headers: { Authorization: `Bearer ${token}` }
     });
-    setAssigned(res.data.map(a => String(a.chapterId))); // string 변환
+    setAssigned(
+      res.data.map(a => String(a.chapterId?._id || a.chapterId))
+    );
   };
 
-  // 학생에게 단원(강의) 할당
+  // 강의 할당
   const handleAssign = async (chapterId) => {
     try {
       await axios.post(`${API_URL}/api/assignments`,
@@ -59,7 +61,9 @@ function StudentAssignManager({ chapterList }) {
       params: { userId: selectedStudent._id },
       headers: { Authorization: `Bearer ${token}` }
     });
-    const found = res.data.find(a => String(a.chapterId) === String(chapterId));
+    const found = res.data.find(a => 
+      String(a.chapterId?._id || a.chapterId) === String(chapterId)
+    );
     if (found) {
       await axios.delete(`${API_URL}/api/assignments/${found._id}`, {
         headers: { Authorization: `Bearer ${token}` }
