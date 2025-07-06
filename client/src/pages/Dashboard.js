@@ -193,99 +193,103 @@ function StudentDashboard() {
           width: "100%",
           margin: 0
         }}>
-          {assignments.filter(a => a.Chapter).map(a => {
-            const chapterId = getChapterId(a.Chapter);
-            return (
-              <li key={a.id} style={{
-                marginBottom: 18,
-                borderBottom: "1px solid #eee",
-                padding: "12px 0 8px 0",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "flex-start"
-              }}>
-                <div>
-                  <b>{a.Chapter.name}</b>
-                  <span style={{ color: "#888", fontSize: 14, marginLeft: 7 }}>
-                    {a.Chapter.description}
-                  </span>
-                  <button
-                    style={{
-                      marginLeft: 14,
-                      padding: "6px 14px",
-                      fontSize: 15,
-                      borderRadius: 7,
-                      border: "none",
-                      background: "#226ad6",
-                      color: "#fff",
-                      fontWeight: "bold",
-                      cursor: "pointer"
-                    }}
-                    onClick={() => setSelected(a.Chapter)}
-                  >
-                    강의 보기
-                  </button>
-                </div>
-                <div style={{ marginTop: 8, display: "flex", alignItems: "center", flexWrap: "wrap" }}>
-                  <label style={{ fontSize: 15, fontWeight: 500 }}>
-                    <input
-                      type="checkbox"
-                      checked={chapterId && progressMap[chapterId]?.date === today}
-                      onChange={e => {
-                        setProgressList(prev => {
-                          if (!progressMap[chapterId]) return prev;
-                          return prev.map(p =>
-                            getChapterId(p.chapterId) === chapterId
-                              ? { ...p, date: e.target.checked ? today : "" }
-                              : p
-                          );
-                        });
-                      }}
-                      style={{ marginRight: 7 }}
-                    />
-                    오늘 진도 완료
-                  </label>
-                  <input
-                    type="text"
-                    value={
-                      progressMemo[chapterId] ??
-                      progressMap[chapterId]?.memo ??
-                      ""
-                    }
-                    onChange={e => setProgressMemo(prev => (
-                      chapterId
-                        ? { ...prev, [chapterId]: e.target.value }
-                        : prev
-                    ))}
-                    placeholder="메모(선택)"
-                    style={{ marginLeft: 12, padding: "5px 8px", borderRadius: 7, border: "1px solid #ccc", minWidth: 130 }}
-                  />
-                  <button
-                    style={{
-                      marginLeft: 8,
-                      padding: "6px 14px",
-                      borderRadius: 7,
-                      background: "#eee",
-                      border: "none",
-                      fontWeight: 600,
-                      cursor: "pointer"
-                    }}
-                    onClick={() => handleProgressSave(chapterId)}
-                  >
-                    저장
-                  </button>
-                  {progressMap[chapterId]?.date === today && (
-                    <span style={{ color: "#227a22", marginLeft: 10, fontWeight: 500, fontSize: 14 }}>
-                      오늘 완료
+          {/* 삭제된 강의/단원은 절대 안보임! */}
+          {assignments
+            .filter(a => a.Chapter && a.Chapter.name)
+            .map(a => {
+              const chapterId = getChapterId(a.Chapter);
+              return (
+                <li key={a.id} style={{
+                  marginBottom: 18,
+                  borderBottom: "1px solid #eee",
+                  padding: "12px 0 8px 0",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start"
+                }}>
+                  <div>
+                    <b>{a.Chapter.name}</b>
+                    <span style={{ color: "#888", fontSize: 14, marginLeft: 7 }}>
+                      {a.Chapter.description}
                     </span>
-                  )}
-                </div>
-              </li>
-            )
-          })}
+                    <button
+                      style={{
+                        marginLeft: 14,
+                        padding: "6px 14px",
+                        fontSize: 15,
+                        borderRadius: 7,
+                        border: "none",
+                        background: "#226ad6",
+                        color: "#fff",
+                        fontWeight: "bold",
+                        cursor: "pointer"
+                      }}
+                      onClick={() => setSelected(a.Chapter)}
+                    >
+                      강의 보기
+                    </button>
+                  </div>
+                  <div style={{ marginTop: 8, display: "flex", alignItems: "center", flexWrap: "wrap" }}>
+                    <label style={{ fontSize: 15, fontWeight: 500 }}>
+                      <input
+                        type="checkbox"
+                        checked={chapterId && progressMap[chapterId]?.date === today}
+                        onChange={e => {
+                          setProgressList(prev => {
+                            if (!progressMap[chapterId]) return prev;
+                            return prev.map(p =>
+                              getChapterId(p.chapterId) === chapterId
+                                ? { ...p, date: e.target.checked ? today : "" }
+                                : p
+                            );
+                          });
+                        }}
+                        style={{ marginRight: 7 }}
+                      />
+                      오늘 진도 완료
+                    </label>
+                    <input
+                      type="text"
+                      value={
+                        progressMemo[chapterId] ??
+                        progressMap[chapterId]?.memo ??
+                        ""
+                      }
+                      onChange={e => setProgressMemo(prev => (
+                        chapterId
+                          ? { ...prev, [chapterId]: e.target.value }
+                          : prev
+                      ))}
+                      placeholder="메모(선택)"
+                      style={{ marginLeft: 12, padding: "5px 8px", borderRadius: 7, border: "1px solid #ccc", minWidth: 130 }}
+                    />
+                    <button
+                      style={{
+                        marginLeft: 8,
+                        padding: "6px 14px",
+                        borderRadius: 7,
+                        background: "#eee",
+                        border: "none",
+                        fontWeight: 600,
+                        cursor: "pointer"
+                      }}
+                      onClick={() => handleProgressSave(chapterId)}
+                    >
+                      저장
+                    </button>
+                    {progressMap[chapterId]?.date === today && (
+                      <span style={{ color: "#227a22", marginLeft: 10, fontWeight: 500, fontSize: 14 }}>
+                        오늘 완료
+                      </span>
+                    )}
+                  </div>
+                </li>
+              )
+            })}
         </ul>
       )}
-      {assignments.length === 0 && (
+      {/* "삭제된 강의까지 모두 제외" */}
+      {assignments.filter(a => a.Chapter && a.Chapter.name).length === 0 && (
         <div style={{ color: "#888", textAlign: "center", marginTop: 32 }}>
           할당된 강의가 없습니다.
         </div>
