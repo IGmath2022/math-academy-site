@@ -158,25 +158,25 @@ function StudentDashboard() {
       <h2 style={{ textAlign: "center", marginBottom: 26, fontSize: 23 }}>내 강의 대시보드</h2>
       {error && <p style={{ color: "#e14", textAlign: "center", margin: "8px 0" }}>{error}</p>}
 
-      {myInfo?.School && (
-        <div style={{
-          marginBottom: 24, borderRadius: 8, background: "#f7fafd", padding: "14px 18px"
-        }}>
-          <b>내 학교: {myInfo.School.name}</b>
-          {myInfo.School.SchoolPeriods?.length > 0 && (
-            <ul style={{ margin: "8px 0 0 0", padding: 0, fontSize: 15 }}>
-              {myInfo.School.SchoolPeriods.map(period => (
-                <li key={period.id}>
-                  <b>{period.name}</b>
-                  {period.type && <> <span style={{ color: "#666", fontWeight: 400 }}>({period.type})</span></>}
-                  : {period.start} ~ {period.end}
-                  {period.note && <> - <span style={{ color: "#888" }}>{period.note}</span></>}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
+      {myInfo?.schoolId && (
+  <div style={{
+    marginBottom: 24, borderRadius: 8, background: "#f7fafd", padding: "14px 18px"
+  }}>
+    <b>내 학교: {myInfo.schoolId.name}</b>
+    {myInfo.schoolId.SchoolPeriods?.length > 0 && (
+      <ul style={{ margin: "8px 0 0 0", padding: 0, fontSize: 15 }}>
+        {myInfo.schoolId.SchoolPeriods.map(period => (
+          <li key={period._id || period.id}>
+            <b>{period.name}</b>
+            {period.type && <> <span style={{ color: "#666", fontWeight: 400 }}>({period.type})</span></>}
+            : {period.start} ~ {period.end}
+            {period.note && <> - <span style={{ color: "#888" }}>{period.note}</span></>}
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+)}
 
       <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
         <button
