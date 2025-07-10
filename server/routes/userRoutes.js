@@ -6,7 +6,14 @@ const { isAuthenticated, isAdmin } = require('../middleware/auth');
 
 // 내 정보 조회 (schoolId는 학교 객체로 내려감. 필요시 아래 방식 적용)
 router.get('/me', isAuthenticated, async (req, res) => {
-  const user = await User.findById(req.user.id).populate('schoolId');
+  const user = await User.findById(req.user.id)
+    .populate({
+      path: 'schoolId',
+      populate: {
+        path: 'SchoolPeriods',
+        model: 'SchoolPeriod'
+      }
+    });
   if (!user) return res.status(404).json({ message: "사용자 없음" });
   res.json(user);
 });
