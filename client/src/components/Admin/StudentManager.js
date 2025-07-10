@@ -117,6 +117,7 @@ function StudentDetailModal({ student, onClose, onUpdate, schools, chapters }) {
       name: student?.name || "",
       schoolId: student?.schoolId || "",
       email: student?.email || "",
+      parentPhone: student?.parentPhone || "",
     });
   }, [student]);
 
@@ -230,6 +231,14 @@ function StudentDetailModal({ student, onClose, onUpdate, schools, chapters }) {
                 )
                 : getSchoolName(student.schoolId)}
             </div>
+            <div style={{ marginBottom: 10 }}>
+              <b>학부모 휴대폰번호:</b> {edit
+                ? <input name="parentPhone" value={form.parentPhone} onChange={handleChange}
+                  style={{ marginLeft: 7, padding: "4px 6px", borderRadius: 7 }} placeholder="예: 01012345678" />
+                : student.parentPhone || <span style={{ color: "#999" }}>미입력</span>
+              }
+            </div>
+            {/* ... 이하 동일 */}
             <div style={{ marginTop: 18, textAlign: "right" }}>
               {!edit ? (
                 <button onClick={() => setEdit(true)} style={{ padding: "7px 18px", borderRadius: 7, background: "#226ad6", color: "#fff", border: "none" }}>수정</button>

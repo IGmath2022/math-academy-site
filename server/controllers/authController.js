@@ -3,14 +3,20 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const SECRET = process.env.JWT_SECRET || 'mathacademy_secret_key';
 
+// 회원가입
 exports.register = async (req, res) => {
-  const { name, email, password, schoolId } = req.body;
+  const { name, email, password, schoolId, parentPhone } = req.body; // ★ parentPhone 받음
   try {
     const exists = await User.findOne({ email });
     if (exists) return res.status(409).json({ message: '이미 가입된 이메일입니다.' });
     const hashed = await bcrypt.hash(password, 10);
     const user = await User.create({
-      name, email, password: hashed, role: 'student', schoolId: schoolId || null
+      name,
+      email,
+      password: hashed,
+      role: 'student',
+      schoolId: schoolId || null,
+      parentPhone: parentPhone || "" // ★ parentPhone 저장
     });
     res.status(201).json({ message: '회원가입 성공', userId: user._id });
   } catch (err) {
@@ -18,6 +24,7 @@ exports.register = async (req, res) => {
   }
 };
 
+// 로그인
 exports.login = async (req, res) => {
   const { email, password } = req.body;
   try {

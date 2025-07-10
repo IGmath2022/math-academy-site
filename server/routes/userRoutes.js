@@ -4,7 +4,7 @@ const User = require('../models/User');
 const School = require('../models/School');
 const { isAuthenticated, isAdmin } = require('../middleware/auth');
 
-// 내 정보 조회 (schoolId는 학교 객체로 내려감. 필요시 아래 방식 적용)
+// 내 정보 조회 (schoolId는 학교 객체로 내려감)
 router.get('/me', isAuthenticated, async (req, res) => {
   const user = await User.findById(req.user.id)
     .populate({
@@ -26,12 +26,12 @@ router.get('/', isAdmin, async (req, res) => {
   else if (req.query.active === "true") where.active = true;
   else if (!("active" in req.query)) where.active = true;
   
-  // 핵심: lean(), map()으로 schoolId 변환
   const users = await User.find(where).populate('schoolId').lean();
   const patched = users.map(u => ({
     ...u,
     schoolId: u.schoolId ? u.schoolId._id.toString() : "",
-    schoolName: u.schoolId ? u.schoolId.name : ""
+    schoolName: u.schoolId ? u.schoolId.name : "",
+    parentPhone: u.parentPhone || "" // ★ 리스트에 parentPhone 보장
   }));
   res.json(patched);
 });
@@ -42,6 +42,7 @@ router.get('/:id', isAdmin, async (req, res) => {
   if (!user) return res.status(404).json({ message: '유저 없음' });
   user.schoolId = user.schoolId ? user.schoolId._id.toString() : "";
   user.schoolName = user.schoolId ? user.schoolId.name : "";
+  user.parentPhone = user.parentPhone || "";
   res.json(user);
 });
 
@@ -50,7 +51,7 @@ router.put('/:id', isAdmin, async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: "사용자 없음" });
-    const { name, email, schoolId } = req.body;
+    const { name, email, schoolId, parentPhone } = req.body;
     if (schoolId) {
       const school = await School.findById(schoolId);
       if (!school) return res.status(400).json({ message: "해당 학교 없음" });
@@ -58,6 +59,7 @@ router.put('/:id', isAdmin, async (req, res) => {
     }
     if (name) user.name = name;
     if (email) user.email = email;
+    if (parentPhone !== undefined) user.parentPhone = parentPhone; // ★ 추가/수정
     await user.save();
     res.json(user);
   } catch (e) {

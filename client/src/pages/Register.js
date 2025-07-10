@@ -7,6 +7,7 @@ function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [parentPhone, setParentPhone] = useState(""); // ★
   const [schoolId, setSchoolId] = useState("");
   const [schools, setSchools] = useState([]);
   const [error, setError] = useState("");
@@ -24,6 +25,7 @@ function Register() {
         name: name.trim(),
         email: email.trim(),
         password: password.trim(),
+        parentPhone: parentPhone.trim(), // ★
         schoolId: schoolId.trim()
       });
       alert("회원가입 성공! 로그인 해주세요.");
@@ -46,7 +48,7 @@ function Register() {
         background: "#fff",
         borderRadius: 18,
         boxShadow: "0 2px 18px #0001",
-        minHeight: 390
+        minHeight: 430
       }}
     >
       <h2 style={{ textAlign: "center", marginBottom: 32 }}>회원가입</h2>
@@ -70,6 +72,13 @@ function Register() {
           placeholder="비밀번호"
           value={password}
           onChange={e => setPassword(e.target.value)}
+          required
+        />
+        <input
+          type="text"
+          placeholder="학부모 휴대폰번호 (예: 01012345678)"
+          value={parentPhone}
+          onChange={e => setParentPhone(e.target.value)}
           required
         />
         {/* 학교 선택 드롭다운 */}
