@@ -30,20 +30,46 @@ function StudentDashboard() {
   const [viewMode, setViewMode] = useState("list");
   const [chaptersMap, setChaptersMap] = useState({});
 
+  // JWT 파싱 함수
+  function parseJwt(token) {
+    try {
+      return JSON.parse(atob(token.split(".")[1]));
+    } catch {
+      return {};
+    }
+  }
+
+  // 내 정보 불러오기
   useEffect(() => {
     const token = localStorage.getItem("token");
+    if (!token) {
+      setError("로그인이 필요합니다.");
+      return;
+    }
     axios.get(`${API_URL}/api/users/me`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(res => setMyInfo(res.data));
+      .then(res => setMyInfo(res.data))
+      .catch(err => {
+        setError("사용자 정보를 불러오지 못했습니다. (로그인이 만료됐거나 네트워크 오류)");
+        // 인증 만료 등은 토큰 삭제 + 새로고침
+        if (err.response?.status === 401) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("role");
+          setTimeout(() => window.location.reload(), 1200);
+        }
+      });
   }, []);
 
+  // 블로그 노출 여부
   useEffect(() => {
     fetch(`${API_URL}/api/settings/blog_show`)
       .then(res => res.json())
       .then(data => setShowBlog(data.show));
   }, []);
 
+  // 할당된 강의 불러오기
   useEffect(() => {
     const token = localStorage.getItem("token");
+    if (!token) return;
     axios
       .get(`${API_URL}/api/assignments`, {
         params: { userId: parseJwt(token)?.id },
@@ -53,8 +79,10 @@ function StudentDashboard() {
       .catch(() => setError("강의 정보를 불러오지 못했습니다."));
   }, []);
 
+  // 모든 챕터 정보
   useEffect(() => {
     const token = localStorage.getItem("token");
+    if (!token) return;
     axios.get(`${API_URL}/api/chapters`, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => {
         const map = {};
@@ -63,8 +91,10 @@ function StudentDashboard() {
       });
   }, []);
 
+  // 진도 현황 불러오기
   const fetchProgress = useCallback(() => {
     const token = localStorage.getItem("token");
+    if (!token) return;
     const userId = parseJwt(token)?.id;
     axios
       .get(`${API_URL}/api/progress?userId=${userId}`, {
@@ -85,14 +115,6 @@ function StudentDashboard() {
     const id = getChapterId(p.chapterId);
     progressMap[String(id)] = p;
   });
-
-  function parseJwt(token) {
-    try {
-      return JSON.parse(atob(token.split(".")[1]));
-    } catch {
-      return {};
-    }
-  }
 
   // 진도 저장 (체크/메모)
   const handleProgressSave = async (chapterId) => {
@@ -119,6 +141,7 @@ function StudentDashboard() {
     }
   };
 
+  // ------------------- UI ------------------
   return (
     <div
       className="container"
@@ -134,6 +157,7 @@ function StudentDashboard() {
     >
       <h2 style={{ textAlign: "center", marginBottom: 26, fontSize: 23 }}>내 강의 대시보드</h2>
       {error && <p style={{ color: "#e14", textAlign: "center", margin: "8px 0" }}>{error}</p>}
+
       {myInfo?.School && (
         <div style={{
           marginBottom: 24, borderRadius: 8, background: "#f7fafd", padding: "14px 18px"
@@ -325,6 +349,7 @@ function StudentDashboard() {
     </div>
   );
 }
+
 
 // 이하 AdminDashboard, Dashboard (기존과 동일, 수정X)
 function AdminDashboard() {
