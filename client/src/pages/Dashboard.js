@@ -12,11 +12,11 @@ import ProgressManager from "../components/Admin/ProgressManager";
 import SchoolManager from "../components/Admin/SchoolManager";
 import StudentManager from "../components/Admin/StudentManager";
 import SchoolPeriodManager from "../components/Admin/SchoolPeriodManager";
+import AttendanceManager from "../components/Admin/AttendanceManager";
 import { API_URL } from '../api';
 
 // ★★★ 모든 챕터ID는 여기서 추출! (id/_id/문자열 커버) ★★★
 const getChapterId = chapter => chapter?.id || chapter?._id || chapter;
-
 // 학생 대시보드
 function StudentDashboard() {
   const [assignments, setAssignments] = useState([]);
@@ -377,6 +377,7 @@ function AdminDashboard() {
       <PopupBannerAdmin />
       <NewsAdmin />
       <StudentManager />
+      <AttendanceManager />
       <ProgressManager />
       <SchoolManager />
       <SchoolPeriodManager />

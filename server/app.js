@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+const attendanceRoutes = require('./routes/attendanceRoutes');
 
 // CORS (프론트 주소 꼭 넣기!)
 app.use(cors({
@@ -51,6 +52,7 @@ mongoose.connect(process.env.MONGO_URL, {
     app.use('/api/schoolschedules', require('./routes/schoolScheduleRoutes'));
     app.use('/api/school-periods', require("./routes/schoolPeriodRoutes"));
     app.use('/api/attendance', require('./routes/attendanceRoutes'));
+    app.use('/api/attendance', attendanceRoutes);
 
     // 메인
     app.get('/', (req, res) => {
