@@ -27,14 +27,16 @@ cron.schedule('30 22 * * *', async () => {
 });
 
 // (예시) 임시로 추가: http://서버주소/api/myip 로 접속
-app.get('/api/myip', async (req, res) => {
+app.get('/myip', async (req, res) => {
   try {
-    // 외부 서비스에서 내 서버 IP 확인
-    const { data } = await axios.get('https://api.ipify.org?format=json');
-    res.json(data); // { ip: "xxx.xxx.xxx.xxx" }
-  } catch (e) {
-    res.status(500).json({ error: String(e) });
+    const { data } = await axios.get('https://ipinfo.io/ip');
+    res.send(data);
+  } catch (err) {
+    res.send('Error: ' + err.message);
   }
+});
+axios.get('https://ipinfo.io/ip').then(r => {
+  console.log("서버의 외부IP:", r.data.trim());
 });
 
 // === 몽구스 연결 ===
