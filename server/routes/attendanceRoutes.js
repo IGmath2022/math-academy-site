@@ -40,7 +40,12 @@ router.post('/entry', async (req, res) => {
     await sendAlimtalk(
       student.parentPhone,
       'UB_0082',
-      { student_name: student.name, time: now.format('HH:mm'), automsg: '' }
+      {
+        name: student.name,
+        type: '등원',
+        time: now.format('HH:mm'),
+        automsg: ''
+      }
     );
     return res.json({ status: 'IN', message: '등원 처리되었습니다.' });
   } else if (!outRec) {
@@ -49,7 +54,12 @@ router.post('/entry', async (req, res) => {
     await sendAlimtalk(
       student.parentPhone,
       'UB_0082',
-      { student_name: student.name, time: now.format('HH:mm'), automsg: '' }
+      {
+        name: student.name,
+        type: '하원',
+        time: now.format('HH:mm'),
+        automsg: ''
+      }
     );
     return res.json({ status: 'OUT', message: '하원 처리되었습니다.' });
   } else {
@@ -70,11 +80,23 @@ router.post('/auto-leave', async (req, res) => {
     if (!outRec) {
       // 하원기록 없음 → 자동 하원 처리
       const student = await User.findById(rec.userId);
-      await Attendance.create({ userId: rec.userId, date: today, type: 'OUT', time: now.format('HH:mm:ss'), auto: true, notified: false });
+      await Attendance.create({
+        userId: rec.userId,
+        date: today,
+        type: 'OUT',
+        time: now.format('HH:mm:ss'),
+        auto: true,
+        notified: false
+      });
       await sendAlimtalk(
         student.parentPhone,
         'UB_0082',
-        { student_name: student.name, time: now.format('HH:mm'), automsg: '자동 하원 처리되었습니다.' }
+        {
+          name: student.name,
+          type: '하원',
+          time: now.format('HH:mm'),
+          automsg: '자동 하원 처리되었습니다.'
+        }
       );
       result.push(student.name);
     }
@@ -96,7 +118,7 @@ router.get('/by-date', async (req, res) => {
     const id = a.userId?._id?.toString() || a.userId;
     if (!map[id]) {
       map[id] = {
-        userId: id,
+        studentId: id,
         studentName: a.userId?.name || "",
         checkIn: null,
         checkOut: null
