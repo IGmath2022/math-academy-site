@@ -16,7 +16,6 @@ app.use(cors({
 app.use(express.json());
 
 const cron = require('node-cron');
-const axios = require('axios');
 cron.schedule('30 22 * * *', async () => {
   // 매일 22:30에 자동 하원 처리 API 호출
   try {
