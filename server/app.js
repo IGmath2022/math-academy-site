@@ -50,6 +50,7 @@ mongoose.connect(process.env.MONGO_URL, {
     app.use('/api/schools', require('./routes/schoolRoutes'));
     app.use('/api/schoolschedules', require('./routes/schoolScheduleRoutes'));
     app.use('/api/school-periods', require("./routes/schoolPeriodRoutes"));
+    app.use('/api/attendance', require('./routes/attendanceRoutes'));
 
     // 메인
     app.get('/', (req, res) => {
