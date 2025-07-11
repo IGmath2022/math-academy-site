@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const axios = require('axios');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -23,6 +24,17 @@ cron.schedule('30 22 * * *', async () => {
     console.log('자동 하원처리 완료');
   } catch (e) {
     console.error('자동 하원처리 실패', e);
+  }
+});
+
+// (예시) 임시로 추가: http://서버주소/api/myip 로 접속
+app.get('/api/myip', async (req, res) => {
+  try {
+    // 외부 서비스에서 내 서버 IP 확인
+    const { data } = await axios.get('https://api.ipify.org?format=json');
+    res.json(data); // { ip: "xxx.xxx.xxx.xxx" }
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
   }
 });
 
