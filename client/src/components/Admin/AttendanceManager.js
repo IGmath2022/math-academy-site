@@ -19,8 +19,8 @@ function AttendanceManager() {
   const [month, setMonth] = useState(getYYYYMM(new Date()));
   const [monthCount, setMonthCount] = useState(0);
 
+  // 학생 전체 로딩 (이름순)
   useEffect(() => {
-    // 학생 전체 로딩 (이름순)
     const token = localStorage.getItem("token");
     axios.get(`${API_URL}/api/users?role=student`, {
       headers: { Authorization: `Bearer ${token}` }
@@ -35,10 +35,10 @@ function AttendanceManager() {
       .then(res => setDateList(res.data));
   }, [tab, selectedDate]);
 
-  // 학생별 리스트 로딩
+  // 학생별 리스트 로딩 (userId로 통일)
   useEffect(() => {
     if (tab !== "student" || !selectedStudent) return;
-    axios.get(`${API_URL}/api/attendance/by-student?studentId=${selectedStudent}&month=${month}`)
+    axios.get(`${API_URL}/api/attendance/by-student?userId=${selectedStudent}&month=${month}`)
       .then(res => {
         setStudentMonthList(res.data.records);
         setMonthCount(res.data.count);
@@ -74,7 +74,7 @@ function AttendanceManager() {
             <ul style={{ margin: 0, padding: 0 }}>
               {dateList.length === 0 && <li style={{ color: "#999" }}>등/하원 학생 없음</li>}
               {dateList.map(a =>
-                <li key={a.studentId} style={{ margin: "9px 0" }}>
+                <li key={a.userId} style={{ margin: "9px 0" }}>
                   <b>{a.studentName}</b> | 등원: <span style={{ color: "#246" }}>{a.checkIn || "-"}</span> | 하원: <span style={{ color: "#824" }}>{a.checkOut || "-"}</span>
                 </li>
               )}

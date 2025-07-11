@@ -97,7 +97,7 @@ router.get('/by-date', async (req, res) => {
     if (!map[id]) {
       map[id] = {
         userId: id,
-        name: a.userId?.name || "",
+        studentName: a.userId?.name || "",
         checkIn: null,
         checkOut: null
       };
