@@ -13,6 +13,18 @@ app.use(cors({
 }));
 app.use(express.json());
 
+const cron = require('node-cron');
+const axios = require('axios');
+cron.schedule('30 22 * * *', async () => {
+  // 매일 22:30에 자동 하원 처리 API 호출
+  try {
+    await axios.post('https://math-academy-server.onrender.com/api/attendance/auto-leave');
+    console.log('자동 하원처리 완료');
+  } catch (e) {
+    console.error('자동 하원처리 실패', e);
+  }
+});
+
 // === 몽구스 연결 ===
 mongoose.connect(process.env.MONGO_URL, {
   useNewUrlParser: true,
