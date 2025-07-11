@@ -10,6 +10,7 @@ import Materials from "./pages/Materials";
 import Contact from "./pages/Contact";
 import Blog from "./pages/Blog";
 import FloatingContact from "./components/FloatingContact";
+import AttendancePage from './pages/AttendancePage';
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
         <Route path="/materials" element={<Materials />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/blog" element={<Blog />} />
+        <Route path="/attendancePage" element={<AttendancePage />} />
       </Routes>
       <FloatingContact />
       </Layout>
