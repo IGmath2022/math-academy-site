@@ -8,6 +8,10 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 const attendanceRoutes = require('./routes/attendanceRoutes');
 
+const senderKey = process.env.KAKAO_SENDER_KEY;
+const apiKey = process.env.KAKAO_API_KEY;
+const templateCode = process.env.ALIMTALK_TEMPLATE_CODE;
+
 // CORS (프론트 주소 꼭 넣기!)
 app.use(cors({
   origin: 'https://ig-math-2022.onrender.com',
