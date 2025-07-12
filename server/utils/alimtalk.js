@@ -5,7 +5,7 @@ exports.sendAlimtalk = async (phone, template_code, variables = {}) => {
   // 알리고 필수 파라미터 세팅
   const params = {
     key: process.env.ALIGO_API_KEY,
-    user_id: process.env.ALIGO_USER_ID,
+    userid: process.env.ALIGO_USER_ID,
     sender: process.env.ALIGO_SENDER,            // 발신번호(채널번호)
     senderkey: process.env.ALIGO_SENDER_KEY,     // 카카오 SenderKey
     tpl_code: template_code,                     // 템플릿 코드 (예: UB_0082)
