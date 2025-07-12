@@ -11,7 +11,7 @@ exports.sendAlimtalk = async (phone, template_code, variables = {}) => {
     tpl_code: template_code,                     // 템플릿 코드 (예: UB_0082)
     receiver_1: phone,                           // 수신자 번호
   };
-
+  console.log('ALIGO_USER_ID:', process.env.ALIGO_USER_ID);
   // 템플릿 치환 변수 -> API명 규칙 맞춰 동적 변환
   // 예시: name_1: "홍길동", type_1: "등원", time_1: "14:31", automsg_1: "자동 하원 처리"
   Object.entries(variables).forEach(([k, v]) => {
