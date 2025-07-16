@@ -8,9 +8,11 @@ exports.sendAlimtalk = async (phone, template_code, variables = {}) => {
     tpl_code: template_code,
     sender: process.env.ALIGO_SENDER,
     receiver_1: phone,
+    // 치환 변수 세팅
     ...Object.fromEntries(Object.entries(variables).map(([k, v]) => [`${k}_1`, v]))
   };
-  params.msg = variables.automsg || variables.msg || `${variables.name || ''} 학생이 등/하원하였습니다.`;
+  // 실제로 발송될 message_1(필수!)
+  params.msg = variables.automsg || variables.msg || `${variables.name || ''} 학생이 ${variables.type || ''} 처리되었습니다.`;
 
   try {
     const form = new URLSearchParams(params);
