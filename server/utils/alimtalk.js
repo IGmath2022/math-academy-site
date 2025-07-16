@@ -11,8 +11,8 @@ exports.sendAlimtalk = async (phone, template_code, variables = {}) => {
     // 치환 변수 세팅
     ...Object.fromEntries(Object.entries(variables).map(([k, v]) => [`${k}_1`, v]))
   };
-  // 실제로 발송될 message_1(필수!)
-  params.msg = variables.automsg || variables.msg || `${variables.name || ''} 학생이 ${variables.type || ''} 처리되었습니다.`;
+  // 필수! message_1
+  params.message_1 = variables.automsg || variables.msg || `${variables.name || ''} 학생이 ${variables.type || ''} 처리되었습니다.`;
 
   try {
     const form = new URLSearchParams(params);
