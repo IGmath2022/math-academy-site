@@ -1,47 +1,26 @@
-const aligoapi = require('aligoapi');
-require('dotenv').config();
-
-const AuthData = {
-  apikey: process.env.ALIGO_API_KEY,
-  userid: process.env.ALIGO_USER_ID
-};
-
-// 최초 서버 부팅 시 로그로 값 확인
-console.log('ALIGO_API_KEY:', process.env.ALIGO_API_KEY);
-console.log('ALIGO_USER_ID:', process.env.ALIGO_USER_ID);
-console.log('ALIGO_SENDER_KEY:', process.env.ALIGO_SENDER_KEY);
-console.log('ALIGO_SENDER:', process.env.ALIGO_SENDER);
+const axios = require('axios');
 
 exports.sendAlimtalk = async (phone, template_code, variables = {}) => {
-  // 템플릿 변수 매핑
-  const templateVars = {};
-  Object.entries(variables).forEach(([k, v]) => {
-    templateVars[`${k}_1`] = v;
-  });
-
-  const body = {
+  const params = {
+    apikey: process.env.ALIGO_API_KEY,
+    userid: process.env.ALIGO_USER_ID,
     senderkey: process.env.ALIGO_SENDER_KEY,
     tpl_code: template_code,
     sender: process.env.ALIGO_SENDER,
     receiver_1: phone,
-    ...templateVars
+    ...Object.fromEntries(Object.entries(variables).map(([k, v]) => [`${k}_1`, v]))
   };
-  // 진단 로그
-  console.log('알림톡 발송 BODY:', body);
-  console.log('알림톡 발송 AuthData:', AuthData);
+  params.msg = variables.automsg || variables.msg || `${variables.name || ''} 학생이 등/하원하였습니다.`;
 
   try {
-    const result = await aligoapi.alimtalkSend({ body }, AuthData);
-
-    console.log('알리고 응답:', result);
-    if (result && result.data && result.data.result_code === '1') {
-      return true;
-    } else {
-      console.error('알림톡 전송 실패:', result);
-      return false;
-    }
+    const form = new URLSearchParams(params);
+    const res = await axios.post('https://kakaoapi.aligo.in/akv10/alimtalk/send/', form, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    });
+    console.log('알리고 응답:', res.data);
+    return res.data;
   } catch (e) {
-    console.error('알림톡 전송 실패 [Catch]:', e);
+    console.error('알림톡 전송 실패:', e?.response?.data || e);
     return false;
   }
 };
