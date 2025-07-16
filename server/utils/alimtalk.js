@@ -1,35 +1,41 @@
-const axios = require('axios');
-require('dotenv').config(); // 보통 app.js에서 1회만 호출 (중복은 무해)
+const aligoapi = require('aligoapi');
+require('dotenv').config();
 
+// 알리고 기본 인증 데이터 (환경변수에서 로드)
+const AuthData = {
+  apikey: process.env.ALIGO_API_KEY,
+  userid: process.env.ALIGO_USER_ID
+};
+
+/**
+ * 알리고 알림톡 전송 util (aligoapi npm 모듈 기반)
+ * @param {string} phone - 수신자 번호 (ex: 01012345678)
+ * @param {string} template_code - 템플릿 코드 (ex: UB_0082)
+ * @param {object} variables - { name, type, time, automsg }
+ * @returns {Promise<boolean>} 성공시 true
+ */
 exports.sendAlimtalk = async (phone, template_code, variables = {}) => {
-  // 알리고 필수 파라미터 세팅
-  const params = {
-    key: process.env.ALIGO_API_KEY,
-    userid: process.env.ALIGO_USER_ID,
-    sender: process.env.ALIGO_SENDER,            // 발신번호(채널번호)
-    senderkey: process.env.ALIGO_SENDER_KEY,     // 카카오 SenderKey
-    tpl_code: template_code,                     // 템플릿 코드 (예: UB_0082)
-    receiver_1: phone,                           // 수신자 번호
+  const req = {
+    body: {
+      senderkey: process.env.ALIGO_SENDER_KEY, // 발신프로필 키
+      tpl_code: template_code,
+      sender: process.env.ALIGO_SENDER, // 대표발신번호(카카오 채널 등록된 번호)
+      receiver_1: phone,
+      subject_1: 'IG수학 출결 알림',
+      message_1: '', // 실제 템플릿에는 치환변수가 들어가므로 공란 또는 샘플텍스트
+      ...Object.fromEntries(Object.entries(variables).map(([k, v]) => [`${k}_1`, v])),
+    }
   };
-  console.log('ALIGO_USER_ID:', process.env.ALIGO_USER_ID);
-  console.log('알림톡 파라미터', params);
-  // 템플릿 치환 변수 -> API명 규칙 맞춰 동적 변환
-  // 예시: name_1: "홍길동", type_1: "등원", time_1: "14:31", automsg_1: "자동 하원 처리"
-  Object.entries(variables).forEach(([k, v]) => {
-    params[`${k}_1`] = v;
-  });
 
-  // 필수: 대체문자(90바이트 이내, 빈값 가능하나 최대한 채울 것)
-  params.msg = variables.automsg || variables.msg || `${variables.name || ''} 학생이 등/하원 하였습니다.`;
+  // 대체문자 필요시 msg 세팅
+  if (variables.automsg) req.body.msg = variables.automsg;
 
   try {
-    const form = new URLSearchParams(params);
-    const res = await axios.post('https://kakaoapi.aligo.in/akv10/alimtalk/send/', form);
-    // result_code === '1'이면 성공
-    if (res.data && res.data.result_code === '1') {
+    const result = await aligoapi.alimtalkSend(req, AuthData);
+    if (result && result.data && result.data.result_code === '1') {
       return true;
     } else {
-      console.error('알림톡 전송 실패:', res.data);
+      console.error('알림톡 전송 실패:', result);
       return false;
     }
   } catch (e) {
