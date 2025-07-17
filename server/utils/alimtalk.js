@@ -4,7 +4,7 @@ require('dotenv').config();
 exports.sendAlimtalk = async (phone, template_code, variables = {}) => {
   // 필수 파라미터 (항상 소문자!!)
   const params = {
-    apikey: process.env.ALIGO_APIKEY,
+    apikey: process.env.ALIGO_API_KEY,
     userid: process.env.ALIGO_USERID,
     senderkey: process.env.ALIGO_SENDER_KEY,
     tpl_code: template_code,
