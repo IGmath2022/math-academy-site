@@ -4,7 +4,7 @@ require('dotenv').config();
 exports.sendAlimtalk = async (phone, template_code, variables = {}) => {
   // 알리고 알림톡 필수 파라미터
   const params = {
-    key: process.env.ALIGO_API_KEY,
+    apikey: process.env.ALIGO_API_KEY,
     userid: process.env.ALIGO_USER_ID,
     sender: process.env.ALIGO_SENDER,         // 발신번호(카톡 채널 전화번호)
     senderkey: process.env.ALIGO_SENDER_KEY,  // 카카오 비즈니스 SenderKey
