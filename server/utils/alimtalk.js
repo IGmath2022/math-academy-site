@@ -25,7 +25,7 @@ exports.sendAlimtalk = async (phone, template_code, variables = {}) => {
 
   const params = {
     apikey: process.env.ALIGO_API_KEY,
-    userid: process.env.ALIGO_USERID,
+    userid: process.env.ALIGO_USER_ID,
     senderkey: process.env.ALIGO_SENDER_KEY,
     tpl_code: template_code,
     sender: process.env.ALIGO_SENDER,
