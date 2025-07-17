@@ -1,17 +1,39 @@
 const axios = require('axios');
 
+// 알리고(카카오) 템플릿 상수
+const TITLE_TEMPLATE = `IG수학 출결 알림
+#{name}학생이 #{type} 하였습니다`;
+
+const BODY_TEMPLATE = `IG수학입니다.
+#{name} 학생이 #{type} 하였습니다. (#{time})
+#{automsg}
+
+- 본 메시지는 자동발송입니다.`;
+
+// 변수 치환 함수 (알리고의 템플릿 변수명을 그대로 사용!)
+function fillTemplate(template, variables = {}) {
+  return template
+    .replace('#{name}', variables.name ?? '')
+    .replace('#{type}', variables.type ?? '')
+    .replace('#{time}', variables.time ?? '')
+    .replace('#{automsg}', variables.automsg ?? '');
+}
+
 exports.sendAlimtalk = async (phone, template_code, variables = {}) => {
-  // 알리고 알림톡 필수 파라미터
+  const subject = fillTemplate(TITLE_TEMPLATE, variables);
+  const message = fillTemplate(BODY_TEMPLATE, variables);
+
   const params = {
-    apikey: process.env.ALIGO_API_KEY,        // ← 정확히 변수명 맞춰야 함
+    apikey: process.env.ALIGO_API_KEY,
     userid: process.env.ALIGO_USERID,
     senderkey: process.env.ALIGO_SENDER_KEY,
-    tpl_code: template_code,                  // 예: UB_0082
+    tpl_code: template_code,
     sender: process.env.ALIGO_SENDER,
     receiver_1: phone,
-    recvname_1: variables.name || '',         // 이름 변수, 없으면 빈값
-    subject_1: `IG수학 출결 알림\n${variables.name}학생이 ${variables.type}하였습니다`, // 템플릿 '제목' 부분
-    message_1: `IG수학입니다.\n${variables.name} 학생이 ${variables.type} 하였습니다. (${variables.time})\n${variables.automsg || ''}\n\n- 본 메시지는 자동발송입니다.`
+    recvname_1: variables.name ?? '',
+    subject_1: subject,
+    message_1: message,
+    // button_1, failover 등 필요시 추가 가능
   };
 
   try {
