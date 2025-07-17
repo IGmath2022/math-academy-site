@@ -18,7 +18,9 @@ exports.sendAlimtalk = async (phone, template_code, variables = {}) => {
   });
 
   // 제목/미리보기/본문 (템플릿에 따라 필수)
-  params.subject_1 = 'IG수학 출결 알림'; // 제목
+  params.subject_1 = 
+  `IG수학 출결 알림\n` +
+  `${variables.name || ''}학생이 ${variables.type || ''}하였습니다`; // 제목
   params.message_1 =
     `IG수학입니다.\n` +
     `${variables.name || ''} 학생이 ${variables.type || ''} 하였습니다. (${variables.time || ''})\n` +
