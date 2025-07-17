@@ -1,9 +1,7 @@
 const axios = require('axios');
 
 // 알리고(카카오) 템플릿 상수
-const TITLE_TEMPLATE = `IG수학 출결 알림
-
-#{name}학생이 #{type}하였습니다`;
+const TITLE_TEMPLATE = `#{name}학생이 #{type}하였습니다`;
 
 const BODY_TEMPLATE = `IG수학입니다.
 #{name} 학생이 #{type} 하였습니다. (#{time})
