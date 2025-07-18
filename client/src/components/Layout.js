@@ -1,14 +1,16 @@
-// Layout.js
 import React from "react";
 import NavBar from "./NavBar";
-import FloatingContact from "./FloatingContact"; // 경로 맞게!
+import FloatingContact from "./FloatingContact";
+import { Outlet } from "react-router-dom";
 
-function Layout({ children, hideNavBar }) {
+function Layout({ hideNavBar }) {
   return (
     <>
       {!hideNavBar && <NavBar />}
-      <div>{children}</div>
-      {!hideNavBar && <FloatingContact />} {/* NavBar와 동일조건 */}
+      <div>
+        <Outlet />   {/* 이 부분이 실제 각 Route 페이지가 표시되는 자리! */}
+      </div>
+      {!hideNavBar && <FloatingContact />}
     </>
   );
 }

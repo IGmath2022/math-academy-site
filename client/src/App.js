@@ -9,35 +9,32 @@ import Layout from "./components/Layout";
 import Materials from "./pages/Materials";
 import Contact from "./pages/Contact";
 import Blog from "./pages/Blog";
-import FloatingContact from "./components/FloatingContact";
 import AttendancePage from './pages/AttendancePage';
 
 function App() {
   return (
     <BrowserRouter>
-    <Routes>
-      <Route element={<Layout><FloatingContact /></Layout>}>
-        <Route path="/" element={<Main />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/news" element={<News />} />
-        <Route path="/materials" element={<Materials />} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/blog" element={<Blog />} />
-        <Route path="/attendancePage" element={<AttendancePage />} />
-      </Route>
-      <Route
+      <Routes>
+        {/* NavBar/FloatingContact 있는 Layout */}
+        <Route element={<Layout />}>
+          <Route path="/" element={<Main />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/news" element={<News />} />
+          <Route path="/materials" element={<Materials />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/blog" element={<Blog />} />
+        </Route>
+        {/* NavBar/FloatingContact 없는 Layout */}
+        <Route
           path="/attendancePage"
-          element={
-            <Layout hideNavBar={true}>
-              <AttendancePage />
-            </Layout>
-          }
-        />
+          element={<Layout hideNavBar={true} />}
+        >
+          <Route index element={<AttendancePage />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );
 }
-
 export default App;
