@@ -1,36 +1,40 @@
+// server/app.js
+
 require("dotenv").config();
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const axios = require('axios');
+const cron = require('node-cron'); // ★ 크론 등록
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 const attendanceRoutes = require('./routes/attendanceRoutes');
 
+// === 알림톡 키/템플릿 등 환경변수 세팅 ===
 const senderKey = process.env.KAKAO_SENDER_KEY;
 const apiKey = process.env.KAKAO_API_KEY;
 const templateCode = process.env.ALIMTALK_TEMPLATE_CODE;
 
-// CORS (프론트 주소 꼭 넣기!)
+// === CORS (프론트 주소 넣기!) ===
 app.use(cors({
   origin: 'https://ig-math-2022.onrender.com',
   credentials: true
 }));
 app.use(express.json());
 
-const cron = require('node-cron');
-cron.schedule('30 22 * * *', async () => {
-  // 매일 22:30에 자동 하원 처리 API 호출
+// === ★ [자동 하원 처리: 매일 밤 11시(23:00)] ===
+cron.schedule('0 23 * * *', async () => {
   try {
+    // 실서버 주소/포트로 맞춰서 입력!
     await axios.post('https://math-academy-server.onrender.com/api/attendance/auto-leave');
-    console.log('자동 하원처리 완료');
+    console.log(`[CRON] [${new Date().toLocaleString()}] 23:00 자동 하원처리 완료`);
   } catch (e) {
-    console.error('자동 하원처리 실패', e);
+    console.error(`[CRON] [${new Date().toLocaleString()}] 자동 하원처리 실패:`, e.message);
   }
 });
 
-// (예시) 임시로 추가: http://서버주소/api/myip 로 접속
+// === 서버 외부 IP 조회 라우터(운영용) ===
 app.get('/myip', async (req, res) => {
   try {
     const { data } = await axios.get('https://ipinfo.io/ip');
@@ -76,10 +80,8 @@ mongoose.connect(process.env.MONGO_URL, {
       res.send('서버가 정상적으로 동작합니다!');
     });
 
-    // ==== 샘플 계정 자동 생성 (최초 실행시) ====
-    // mongoose 방식에 맞게 Schema/model이 만들어져 있어야 함!
-    // 예: User, Setting 등이 mongoose model로 정의되어 있어야 함
-    const User = require('./models/User');     // mongoose model 예시
+    // ==== 샘플 계정/Setting 자동 생성 (최초 실행시) ====
+    const User = require('./models/User');
     const Setting = require('./models/Setting');
     const bcrypt = require("bcryptjs");
 
@@ -139,7 +141,7 @@ mongoose.connect(process.env.MONGO_URL, {
       console.log("DB User 전체 목록:", allUsers.map(u => u.email));
     })();
 
-    // 서버 시작
+    // ==== 서버 시작 ====
     app.listen(PORT, () => {
       console.log(`서버가 http://localhost:${PORT} 에서 실행중`);
     });
