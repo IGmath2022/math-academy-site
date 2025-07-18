@@ -15,8 +15,8 @@ import AttendancePage from './pages/AttendancePage';
 function App() {
   return (
     <BrowserRouter>
-    <Layout>
-      <Routes>
+    <Routes>
+      <Route element={<Layout><FloatingContact /></Layout>}>
         <Route path="/" element={<Main />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -26,9 +26,16 @@ function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/blog" element={<Blog />} />
         <Route path="/attendancePage" element={<AttendancePage />} />
+      </Route>
+      <Route
+          path="/attendancePage"
+          element={
+            <Layout hideNavBar={true}>
+              <AttendancePage />
+            </Layout>
+          }
+        />
       </Routes>
-      <FloatingContact />
-      </Layout>
     </BrowserRouter>
   );
 }
