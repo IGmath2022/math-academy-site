@@ -34,10 +34,7 @@ function AttendancePage() {
   };
 
   const handleEntry = async () => {
-    if (!selectedId || loading) return;
     setMsg("");
-    setLoading(true);
-    beep();
     try {
       const { data } = await axios.post(`${API_URL}/api/attendance/entry`, { userId: selectedId });
       setMsg(data.message);
@@ -47,11 +44,21 @@ function AttendancePage() {
         setSelectedId("");
         setTail("");
         setMsg("");
-      }, 2000);
+      }, 2500);
     } catch (e) {
-      setMsg(e.response?.data?.message || "처리실패");
+      const errorMsg = e.response?.data?.message || "처리실패";
+      setMsg(errorMsg);
+      // 409 에러(이미 등/하원 완료)거나 메시지에 "완료" 포함시 리셋
+      if (e.response?.status === 409 || errorMsg.includes("완료")) {
+        setTimeout(() => {
+          setStep(1);
+          setStudents([]);
+          setSelectedId("");
+          setTail("");
+          setMsg("");
+        }, 2500);
+      }
     }
-    setLoading(false);
   };
 
   const handleSelectStudent = (id) => {
