@@ -280,6 +280,9 @@ function StudentManager() {
   const [selected, setSelected] = useState(null);
   const [schools, setSchools] = useState([]);
   const [chapters, setChapters] = useState([]);
+  // 페이지네이션 state
+  const [page, setPage] = useState(1);
+  const pageSize = 5;
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -297,6 +300,7 @@ function StudentManager() {
             : student.schoolId
       }));
       setStudents(data);
+      setPage(1); // 목록이 바뀌면 1페이지로
     });
 
     axios.get(`${API_URL}/api/schools`, {
@@ -314,6 +318,10 @@ function StudentManager() {
     return schools.find(s => String(s._id) === String(id))?.name || "-";
   };
 
+  // 페이지네이션 계산
+  const totalPages = Math.ceil(students.length / pageSize);
+  const pagedStudents = students.slice((page - 1) * pageSize, page * pageSize);
+
   return (
     <div style={{
       border: "1px solid #e5e8ec", background: "#f9fafb",
@@ -328,7 +336,7 @@ function StudentManager() {
         {showInactive ? "활성 학생 보기" : "비활성 학생 보기"}
       </button>
       <ul style={{ padding: 0, margin: 0 }}>
-        {students.map(s => (
+        {pagedStudents.map(s => (
           <li key={s._id} style={{
             display: "flex", alignItems: "center", padding: "7px 0", borderBottom: "1px solid #eee",
             opacity: s.active ? 1 : 0.6
@@ -351,6 +359,29 @@ function StudentManager() {
           </li>
         ))}
       </ul>
+      {/* 페이지네이션 버튼 */}
+      {totalPages > 1 && (
+        <div style={{ margin: "10px 0 0 0", textAlign: "center" }}>
+          {Array.from({ length: totalPages }).map((_, i) => (
+            <button
+              key={i + 1}
+              onClick={() => setPage(i + 1)}
+              style={{
+                margin: 2,
+                padding: "5px 13px",
+                borderRadius: 7,
+                border: "none",
+                background: i + 1 === page ? "#226ad6" : "#eee",
+                color: i + 1 === page ? "#fff" : "#444",
+                fontWeight: 700,
+                cursor: "pointer"
+              }}
+            >
+              {i + 1}
+            </button>
+          ))}
+        </div>
+      )}
       {selected && (
         <StudentDetailModal
           student={selected}

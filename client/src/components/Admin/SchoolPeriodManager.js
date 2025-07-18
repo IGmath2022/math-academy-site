@@ -15,6 +15,10 @@ function SchoolPeriodManager() {
     note: "",
   });
 
+  // 페이지네이션
+  const [page, setPage] = useState(1);
+  const pageSize = 5;
+
   // axios 요청에 항상 토큰 포함시키는 함수
   const getAuthConfig = () => {
     const token = localStorage.getItem("token");
@@ -34,6 +38,7 @@ function SchoolPeriodManager() {
     const url = schoolId ? `${API_URL}/api/school-periods?schoolId=${schoolId}` : `${API_URL}/api/school-periods`;
     const res = await axios.get(url, getAuthConfig());
     setPeriods(res.data);
+    setPage(1); // 필터 바뀌면 1페이지로
   };
 
   useEffect(() => {
@@ -77,6 +82,10 @@ function SchoolPeriodManager() {
       alert("삭제 실패: " + (e.response?.data?.message || e.message));
     }
   };
+
+  // 페이지네이션 계산
+  const totalPages = Math.ceil(periods.length / pageSize);
+  const pagedPeriods = periods.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <div style={{
@@ -123,19 +132,42 @@ function SchoolPeriodManager() {
 
       {/* 일정 목록 */}
       <ul style={{ padding: 0, margin: 0 }}>
-        {periods.map(p => (
+        {pagedPeriods.map(p => (
           <li key={p._id} style={{ display: "flex", alignItems: "center", marginBottom: 6, fontSize: 15 }}>
             <span style={{ flex: 2 }}>
-  [{p.schoolName}] {p.name} ({p.type}) {p.start} ~ {p.end}
-  {p.note && <> - <span style={{ color: "#567" }}>{p.note}</span></>}
-</span>
+              [{p.schoolName}] {p.name} ({p.type}) {p.start} ~ {p.end}
+              {p.note && <> - <span style={{ color: "#567" }}>{p.note}</span></>}
+            </span>
             <button onClick={() => handleDelete(p._id)} style={{ marginLeft: 10, color: "#e14", background: "none", border: "none", fontWeight: 700, cursor: "pointer" }}>
               삭제
             </button>
           </li>
         ))}
-        {periods.length === 0 && <li style={{ color: "#888", padding: 10 }}>등록된 일정이 없습니다.</li>}
+        {pagedPeriods.length === 0 && <li style={{ color: "#888", padding: 10 }}>등록된 일정이 없습니다.</li>}
       </ul>
+      {/* 페이지네이션 버튼 */}
+      {totalPages > 1 && (
+        <div style={{ margin: "12px 0", textAlign: "center" }}>
+          {Array.from({ length: totalPages }).map((_, i) => (
+            <button
+              key={i + 1}
+              onClick={() => setPage(i + 1)}
+              style={{
+                margin: 2,
+                padding: "5px 13px",
+                borderRadius: 7,
+                border: "none",
+                background: i + 1 === page ? "#226ad6" : "#eee",
+                color: i + 1 === page ? "#fff" : "#444",
+                fontWeight: 700,
+                cursor: "pointer"
+              }}
+            >
+              {i + 1}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

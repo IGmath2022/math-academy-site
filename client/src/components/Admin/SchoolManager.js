@@ -8,9 +8,14 @@ function SchoolManager() {
   const [newSchool, setNewSchool] = useState("");
   const [selectedSchoolId, setSelectedSchoolId] = useState(null);
 
+  // 페이지네이션
+  const [page, setPage] = useState(1);
+  const pageSize = 5;
+
   const fetchSchools = async () => {
     const res = await axios.get(`${API_URL}/api/schools`);
     setSchools(res.data);
+    setPage(1); // 학교 추가/삭제시 1페이지로
   };
 
   useEffect(() => { fetchSchools(); }, []);
@@ -37,6 +42,10 @@ function SchoolManager() {
     fetchSchools();
   };
 
+  // 페이지네이션 계산
+  const totalPages = Math.ceil(schools.length / pageSize);
+  const pagedSchools = schools.slice((page - 1) * pageSize, page * pageSize);
+
   return (
     <div style={{
       border: "1px solid #e7e9ef", background: "#f8fafd",
@@ -55,7 +64,7 @@ function SchoolManager() {
         </button>
       </div>
       <ul>
-        {schools.map(s => (
+        {pagedSchools.map(s => (
           <li key={s._id}
               onClick={() => setSelectedSchoolId(s._id)}
               style={{ cursor: "pointer", fontWeight: selectedSchoolId === s._id ? 700 : 400 }}>
@@ -64,7 +73,7 @@ function SchoolManager() {
         ))}
       </ul>
       <ul style={{ padding: 0, margin: 0 }}>
-        {schools.map(s => (
+        {pagedSchools.map(s => (
           <li key={s._id} style={{ display: "flex", alignItems: "center", marginBottom: 6 }}>
             <span style={{ flex: 1 }}>{s.name}</span>
             <button onClick={() => handleDelete(s._id)} style={{ marginLeft: 10, color: "#e14", background: "none", border: "none", fontWeight: 700, cursor: "pointer" }}>
@@ -73,6 +82,29 @@ function SchoolManager() {
           </li>
         ))}
       </ul>
+      {/* 페이지네이션 버튼 */}
+      {totalPages > 1 && (
+        <div style={{ margin: "12px 0", textAlign: "center" }}>
+          {Array.from({ length: totalPages }).map((_, i) => (
+            <button
+              key={i + 1}
+              onClick={() => setPage(i + 1)}
+              style={{
+                margin: 2,
+                padding: "5px 13px",
+                borderRadius: 7,
+                border: "none",
+                background: i + 1 === page ? "#226ad6" : "#eee",
+                color: i + 1 === page ? "#fff" : "#444",
+                fontWeight: 700,
+                cursor: "pointer"
+              }}
+            >
+              {i + 1}
+            </button>
+          ))}
+        </div>
+      )}
       {/* 해당 학교의 기간 관리 UI */}
       {selectedSchoolId && <SchoolPeriodManager schoolId={selectedSchoolId} />}
     </div>

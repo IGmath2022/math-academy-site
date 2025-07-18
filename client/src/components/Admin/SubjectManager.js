@@ -8,6 +8,10 @@ function SubjectManager({ onSelectSubject, selectedSubject }) {
   const [description, setDescription] = useState("");
   const [editingId, setEditingId] = useState(null);
 
+  // 페이지네이션
+  const [page, setPage] = useState(1);
+  const pageSize = 5;
+
   const token = localStorage.getItem("token");
 
   // 과목 불러오기
@@ -19,6 +23,7 @@ function SubjectManager({ onSelectSubject, selectedSubject }) {
   const fetchSubjects = async () => {
     const res = await axios.get(`${API_URL}/api/subjects`);
     setSubjects(res.data);
+    setPage(1); // 리스트 리셋시 1페이지
   };
 
   // 과목 추가/수정
@@ -69,6 +74,10 @@ function SubjectManager({ onSelectSubject, selectedSubject }) {
       onSelectSubject(null);
     }
   };
+
+  // 페이지네이션
+  const totalPages = Math.ceil(subjects.length / pageSize);
+  const pagedSubjects = subjects.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <div
@@ -162,7 +171,7 @@ function SubjectManager({ onSelectSubject, selectedSubject }) {
         )}
       </form>
       <ul style={{ padding: 0, listStyle: "none", margin: 0, width: "100%" }}>
-        {subjects.map((s) => (
+        {pagedSubjects.map((s) => (
           <li
             key={s._id}
             style={{
@@ -229,6 +238,29 @@ function SubjectManager({ onSelectSubject, selectedSubject }) {
           </li>
         ))}
       </ul>
+      {/* 페이지네이션 버튼 */}
+      {totalPages > 1 && (
+        <div style={{ margin: "12px 0", textAlign: "center" }}>
+          {Array.from({ length: totalPages }).map((_, i) => (
+            <button
+              key={i + 1}
+              onClick={() => setPage(i + 1)}
+              style={{
+                margin: 2,
+                padding: "5px 13px",
+                borderRadius: 7,
+                border: "none",
+                background: i + 1 === page ? "#226ad6" : "#eee",
+                color: i + 1 === page ? "#fff" : "#444",
+                fontWeight: 700,
+                cursor: "pointer"
+              }}
+            >
+              {i + 1}
+            </button>
+          ))}
+        </div>
+      )}
       {subjects.length === 0 && (
         <div style={{ color: "#888", textAlign: "center", marginTop: 28 }}>
           등록된 과목이 없습니다.

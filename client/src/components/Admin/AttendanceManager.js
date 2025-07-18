@@ -4,7 +4,6 @@ import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import { API_URL } from '../../api';
 
-// 월 구하기 함수
 function getYYYYMM(date) {
   return date.toISOString().slice(0,7);
 }
@@ -19,7 +18,11 @@ function AttendanceManager() {
   const [month, setMonth] = useState(getYYYYMM(new Date()));
   const [monthCount, setMonthCount] = useState(0);
 
-  // 학생 전체 로딩 (이름순)
+  // 페이지네이션 state (날짜별 보기)
+  const [page, setPage] = useState(1);
+  const pageSize = 5;
+
+  // 학생 전체 로딩
   useEffect(() => {
     const token = localStorage.getItem("token");
     axios.get(`${API_URL}/api/users?role=student`, {
@@ -32,7 +35,10 @@ function AttendanceManager() {
     if (tab !== "date") return;
     const ymd = selectedDate.toISOString().slice(0, 10);
     axios.get(`${API_URL}/api/attendance/by-date?date=${ymd}`)
-      .then(res => setDateList(res.data));
+      .then(res => {
+        setDateList(res.data);
+        setPage(1); // 날짜가 바뀌면 1페이지로
+      });
   }, [tab, selectedDate]);
 
   // 학생별 리스트 로딩 (userId로 통일)
@@ -44,6 +50,10 @@ function AttendanceManager() {
         setMonthCount(res.data.count);
       });
   }, [tab, selectedStudent, month]);
+
+  // 날짜별 출결 학생 페이지네이션
+  const totalPages = Math.ceil(dateList.length / pageSize);
+  const pagedDateList = dateList.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <div style={{
@@ -72,13 +82,36 @@ function AttendanceManager() {
           <div style={{ marginTop: 26 }}>
             <h4>{selectedDate.toISOString().slice(0,10)} 출결 학생 ({dateList.length})</h4>
             <ul style={{ margin: 0, padding: 0 }}>
-              {dateList.length === 0 && <li style={{ color: "#999" }}>등/하원 학생 없음</li>}
-              {dateList.map(a =>
+              {pagedDateList.length === 0 && <li style={{ color: "#999" }}>등/하원 학생 없음</li>}
+              {pagedDateList.map(a =>
                 <li key={a.userId} style={{ margin: "9px 0" }}>
                   <b>{a.studentName}</b> | 등원: <span style={{ color: "#246" }}>{a.checkIn || "-"}</span> | 하원: <span style={{ color: "#824" }}>{a.checkOut || "-"}</span>
                 </li>
               )}
             </ul>
+            {/* 페이지네이션 버튼 */}
+            {totalPages > 1 && (
+              <div style={{ margin: "10px 0 0 0", textAlign: "center" }}>
+                {Array.from({ length: totalPages }).map((_, i) => (
+                  <button
+                    key={i + 1}
+                    onClick={() => setPage(i + 1)}
+                    style={{
+                      margin: 2,
+                      padding: "5px 13px",
+                      borderRadius: 7,
+                      border: "none",
+                      background: i + 1 === page ? "#226ad6" : "#eee",
+                      color: i + 1 === page ? "#fff" : "#444",
+                      fontWeight: 700,
+                      cursor: "pointer"
+                    }}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
