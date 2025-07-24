@@ -41,7 +41,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       Key: key,
       Body: file.buffer,
       ContentType: file.mimetype,
-      ACL: 'public-read' // 공개 권한(자료실 등)
+      ACL: 'public-read', // 공개 권한(자료실 등)
       ServerSideEncryption: 'AES256' // 이 한 줄! (필요하면)
     };
     await s3.send(new PutObjectCommand(params));
