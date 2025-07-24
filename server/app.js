@@ -74,6 +74,7 @@ mongoose.connect(process.env.MONGO_URL, {
     app.use('/api/school-periods', require("./routes/schoolPeriodRoutes"));
     app.use('/api/attendance', require('./routes/attendanceRoutes'));
     app.use('/api/attendance', attendanceRoutes);
+    app.use('/api/files', require('./routes/upload'));
 
     // 메인
     app.get('/', (req, res) => {

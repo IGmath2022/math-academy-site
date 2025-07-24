@@ -13,6 +13,7 @@ import SchoolManager from "../components/Admin/SchoolManager";
 import StudentManager from "../components/Admin/StudentManager";
 import SchoolPeriodManager from "../components/Admin/SchoolPeriodManager";
 import AttendanceManager from "../components/Admin/AttendanceManager";
+import FileUpload from "../components/Admin/FileUpload";
 import { API_URL } from '../api';
 
 // ★★★ 모든 챕터ID는 여기서 추출! (id/_id/문자열 커버) ★★★
@@ -355,6 +356,13 @@ function StudentDashboard() {
 function AdminDashboard() {
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [chapterList, setChapterList] = useState([]);
+  // 업로드 결과를 DB에 저장하거나 알림 등 필요한 로직 (onUploaded)
+  const handleFileUploaded = (data) => {
+    // 예: 자료실에 등록, 배너 이미지로 사용 등
+    // data.url, data.filename 등
+    alert("업로드 성공: " + data.url);
+    // 여기에 DB저장 API 호출 등 추가
+  };
 
   return (
     <div
@@ -373,6 +381,25 @@ function AdminDashboard() {
         운영자 대시보드{" "}
         <span style={{ color: "#678", fontSize: 15 }}>(관리자용)</span>
       </h2>
+       {/* === 예시: 자료실 파일업로드 폼 === */}
+       <div style={{ margin: "24px 0" }}>
+        <h4 style={{ fontSize: 16 }}>자료실 파일 업로드</h4>
+        <FileUpload
+          folder="materials"
+          academyId="academy123" // 실제 학원별 ID를 props로
+          onUploaded={handleFileUploaded}
+        />
+      </div>
+
+      {/* === 예시: 팝업 배너 이미지 업로드 === */}
+      <div style={{ margin: "24px 0" }}>
+        <h4 style={{ fontSize: 16 }}>팝업 배너 이미지 업로드</h4>
+        <FileUpload
+          folder="banner"
+          academyId="academy123"
+          onUploaded={handleFileUploaded}
+        />
+      </div>
       <BlogSettingSwitch />
       <PopupBannerAdmin />
       <NewsAdmin />
