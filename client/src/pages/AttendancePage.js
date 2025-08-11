@@ -17,6 +17,16 @@ function AttendancePage() {
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // ✅ 동적 높이 계산
+  useEffect(() => {
+    const setAppHeight = () => {
+      document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
+    };
+    window.addEventListener('resize', setAppHeight);
+    setAppHeight(); // 초기 실행
+    return () => window.removeEventListener('resize', setAppHeight);
+  }, []);
+
   const handleFind = async () => {
     setMsg("");
     setSelectedId("");
@@ -74,9 +84,15 @@ function AttendancePage() {
 
   return (
     <div style={{
-      width: "100vw", height: "100vh", minHeight: "100dvh",
-      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-      background: "#f7faff"
+      width: "100vw",
+      height: "var(--app-height)", // ✅ 동적 높이 적용
+      padding: 0,
+      margin: 0,
+      background: "#f7faff",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center"
     }}>
       <h2 style={{
         textAlign: "center", marginBottom: 20,
