@@ -5,6 +5,32 @@ const User = require('../models/User');
 const { sendAlimtalk } = require('../utils/alimtalk');
 const moment = require('moment-timezone');
 
+// 최소 간격 (분)
+const MIN_INTERVAL_MINUTES = 10;
+
+// 시간 간격 + 상태 검증 함수
+async function canCheck(userId, type) {
+  const now = moment().tz('Asia/Seoul');
+  const today = now.format('YYYY-MM-DD');
+
+  const lastRec = await Attendance.findOne({ userId, date: today })
+    .sort({ time: -1 })
+    .lean();
+
+  if (!lastRec) return { ok: true };
+
+  if (lastRec.type === type) {
+    return { ok: false, reason: '이미 같은 상태 처리됨' };
+  }
+
+  const lastTime = moment(`${lastRec.date} ${lastRec.time}`, 'YYYY-MM-DD HH:mm:ss');
+  if (moment().diff(lastTime, 'minutes') < MIN_INTERVAL_MINUTES) {
+    return { ok: false, reason: `${MIN_INTERVAL_MINUTES}분 이내 재처리 불가` };
+  }
+
+  return { ok: true };
+}
+
 // 1) 핸드폰 뒷자리로 학생리스트 조회
 router.post('/find-students', async (req, res) => {
   const { phoneTail } = req.body;
@@ -17,6 +43,56 @@ router.post('/find-students', async (req, res) => {
   }).select('_id name parentPhone');
   if (!users.length) return res.status(404).json({ message: '학생 없음' });
   res.json(users);
+});
+
+// 2) 등원 전용
+router.post('/check-in', async (req, res) => {
+  const { userId } = req.body;
+  if (!userId) return res.status(400).json({ message: '학생을 선택하세요.' });
+
+  const student = await User.findById(userId);
+  if (!student) return res.status(404).json({ message: '학생 없음' });
+
+  const check = await canCheck(userId, 'IN');
+  if (!check.ok) return res.status(409).json({ message: check.reason });
+
+  const now = moment().tz('Asia/Seoul');
+  const today = now.format('YYYY-MM-DD');
+  const time = now.format('HH:mm:ss');
+
+  await Attendance.create({ userId, date: today, type: 'IN', time, auto: false, notified: false });
+  await sendAlimtalk(student.parentPhone, 'UB_0082', {
+    name: student.name,
+    type: '등원',
+    time: now.format('HH:mm'),
+    automsg: ''
+  });
+  res.json({ status: 'IN', message: '등원 처리되었습니다.' });
+});
+
+// 3) 하원 전용
+router.post('/check-out', async (req, res) => {
+  const { userId } = req.body;
+  if (!userId) return res.status(400).json({ message: '학생을 선택하세요.' });
+
+  const student = await User.findById(userId);
+  if (!student) return res.status(404).json({ message: '학생 없음' });
+
+  const check = await canCheck(userId, 'OUT');
+  if (!check.ok) return res.status(409).json({ message: check.reason });
+
+  const now = moment().tz('Asia/Seoul');
+  const today = now.format('YYYY-MM-DD');
+  const time = now.format('HH:mm:ss');
+
+  await Attendance.create({ userId, date: today, type: 'OUT', time, auto: false, notified: false });
+  await sendAlimtalk(student.parentPhone, 'UB_0082', {
+    name: student.name,
+    type: '하원',
+    time: now.format('HH:mm'),
+    automsg: ''
+  });
+  res.json({ status: 'OUT', message: '하원 처리되었습니다.' });
 });
 
 // 2) 등/하원 자동판별 및 처리
