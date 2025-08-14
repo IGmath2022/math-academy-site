@@ -12,36 +12,50 @@ function Materials() {
   const token = localStorage.getItem("token");
   const role = localStorage.getItem("role");
 
+  // 자료 목록 가져오기
   useEffect(() => {
     axios.get(`${API_URL}/api/materials`).then(res => setList(res.data));
   }, [refresh]);
 
+  // 업로드
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!file) return alert("파일을 선택하세요");
+
     const form = new FormData();
     form.append("title", title);
     form.append("description", description);
     form.append("file", file);
 
-    await axios.post(`${API_URL}/api/materials`, form, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-        Authorization: `Bearer ${token}`
-      }
-    });
-
-    setTitle(""); 
-    setDescription(""); 
-    setFile(null);
-    setRefresh(r => !r);
+    try {
+      await axios.post(`${API_URL}/api/materials`, form, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`
+        }
+      });
+      setTitle("");
+      setDescription("");
+      setFile(null);
+      setRefresh(r => !r);
+    } catch (err) {
+      console.error("업로드 실패:", err);
+      alert("업로드 중 오류가 발생했습니다.");
+    }
   };
 
+  // 삭제
   const handleDelete = async (id) => {
     if (!window.confirm("정말 삭제하시겠습니까?")) return;
-    await axios.delete(`${API_URL}/api/materials/${id}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    setRefresh(r => !r);
+    try {
+      await axios.delete(`${API_URL}/api/materials/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setRefresh(r => !r);
+    } catch (err) {
+      console.error("삭제 실패:", err);
+      alert("삭제 중 오류가 발생했습니다.");
+    }
   };
 
   return (
@@ -58,6 +72,8 @@ function Materials() {
       }}
     >
       <h2 style={{ textAlign: "center", marginBottom: 30 }}>자료실</h2>
+
+      {/* 관리자 전용 업로드 폼 */}
       {role === "admin" && (
         <form
           onSubmit={handleSubmit}
@@ -125,6 +141,8 @@ function Materials() {
           </button>
         </form>
       )}
+
+      {/* 자료 목록 */}
       <ul style={{
         padding: 0,
         listStyle: "none",
@@ -146,7 +164,7 @@ function Materials() {
               </span>
             </div>
             <a
-              href={item.file} // ✅ S3 URL 바로 사용
+              href={item.file} // 🔹 이제 S3 URL도 지원
               target="_blank"
               rel="noopener noreferrer"
               style={{
@@ -178,6 +196,7 @@ function Materials() {
           </li>
         ))}
       </ul>
+
       {list.length === 0 && (
         <div style={{ color: "#888", textAlign: "center", marginTop: 32 }}>
           자료가 없습니다.
