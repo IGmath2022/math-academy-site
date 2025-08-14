@@ -143,18 +143,18 @@ function Materials() {
               </span>
             </div>
             <a
-              href={`/uploads/${item.file}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                marginLeft: 16,
-                fontSize: 15,
-                color: "#226ad6",
-                textDecoration: "underline"
-              }}
-            >
-              다운로드
-            </a>
+  href={item.file} // 클라우드 URL 바로 사용
+  target="_blank"
+  rel="noopener noreferrer"
+  style={{
+    marginLeft: 16,
+    fontSize: 15,
+    color: "#226ad6",
+    textDecoration: "underline"
+  }}
+>
+  다운로드
+</a>
             {role === "admin" && (
               <button
                 style={{
