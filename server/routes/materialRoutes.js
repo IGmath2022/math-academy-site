@@ -45,15 +45,13 @@ router.post('/', isAdmin, upload.single('file'), async (req, res) => {
       })
       .promise();
 
-    // 로컬 임시 파일 삭제
     fs.unlinkSync(req.file.path);
 
-    // DB 저장
     const newMaterial = await Material.create({
       title,
       description,
       file: keyName,
-      originalName: req.file.originalname, // 📌 원본 파일명 저장
+      originalName: req.file.originalname,
       userId: req.user?._id || null
     });
 
@@ -67,30 +65,24 @@ router.post('/', isAdmin, upload.single('file'), async (req, res) => {
   }
 });
 
-// 📌 파일 직접 다운로드 (프록시 방식)
-router.get('/direct-download/:id', async (req, res) => {
+// 📌 사전 서명된 URL 발급 (브라우저가 직접 다운로드)
+router.get('/download/:id', async (req, res) => {
   try {
     const material = await Material.findById(req.params.id);
     if (!material) {
       return res.status(404).json({ message: '파일을 찾을 수 없습니다.' });
     }
 
-    const params = {
+    const signedUrl = s3.getSignedUrl('getObject', {
       Bucket: process.env.R2_BUCKET,
-      Key: material.file
-    };
+      Key: material.file,
+      Expires: 60, // 1분간 유효
+      ResponseContentDisposition: `attachment; filename="${encodeURIComponent(material.originalName)}"`
+    });
 
-    const fileStream = s3.getObject(params).createReadStream();
-
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${encodeURIComponent(material.originalName)}"`
-    );
-    res.setHeader("Content-Type", "application/octet-stream");
-
-    fileStream.pipe(res);
+    res.json({ url: signedUrl });
   } catch (err) {
-    console.error('[파일 직접 다운로드 에러]', err);
+    console.error('[사전 서명 URL 발급 에러]', err);
     res.status(500).json({ message: '다운로드 실패', error: err.message });
   }
 });

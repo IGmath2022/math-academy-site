@@ -44,6 +44,18 @@ function Materials() {
     setRefresh(r => !r);
   };
 
+  // 📌 사전 서명된 URL로 다운로드
+  const handleDownload = async (id) => {
+    try {
+      const res = await axios.get(`${API_URL}/api/materials/download/${id}`);
+      if (res.data.url) {
+        window.location.href = res.data.url;
+      }
+    } catch (err) {
+      alert("다운로드에 실패했습니다.");
+    }
+  };
+
   return (
     <div
       className="container"
@@ -147,8 +159,8 @@ function Materials() {
                 {item.description}
               </span>
             </div>
-            <a
-              href={`${API_URL}/api/materials/direct-download/${item._id}`}
+            <button
+              onClick={() => handleDownload(item._id)}
               style={{
                 marginLeft: 16,
                 padding: "6px 12px",
@@ -157,11 +169,12 @@ function Materials() {
                 background: "#226ad6",
                 color: "#fff",
                 fontWeight: 600,
-                textDecoration: "none"
+                cursor: "pointer",
+                border: "none"
               }}
             >
               다운로드
-            </a>
+            </button>
             {role === "admin" && (
               <button
                 style={{
