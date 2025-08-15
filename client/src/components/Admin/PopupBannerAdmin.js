@@ -37,6 +37,8 @@ function PopupBannerAdmin() {
   // 저장
   const handleSave = async () => {
     setSaving(true);
+    const token = localStorage.getItem("token");
+
     for (let i = 0; i < MAX_BANNERS; ++i) {
       // 텍스트/ONOFF 저장
       await axios.post(`${API_URL}/api/settings`, { key: `banner${i+1}_text`, value: banners[i].text });
@@ -46,14 +48,25 @@ function PopupBannerAdmin() {
       if (banners[i].file) {
         const form = new FormData();
         form.append("file", banners[i].file);
-        // 토큰이 필요한 경우 아래처럼 추가
-        // const res = await axios.post(`${API_URL}/api/settings/upload`, form, { headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${localStorage.getItem("token")}` } });
-        const res = await axios.post(`${API_URL}/api/settings/upload`, form, { headers: { "Content-Type": "multipart/form-data" } });
-        if (res.data?.filename) {
-          await axios.post(`${API_URL}/api/settings`, { key: `banner${i+1}_img`, value: res.data.filename });
+
+        // Cloudflare R2 업로드 API 호출
+        const res = await axios.post(`${API_URL}/api/banner/upload`, form, {
+          headers: { 
+            "Content-Type": "multipart/form-data", 
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        if (res.data?.url) {
+          // URL 그대로 저장
+          await axios.post(`${API_URL}/api/settings`, { key: `banner${i+1}_img`, value: res.data.url });
         }
+      } else {
+        // file 없고 img URL이 비어있으면 제거
+        await axios.post(`${API_URL}/api/settings`, { key: `banner${i+1}_img`, value: banners[i].img });
       }
     }
+
     setSaving(false);
     window.location.reload();
   };
@@ -87,7 +100,7 @@ function PopupBannerAdmin() {
               style={{ marginRight: 8 }}
             />
             {b.img &&
-              <img src={`/uploads/${b.img}`} alt="배너 미리보기" style={{ height: 42, borderRadius: 7, marginBottom: -9 }} />
+              <img src={b.img} alt="배너 미리보기" style={{ height: 42, borderRadius: 7, marginBottom: -9 }} />
             }
             {b.img &&
               <button style={{ marginLeft: 12 }} type="button" onClick={() => handleChange(i, "img", "")}>
