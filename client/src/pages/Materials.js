@@ -1,113 +1,202 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { API_URL } from "../api";
+import { API_URL } from '../api';
 
-export default function Materials() {
-  const [materials, setMaterials] = useState([]);
-  const [role, setRole] = useState("");
-  const [uploading, setUploading] = useState(false);
+function Materials() {
+  const [list, setList] = useState([]);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [file, setFile] = useState(null);
+  const [refresh, setRefresh] = useState(false);
+
+  const token = localStorage.getItem("token");
+  const role = localStorage.getItem("role");
 
   useEffect(() => {
-    const storedRole = localStorage.getItem("role");
-    setRole(storedRole || "");
-    fetchMaterials();
-  }, []);
+    axios.get(`${API_URL}/api/materials`).then(res => setList(res.data));
+  }, [refresh]);
 
-  const fetchMaterials = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/api/materials`);
-      setMaterials(res.data);
-    } catch (err) {
-      console.error("자료 불러오기 실패", err);
-    }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const form = new FormData();
+    form.append("title", title);
+    form.append("description", description);
+    form.append("file", file);
+
+    await axios.post(`${API_URL}/api/materials`, form, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    setTitle("");
+    setDescription("");
+    setFile(null);
+    setRefresh(r => !r);
   };
 
-  const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
+  const handleDelete = async (id) => {
+    if (!window.confirm("정말 삭제하시겠습니까?")) return;
+    await axios.delete(`${API_URL}/api/materials/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setRefresh(r => !r);
   };
 
-  const handleUpload = async () => {
-    if (!file) return;
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      await axios.post(`${API_URL}/api/materials/upload`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      setFile(null);
-      fetchMaterials();
-    } catch (err) {
-      console.error("업로드 실패", err);
-    } finally {
-      setUploading(false);
-    }
+  const getFileUrl = (fileKey) => {
+    // Cloudflare R2 퍼블릭 URL
+    return `${process.env.REACT_APP_R2_PUBLIC_URL}/${fileKey}`;
   };
 
   return (
-    <div style={{ maxWidth: 720, margin: "40px auto", padding: "0 20px" }}>
-      <h2 style={{ marginBottom: 20 }}>자료실</h2>
+    <div
+      className="container"
+      style={{
+        maxWidth: 500,
+        margin: "48px auto",
+        padding: "36px 4vw",
+        background: "#fff",
+        borderRadius: 16,
+        boxShadow: "0 2px 18px #0001",
+        minHeight: 340,
+      }}
+    >
+      <h2 style={{ textAlign: "center", marginBottom: 30 }}>자료실</h2>
 
       {role === "admin" && (
-        <div style={{ marginBottom: 30 }}>
-          <input type="file" onChange={handleFileChange} />
-          <button
-            onClick={handleUpload}
-            disabled={uploading}
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            marginBottom: 28,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 10,
+            alignItems: "center"
+          }}
+        >
+          <input
+            placeholder="제목"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            required
             style={{
-              marginLeft: 8,
-              padding: "6px 12px",
-              background: "#226ad6",
-              color: "#fff",
+              flex: 1,
+              minWidth: 110,
+              maxWidth: 180,
+              padding: "10px 8px",
+              fontSize: 15,
+              borderRadius: 7,
+              border: "1px solid #eee"
+            }}
+          />
+          <input
+            placeholder="설명"
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            style={{
+              flex: 2,
+              minWidth: 120,
+              maxWidth: 200,
+              padding: "10px 8px",
+              fontSize: 15,
+              borderRadius: 7,
+              border: "1px solid #eee"
+            }}
+          />
+          <input
+            type="file"
+            onChange={e => setFile(e.target.files[0])}
+            required
+            style={{
+              flex: 1,
+              minWidth: 120,
+              fontSize: 15
+            }}
+          />
+          <button
+            type="submit"
+            style={{
+              padding: "10px 22px",
+              fontSize: 15,
+              borderRadius: 7,
               border: "none",
-              borderRadius: 6,
-              cursor: "pointer",
+              background: "#2d4373",
+              color: "#fff",
+              fontWeight: "bold",
+              cursor: "pointer"
             }}
           >
-            {uploading ? "업로드 중..." : "업로드"}
+            업로드
           </button>
-        </div>
+        </form>
       )}
 
-      {materials.length === 0 ? (
-        <p style={{ color: "#666" }}>등록된 자료가 없습니다.</p>
-      ) : (
-        <ul style={{ listStyle: "none", padding: 0 }}>
-          {materials.map((mat) => (
-            <li
-              key={mat._id}
+      <ul style={{
+        padding: 0,
+        listStyle: "none",
+        margin: 0,
+        width: "100%"
+      }}>
+        {list.map(item => (
+          <li key={item._id} style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            borderBottom: "1px solid #eee",
+            padding: "16px 0"
+          }}>
+            <div style={{ flex: 3, minWidth: 160 }}>
+              <b>{item.title}</b>
+              <span style={{ color: "#888", fontSize: 14, marginLeft: 6 }}>
+                {item.description}
+              </span>
+            </div>
+            {/* 강제 다운로드 버튼 */}
+            <a
+              href={getFileUrl(item.file)}
+              download={item.originalName || item.title || "자료"}
               style={{
-                padding: "12px 0",
-                borderBottom: "1px solid #eee",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                flexWrap: "wrap",
+                marginLeft: 16,
+                padding: "6px 12px",
+                fontSize: 14,
+                borderRadius: 6,
+                background: "#226ad6",
+                color: "#fff",
+                fontWeight: 600,
+                textDecoration: "none",
               }}
             >
-              <span style={{ flex: "1 1 auto", marginRight: 12 }}>
-                {mat.originalName || mat.name || "이름 없는 파일"}
-              </span>
-              <a
-                href={mat.url}
-                download={mat.originalName || mat.name || "자료"}
+              다운로드
+            </a>
+            {role === "admin" && (
+              <button
                 style={{
-                  display: "inline-block",
+                  marginLeft: 10,
                   padding: "6px 12px",
+                  fontSize: 14,
                   borderRadius: 6,
-                  background: "#226ad6",
-                  color: "#fff",
-                  textDecoration: "none",
-                  fontWeight: 600,
+                  border: "none",
+                  background: "#eee",
+                  color: "#444",
+                  cursor: "pointer"
                 }}
+                onClick={() => handleDelete(item._id)}
               >
-                다운로드
-              </a>
-            </li>
-          ))}
-        </ul>
+                삭제
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      {list.length === 0 && (
+        <div style={{ color: "#888", textAlign: "center", marginTop: 32 }}>
+          자료가 없습니다.
+        </div>
       )}
     </div>
   );
 }
+
+export default Materials;
