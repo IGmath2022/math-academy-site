@@ -54,7 +54,8 @@ router.post('/', isAdmin, upload.single('file'), async (req, res) => {
       Bucket: process.env.NAVER_BUCKET,
       Key: keyName,
       Body: fileStream,
-      ACL: 'public-read'
+      ACL: 'public-read',
+      ServerSideEncryption: 'aws:kms' // NCP 관리형 KMS 키 사용
     }).promise();
 
     console.log("✅ 네이버 업로드 성공:", uploadResult.Location);
