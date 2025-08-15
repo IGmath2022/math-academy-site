@@ -12,50 +12,41 @@ function Materials() {
   const token = localStorage.getItem("token");
   const role = localStorage.getItem("role");
 
-  // 자료 목록 가져오기
   useEffect(() => {
     axios.get(`${API_URL}/api/materials`).then(res => setList(res.data));
   }, [refresh]);
 
-  // 업로드
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!file) return alert("파일을 선택하세요");
-
     const form = new FormData();
     form.append("title", title);
     form.append("description", description);
     form.append("file", file);
 
-    try {
-      await axios.post(`${API_URL}/api/materials`, form, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-          Authorization: `Bearer ${token}`
-        }
-      });
-      setTitle("");
-      setDescription("");
-      setFile(null);
-      setRefresh(r => !r);
-    } catch (err) {
-      console.error("업로드 실패:", err);
-      alert("업로드 중 오류가 발생했습니다.");
-    }
+    await axios.post(`${API_URL}/api/materials`, form, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    setTitle("");
+    setDescription("");
+    setFile(null);
+    setRefresh(r => !r);
   };
 
-  // 삭제
   const handleDelete = async (id) => {
     if (!window.confirm("정말 삭제하시겠습니까?")) return;
-    try {
-      await axios.delete(`${API_URL}/api/materials/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setRefresh(r => !r);
-    } catch (err) {
-      console.error("삭제 실패:", err);
-      alert("삭제 중 오류가 발생했습니다.");
-    }
+    await axios.delete(`${API_URL}/api/materials/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setRefresh(r => !r);
+  };
+
+  const getFileUrl = (fileKey) => {
+    // Cloudflare R2는 public-read 이므로 엔드포인트 + Key 조합으로 바로 접근 가능
+    return `${process.env.REACT_APP_R2_PUBLIC_URL}/${fileKey}`;
   };
 
   return (
@@ -73,7 +64,6 @@ function Materials() {
     >
       <h2 style={{ textAlign: "center", marginBottom: 30 }}>자료실</h2>
 
-      {/* 관리자 전용 업로드 폼 */}
       {role === "admin" && (
         <form
           onSubmit={handleSubmit}
@@ -142,7 +132,6 @@ function Materials() {
         </form>
       )}
 
-      {/* 자료 목록 */}
       <ul style={{
         padding: 0,
         listStyle: "none",
@@ -164,7 +153,7 @@ function Materials() {
               </span>
             </div>
             <a
-              href={item.file} // 🔹 이제 S3 URL도 지원
+              href={getFileUrl(item.file)}
               target="_blank"
               rel="noopener noreferrer"
               style={{
