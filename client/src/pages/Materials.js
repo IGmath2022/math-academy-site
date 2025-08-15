@@ -44,11 +44,6 @@ function Materials() {
     setRefresh(r => !r);
   };
 
-  const getFileUrl = (fileKey) => {
-    // Cloudflare R2 퍼블릭 URL
-    return `${process.env.REACT_APP_R2_PUBLIC_URL}/${fileKey}`;
-  };
-
   return (
     <div
       className="container"
@@ -152,10 +147,8 @@ function Materials() {
                 {item.description}
               </span>
             </div>
-            {/* 강제 다운로드 버튼 */}
             <a
-              href={getFileUrl(item.file)}
-              download={item.originalName || item.title || "자료"}
+              href={`${API_URL}/api/materials/direct-download/${item._id}`}
               style={{
                 marginLeft: 16,
                 padding: "6px 12px",
@@ -164,7 +157,7 @@ function Materials() {
                 background: "#226ad6",
                 color: "#fff",
                 fontWeight: 600,
-                textDecoration: "none",
+                textDecoration: "none"
               }}
             >
               다운로드

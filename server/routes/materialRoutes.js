@@ -1,6 +1,5 @@
 const express = require('express');
 const multer = require('multer');
-const path = require('path');
 const fs = require('fs');
 const AWS = require('aws-sdk');
 const Material = require('../models/Material');
@@ -8,15 +7,15 @@ const { isAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Multer: 파일을 임시로 로컬에 저장
+// Multer: 파일 임시 저장
 const upload = multer({ dest: 'uploads/' });
 
 // Cloudflare R2 연결 설정
 const s3 = new AWS.S3({
-  endpoint: process.env.R2_ENDPOINT, // 예: https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+  endpoint: process.env.R2_ENDPOINT,
   accessKeyId: process.env.R2_ACCESS_KEY_ID,
   secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
-  region: 'auto', // R2는 region 자동 설정
+  region: 'auto',
   signatureVersion: 'v4'
 });
 
@@ -34,27 +33,28 @@ router.post('/', isAdmin, upload.single('file'), async (req, res) => {
       return res.status(400).json({ message: '파일이 없습니다.' });
     }
 
-    // R2 버킷 업로드 경로
     const keyName = `academy/${Date.now()}_${req.file.originalname}`;
     const fileStream = fs.createReadStream(req.file.path);
 
     const uploadResult = await s3
       .upload({
-        Bucket: process.env.R2_BUCKET, // R2 버킷 이름
+        Bucket: process.env.R2_BUCKET,
         Key: keyName,
         Body: fileStream,
-        ACL: 'public-read' // 공개 접근 허용
+        ACL: 'public-read'
       })
       .promise();
 
-    // 업로드 후 로컬 임시 파일 삭제
+    // 로컬 임시 파일 삭제
     fs.unlinkSync(req.file.path);
 
     // DB 저장
     const newMaterial = await Material.create({
       title,
       description,
-      file: keyName // R2 키 저장
+      file: keyName,
+      originalName: req.file.originalname, // 📌 원본 파일명 저장
+      userId: req.user?._id || null
     });
 
     res.status(201).json({
@@ -67,21 +67,30 @@ router.post('/', isAdmin, upload.single('file'), async (req, res) => {
   }
 });
 
-// 📌 파일 다운로드 링크 제공
-router.get('/download/:key', async (req, res) => {
+// 📌 파일 직접 다운로드 (프록시 방식)
+router.get('/direct-download/:id', async (req, res) => {
   try {
-    const key = req.params.key;
+    const material = await Material.findById(req.params.id);
+    if (!material) {
+      return res.status(404).json({ message: '파일을 찾을 수 없습니다.' });
+    }
 
-    // 사전 서명된 URL 생성 (유효기간 1시간)
-    const url = s3.getSignedUrl('getObject', {
+    const params = {
       Bucket: process.env.R2_BUCKET,
-      Key: key,
-      Expires: 3600
-    });
+      Key: material.file
+    };
 
-    res.json({ url });
+    const fileStream = s3.getObject(params).createReadStream();
+
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${encodeURIComponent(material.originalName)}"`
+    );
+    res.setHeader("Content-Type", "application/octet-stream");
+
+    fileStream.pipe(res);
   } catch (err) {
-    console.error('[파일 다운로드 에러]', err);
+    console.error('[파일 직접 다운로드 에러]', err);
     res.status(500).json({ message: '다운로드 실패', error: err.message });
   }
 });
