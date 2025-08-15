@@ -29,9 +29,9 @@ const overlayStyle = {
 };
 
 const positionStyles = [
-  { left: "6vw" },
-  { left: "50%", transform: "translateX(-50%)" },
-  { right: "6vw", left: "auto" }
+  { left: "6vw" },             
+  { left: "50%", transform: "translateX(-50%)" }, 
+  { right: "6vw", left: "auto" } 
 ];
 
 function PopupBanners() {
@@ -47,6 +47,7 @@ function PopupBanners() {
           axios.get(`${API_URL}/api/settings/banner${i}_on`).then(r => r.data?.value === "true"),
           axios.get(`${API_URL}/api/settings/banner${i}_img`).then(r => r.data?.value || "")
         ]);
+
         arr.push({ text, img, on });
       }
       const filtered = arr.filter(b => b.on && (b.text || b.img));
@@ -100,13 +101,15 @@ function PopupBanners() {
                 title="닫기"
                 onClick={() => setVisible(v => v.map((vv, i) => i === idx ? false : vv))}
               >×</button>
+              
               {b.img &&
                 <img
-                  src={b.img} // 🔹 R2 전체 URL 그대로 사용
+                  src={b.img} // 🔹 전체 URL 그대로 사용
                   alt="배너이미지"
                   style={{ maxWidth: 260, maxHeight: 120, borderRadius: 9, marginBottom: 12, boxShadow: "0 1px 7px #0002" }}
                 />
               }
+              
               {b.text &&
                 <div style={{
                   marginBottom: 5, fontWeight: 700,

@@ -46,11 +46,14 @@ function BannerAdmin() {
     const form = new FormData();
     form.append("file", file);
     const token = localStorage.getItem("token");
+  
     const res = await axios.post(`${API_URL}/api/files/upload`, form, {
       headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${token}` }
     });
+  
+    // 🔹 전체 URL 저장
     const next = banners.slice();
-    next[idx].img = res.data.url; // 전체 URL 저장
+    next[idx].img = res.data.url;
     setBanners(next);
   };
 
