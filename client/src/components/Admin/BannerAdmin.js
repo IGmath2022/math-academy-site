@@ -47,14 +47,12 @@ function BannerAdmin() {
     form.append("file", file);
     const token = localStorage.getItem("token");
 
-    // R2 업로드 API 호출
-    const res = await axios.post(`${API_URL}/api/materials/upload`, form, {
+    const res = await axios.post(`${API_URL}/api/files/upload`, form, {
       headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${token}` }
     });
 
-    // 업로드된 전체 URL 저장
     const next = banners.slice();
-    next[idx].img = res.data.url; // <-- 변경: filename 대신 url
+    next[idx].img = res.data.url; // 업로드된 전체 URL을 저장
     setBanners(next);
   };
 

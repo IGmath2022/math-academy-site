@@ -43,10 +43,8 @@ function PopupBannerAdmin() {
       if (banners[i].file) {
         const form = new FormData();
         form.append("file", banners[i].file);
-
-        // R2 업로드 API
-        const res = await axios.post(`${API_URL}/api/materials/upload`, form, { 
-          headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${token}` } 
+        const res = await axios.post(`${API_URL}/api/files/upload`, form, {
+          headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${token}` }
         });
 
         if (res.data?.url) {
