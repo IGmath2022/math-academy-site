@@ -12,7 +12,6 @@ function PopupBannerAdmin() {
   );
   const [saving, setSaving] = useState(false);
 
-  // 배너 정보 불러오기
   useEffect(() => {
     async function fetchAll() {
       const arr = [];
@@ -29,44 +28,32 @@ function PopupBannerAdmin() {
     fetchAll();
   }, []);
 
-  // 입력 변경 핸들러
   const handleChange = (idx, field, value) => {
     setBanners(b => b.map((v, i) => i === idx ? { ...v, [field]: value } : v));
   };
 
-  // 저장
   const handleSave = async () => {
     setSaving(true);
     const token = localStorage.getItem("token");
 
     for (let i = 0; i < MAX_BANNERS; ++i) {
-      // 텍스트/ONOFF 저장
       await axios.post(`${API_URL}/api/settings`, { key: `banner${i+1}_text`, value: banners[i].text });
       await axios.post(`${API_URL}/api/settings`, { key: `banner${i+1}_on`, value: String(banners[i].on) });
 
-      // 이미지 파일 업로드 (있을 때만)
       if (banners[i].file) {
         const form = new FormData();
         form.append("file", banners[i].file);
 
-        // Cloudflare R2 업로드 API 호출
-        const res = await axios.post(`${API_URL}/api/banner/upload`, form, {
-          headers: { 
-            "Content-Type": "multipart/form-data", 
-            Authorization: `Bearer ${token}`
-          }
+        // R2 업로드 API
+        const res = await axios.post(`${API_URL}/api/materials/upload`, form, { 
+          headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${token}` } 
         });
 
         if (res.data?.url) {
-          // URL 그대로 저장
           await axios.post(`${API_URL}/api/settings`, { key: `banner${i+1}_img`, value: res.data.url });
         }
-      } else {
-        // file 없고 img URL이 비어있으면 제거
-        await axios.post(`${API_URL}/api/settings`, { key: `banner${i+1}_img`, value: banners[i].img });
       }
     }
-
     setSaving(false);
     window.location.reload();
   };

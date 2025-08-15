@@ -10,7 +10,6 @@ function BannerAdmin() {
     Array(MAX_BANNERS).fill(null).map(() => ({ ...initialBanner }))
   );
 
-  // 초기값 불러오기
   useEffect(() => {
     async function fetchAll() {
       let arr = [];
@@ -27,7 +26,6 @@ function BannerAdmin() {
     fetchAll();
   }, []);
 
-  // 저장
   const handleSave = async (i) => {
     const token = localStorage.getItem("token");
     await axios.post(`${API_URL}/api/settings`, { key: `banner${i+1}_text`, value: banners[i].text }, {
@@ -42,31 +40,24 @@ function BannerAdmin() {
     alert(`배너${i+1} 저장됨!`);
   };
 
-  // R2 업로드
   const handleFile = async (e, idx) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const form = new FormData();
     form.append("file", file);
-
     const token = localStorage.getItem("token");
 
-    try {
-      const res = await axios.post(`${API_URL}/api/banner/upload`, form, {
-        headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${token}` }
-      });
+    // R2 업로드 API 호출
+    const res = await axios.post(`${API_URL}/api/materials/upload`, form, {
+      headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${token}` }
+    });
 
-      const next = banners.slice();
-      next[idx].img = res.data.url; // R2 Public URL
-      setBanners(next);
-    } catch (err) {
-      console.error("배너 이미지 업로드 실패", err);
-      alert("이미지 업로드 실패!");
-    }
+    // 업로드된 전체 URL 저장
+    const next = banners.slice();
+    next[idx].img = res.data.url; // <-- 변경: filename 대신 url
+    setBanners(next);
   };
 
-  // 변경 핸들러
   const handleChange = (idx, key, val) => {
     const next = banners.slice();
     next[idx][key] = val;
