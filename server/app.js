@@ -10,6 +10,7 @@ const cron = require('node-cron'); // ★ 크론 등록
 const app = express();
 const PORT = process.env.PORT || 4000;
 const attendanceRoutes = require('./routes/attendanceRoutes');
+const bannerUploadRoutes = require('./routes/bannerUpload');
 
 // === 알림톡 키/템플릿 등 환경변수 세팅 ===
 const senderKey = process.env.KAKAO_SENDER_KEY;
@@ -75,6 +76,8 @@ mongoose.connect(process.env.MONGO_URL, {
     app.use('/api/attendance', require('./routes/attendanceRoutes'));
     app.use('/api/attendance', attendanceRoutes);
     app.use('/api/files', require('./routes/upload'));
+    app.use('/api/banner', bannerUploadRoutes);
+    
 
     // 메인
     app.get('/', (req, res) => {
