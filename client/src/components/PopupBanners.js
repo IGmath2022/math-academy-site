@@ -21,7 +21,6 @@ const modalBase = {
   animation: "popup-fadein .7s cubic-bezier(.5,1.8,.6,.97)",
   wordBreak: "keep-all",
   overflowWrap: "break-word",
-  // 글자 제한 없음
 };
 
 const overlayStyle = {
@@ -39,6 +38,15 @@ function PopupBanners() {
   const [banners, setBanners] = useState([]);
   const [visible, setVisible] = useState([true, true, true]);
 
+  // 이미지 경로 변환 함수
+  const getImageSrc = (path) => {
+    if (!path) return "";
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      return path; // 절대 URL이면 그대로 사용
+    }
+    return `${API_URL}/uploads/${path}`; // 상대 경로면 API_URL 붙이기
+  };
+
   useEffect(() => {
     async function fetchAll() {
       let arr = [];
@@ -50,7 +58,6 @@ function PopupBanners() {
         ]);
         arr.push({ text, img, on });
       }
-      // 보여줄 것만 남기고 visible도 맞춤
       const filtered = arr.filter(b => b.on && (b.text || b.img));
       setBanners(filtered);
       setVisible(filtered.map(() => true));
@@ -77,7 +84,7 @@ function PopupBanners() {
             : banners.length === 2
               ? "space-around"
               : "center",
-          pointerEvents: "none", // 배너만 클릭
+          pointerEvents: "none",
           zIndex: 2001,
         }}
       >
@@ -104,7 +111,7 @@ function PopupBanners() {
               >×</button>
               {b.img &&
                 <img
-                  src={`/uploads/${b.img}`}
+                  src={getImageSrc(b.img)}
                   alt="배너이미지"
                   style={{ maxWidth: 260, maxHeight: 120, borderRadius: 9, marginBottom: 12, boxShadow: "0 1px 7px #0002" }}
                 />
