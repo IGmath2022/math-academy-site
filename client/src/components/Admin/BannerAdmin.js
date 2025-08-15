@@ -46,13 +46,11 @@ function BannerAdmin() {
     const form = new FormData();
     form.append("file", file);
     const token = localStorage.getItem("token");
-
     const res = await axios.post(`${API_URL}/api/files/upload`, form, {
       headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${token}` }
     });
-
     const next = banners.slice();
-    next[idx].img = res.data.url; // 업로드된 전체 URL을 저장
+    next[idx].img = res.data.url; // 전체 URL 저장
     setBanners(next);
   };
 
@@ -66,7 +64,7 @@ function BannerAdmin() {
     <div style={{ border: "1.5px solid #f8e71c", borderRadius: 12, padding: 18, marginBottom: 20, background: "#fffbe8" }}>
       <h3>이벤트·공지 팝업 배너 (최대 3개)</h3>
       {banners.map((b, i) => (
-        <div key={i} style={{marginBottom: 20, padding: 14, border: "1.5px solid #eee", borderRadius: 8}}>
+        <div key={i} style={{ marginBottom: 20, padding: 14, border: "1.5px solid #eee", borderRadius: 8 }}>
           <label style={{ fontWeight: 600, marginRight: 12 }}>
             <input type="checkbox" checked={b.on} onChange={e => handleChange(i, "on", e.target.checked)} />
             &nbsp;배너{i+1} 표시 ON/OFF
@@ -82,13 +80,14 @@ function BannerAdmin() {
           <br />
           <input type="file" accept="image/*" onChange={e => handleFile(e, i)} />
           {b.img &&
-            <div style={{marginTop: 8}}>
-              <img src={b.img} alt="배너이미지" style={{maxWidth: 200, borderRadius: 6, boxShadow: "0 1px 6px #0002"}} />
-              <button type="button" style={{marginLeft: 8}} onClick={() => handleChange(i, "img", "")}>삭제</button>
+            <div style={{ marginTop: 8 }}>
+              <img src={b.img} alt="배너이미지" style={{ maxWidth: 200, borderRadius: 6, boxShadow: "0 1px 6px #0002" }} />
+              <button type="button" style={{ marginLeft: 8 }} onClick={() => handleChange(i, "img", "")}>삭제</button>
             </div>
           }
           <br />
-          <button style={{marginTop: 8, padding: "6px 18px", borderRadius: 8, background: "#fee500", border: "none", fontWeight: 600}}
+          <button
+            style={{ marginTop: 8, padding: "6px 18px", borderRadius: 8, background: "#fee500", border: "none", fontWeight: 600 }}
             onClick={() => handleSave(i)}
           >저장</button>
         </div>
@@ -96,4 +95,5 @@ function BannerAdmin() {
     </div>
   );
 }
+
 export default BannerAdmin;

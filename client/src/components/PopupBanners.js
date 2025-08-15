@@ -24,7 +24,7 @@ const modalBase = {
 };
 
 const overlayStyle = {
-  position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh",
+  position: "fixed", top:0, left:0, width:"100vw", height:"100vh",
   background: "rgba(0,0,0,.28)", zIndex: 1999
 };
 
@@ -57,6 +57,7 @@ function PopupBanners() {
   }, []);
 
   const showAny = visible.some(v => v);
+
   if (!showAny || banners.length === 0) return null;
 
   return (
@@ -101,7 +102,7 @@ function PopupBanners() {
               >×</button>
               {b.img &&
                 <img
-                  src={b.img} // ✅ R2 전체 URL 그대로 사용
+                  src={b.img} // 🔹 R2 전체 URL 그대로 사용
                   alt="배너이미지"
                   style={{ maxWidth: 260, maxHeight: 120, borderRadius: 9, marginBottom: 12, boxShadow: "0 1px 7px #0002" }}
                 />
