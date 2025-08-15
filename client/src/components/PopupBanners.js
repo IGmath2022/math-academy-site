@@ -24,28 +24,19 @@ const modalBase = {
 };
 
 const overlayStyle = {
-  position: "fixed", top:0, left:0, width:"100vw", height:"100vh",
+  position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh",
   background: "rgba(0,0,0,.28)", zIndex: 1999
 };
 
 const positionStyles = [
-  { left: "6vw" },             // 왼쪽
-  { left: "50%", transform: "translateX(-50%)" }, // 중앙
-  { right: "6vw", left: "auto" } // 오른쪽
+  { left: "6vw" },
+  { left: "50%", transform: "translateX(-50%)" },
+  { right: "6vw", left: "auto" }
 ];
 
 function PopupBanners() {
   const [banners, setBanners] = useState([]);
   const [visible, setVisible] = useState([true, true, true]);
-
-  // 이미지 경로 변환 함수
-  const getImageSrc = (path) => {
-    if (!path) return "";
-    if (path.startsWith("http://") || path.startsWith("https://")) {
-      return path; // 절대 URL이면 그대로 사용
-    }
-    return `${API_URL}/uploads/${path}`; // 상대 경로면 API_URL 붙이기
-  };
 
   useEffect(() => {
     async function fetchAll() {
@@ -66,7 +57,6 @@ function PopupBanners() {
   }, []);
 
   const showAny = visible.some(v => v);
-
   if (!showAny || banners.length === 0) return null;
 
   return (
@@ -111,7 +101,7 @@ function PopupBanners() {
               >×</button>
               {b.img &&
                 <img
-                  src={getImageSrc(b.img)}
+                  src={b.img} // ✅ R2 전체 URL 그대로 사용
                   alt="배너이미지"
                   style={{ maxWidth: 260, maxHeight: 120, borderRadius: 9, marginBottom: 12, boxShadow: "0 1px 7px #0002" }}
                 />
@@ -127,24 +117,24 @@ function PopupBanners() {
         ))}
       </div>
       <style>{`
-  @keyframes popup-fadein {
-    0% { opacity: 0;}
-    100% { opacity: 1;}
-  }
-  @media (max-width: 800px) {
-    .popup-banners-wrapper {
-      flex-direction: column !important;
-      align-items: center !important;
-      gap: 14px;
-    }
-    .popup-banners-wrapper > div {
-      left: 50% !important;
-      right: auto !important;
-      transform: translateX(-50%) !important;
-      margin-bottom: 16px;
-    }
-  }
-`}</style>
+        @keyframes popup-fadein {
+          0% { opacity: 0;}
+          100% { opacity: 1;}
+        }
+        @media (max-width: 800px) {
+          .popup-banners-wrapper {
+            flex-direction: column !important;
+            align-items: center !important;
+            gap: 14px;
+          }
+          .popup-banners-wrapper > div {
+            left: 50% !important;
+            right: auto !important;
+            transform: translateX(-50%) !important;
+            margin-bottom: 16px;
+          }
+        }
+      `}</style>
     </>
   );
 }
