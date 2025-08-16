@@ -12,7 +12,7 @@ const upload = multer({ dest: 'uploads/' });
 
 // Cloudflare R2 연결 설정
 const s3 = new AWS.S3({
-  endpoint: process.env.R2_ENDPOINT, // 예: https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+  endpoint: process.env.R2_ENDPOINT,
   accessKeyId: process.env.R2_ACCESS_KEY_ID,
   secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
   region: 'auto',
@@ -29,33 +29,28 @@ router.get('/', async (req, res) => {
 router.post('/', isAdmin, upload.single('file'), async (req, res) => {
   try {
     const { title, description } = req.body;
-    const originalName = req.file.originalname; // 원본 파일명 (한글 포함)
     if (!req.file) {
       return res.status(400).json({ message: '파일이 없습니다.' });
     }
 
-    // R2에 저장할 Key는 안전하게 (UUID/랜덤 문자열)
+    const originalName = req.file.originalname; // 한글 포함 원래 파일명
     const keyName = `academy/${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const fileStream = fs.createReadStream(req.file.path);
 
-    const uploadResult = await s3
-      .upload({
-        Bucket: process.env.R2_BUCKET,
-        Key: keyName,
-        Body: fileStream,
-        ACL: 'private' // presigned URL로만 접근 가능
-      })
-      .promise();
+    const uploadResult = await s3.upload({
+      Bucket: process.env.R2_BUCKET,
+      Key: keyName,
+      Body: fileStream,
+      ACL: 'private'
+    }).promise();
 
-    // 업로드 후 로컬 임시 파일 삭제
     fs.unlinkSync(req.file.path);
 
-    // DB 저장 (한글 포함 원본 파일명 저장)
     const newMaterial = await Material.create({
       title,
       description,
-      file: keyName,        // R2 Key
-      originalName          // 원본 파일명
+      file: keyName,
+      originalName
     });
 
     res.status(201).json({
@@ -76,7 +71,6 @@ router.get('/download/:id', async (req, res) => {
       return res.status(404).json({ message: '자료를 찾을 수 없습니다.' });
     }
 
-    // presigned URL 생성 + 한글 파일명 안전 처리
     const url = s3.getSignedUrl('getObject', {
       Bucket: process.env.R2_BUCKET,
       Key: material.file,
@@ -99,13 +93,11 @@ router.delete('/:id', isAdmin, async (req, res) => {
       return res.status(404).json({ message: '자료를 찾을 수 없습니다.' });
     }
 
-    // R2에서 삭제
     await s3.deleteObject({
       Bucket: process.env.R2_BUCKET,
       Key: material.file
     }).promise();
 
-    // DB에서 삭제
     await material.deleteOne();
 
     res.json({ message: '삭제 완료' });
