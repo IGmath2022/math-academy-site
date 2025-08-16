@@ -46,7 +46,7 @@ function Materials() {
 
   const handleDownload = async (id) => {
     const res = await axios.get(`${API_URL}/api/materials/download/${id}`);
-    window.location.href = res.data.url; // presigned URL로 이동 → 자동 다운로드
+    window.location.href = res.data.url; // presigned URL 이동 (자동 다운로드)
   };
 
   return (
@@ -158,9 +158,9 @@ function Materials() {
                 marginLeft: 16,
                 fontSize: 15,
                 color: "#226ad6",
+                textDecoration: "underline",
                 background: "none",
                 border: "none",
-                textDecoration: "underline",
                 cursor: "pointer"
               }}
             >
