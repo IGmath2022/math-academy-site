@@ -44,16 +44,9 @@ function Materials() {
     setRefresh(r => !r);
   };
 
-  // 📌 사전 서명된 URL로 다운로드
   const handleDownload = async (id) => {
-    try {
-      const res = await axios.get(`${API_URL}/api/materials/download/${id}`);
-      if (res.data.url) {
-        window.location.href = res.data.url;
-      }
-    } catch (err) {
-      alert("다운로드에 실패했습니다.");
-    }
+    const res = await axios.get(`${API_URL}/api/materials/download/${id}`);
+    window.location.href = res.data.url; // presigned URL → 바로 다운로드
   };
 
   return (
@@ -87,64 +80,33 @@ function Materials() {
             value={title}
             onChange={e => setTitle(e.target.value)}
             required
-            style={{
-              flex: 1,
-              minWidth: 110,
-              maxWidth: 180,
-              padding: "10px 8px",
-              fontSize: 15,
-              borderRadius: 7,
-              border: "1px solid #eee"
-            }}
+            style={{ flex: 1, minWidth: 110 }}
           />
           <input
             placeholder="설명"
             value={description}
             onChange={e => setDescription(e.target.value)}
-            style={{
-              flex: 2,
-              minWidth: 120,
-              maxWidth: 200,
-              padding: "10px 8px",
-              fontSize: 15,
-              borderRadius: 7,
-              border: "1px solid #eee"
-            }}
+            style={{ flex: 2, minWidth: 120 }}
           />
           <input
             type="file"
             onChange={e => setFile(e.target.files[0])}
             required
-            style={{
-              flex: 1,
-              minWidth: 120,
-              fontSize: 15
-            }}
+            style={{ flex: 1, minWidth: 120 }}
           />
-          <button
-            type="submit"
-            style={{
-              padding: "10px 22px",
-              fontSize: 15,
-              borderRadius: 7,
-              border: "none",
-              background: "#2d4373",
-              color: "#fff",
-              fontWeight: "bold",
-              cursor: "pointer"
-            }}
-          >
-            업로드
-          </button>
+          <button type="submit" style={{
+            padding: "10px 22px",
+            border: "none",
+            borderRadius: 7,
+            background: "#2d4373",
+            color: "#fff",
+            fontWeight: "bold",
+            cursor: "pointer"
+          }}>업로드</button>
         </form>
       )}
 
-      <ul style={{
-        padding: 0,
-        listStyle: "none",
-        margin: 0,
-        width: "100%"
-      }}>
+      <ul style={{ padding: 0, listStyle: "none", margin: 0 }}>
         {list.map(item => (
           <li key={item._id} style={{
             display: "flex",
@@ -155,7 +117,7 @@ function Materials() {
           }}>
             <div style={{ flex: 3, minWidth: 160 }}>
               <b>{item.title}</b>
-              <span style={{ color: "#888", fontSize: 14, marginLeft: 6 }}>
+              <span style={{ color: "#888", marginLeft: 6 }}>
                 {item.description}
               </span>
             </div>
@@ -163,31 +125,27 @@ function Materials() {
               onClick={() => handleDownload(item._id)}
               style={{
                 marginLeft: 16,
-                padding: "6px 12px",
-                fontSize: 14,
-                borderRadius: 6,
-                background: "#226ad6",
-                color: "#fff",
-                fontWeight: 600,
+                fontSize: 15,
+                color: "#226ad6",
+                background: "none",
+                border: "none",
                 cursor: "pointer",
-                border: "none"
+                textDecoration: "underline"
               }}
             >
               다운로드
             </button>
             {role === "admin" && (
               <button
+                onClick={() => handleDelete(item._id)}
                 style={{
                   marginLeft: 10,
                   padding: "6px 12px",
-                  fontSize: 14,
                   borderRadius: 6,
                   border: "none",
                   background: "#eee",
-                  color: "#444",
                   cursor: "pointer"
                 }}
-                onClick={() => handleDelete(item._id)}
               >
                 삭제
               </button>

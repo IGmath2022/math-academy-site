@@ -6,8 +6,6 @@ const Material = require('../models/Material');
 const { isAdmin } = require('../middleware/auth');
 
 const router = express.Router();
-
-// Multer: 파일 임시 저장
 const upload = multer({ dest: 'uploads/' });
 
 // Cloudflare R2 연결 설정
@@ -29,21 +27,18 @@ router.get('/', async (req, res) => {
 router.post('/', isAdmin, upload.single('file'), async (req, res) => {
   try {
     const { title, description } = req.body;
-    if (!req.file) {
-      return res.status(400).json({ message: '파일이 없습니다.' });
-    }
+    if (!req.file) return res.status(400).json({ message: '파일이 없습니다.' });
 
-    const keyName = `academy/${Date.now()}_${req.file.originalname}`;
+    const originalName = req.file.originalname;
+    const keyName = `academy/${Date.now()}_${encodeURIComponent(originalName)}`;
     const fileStream = fs.createReadStream(req.file.path);
 
-    const uploadResult = await s3
-      .upload({
-        Bucket: process.env.R2_BUCKET,
-        Key: keyName,
-        Body: fileStream,
-        ACL: 'public-read'
-      })
-      .promise();
+    const uploadResult = await s3.upload({
+      Bucket: process.env.R2_BUCKET,
+      Key: keyName,
+      Body: fileStream,
+      ACL: 'private' // 다운로드는 presigned URL만 가능
+    }).promise();
 
     fs.unlinkSync(req.file.path);
 
@@ -51,8 +46,7 @@ router.post('/', isAdmin, upload.single('file'), async (req, res) => {
       title,
       description,
       file: keyName,
-      originalName: req.file.originalname,
-      userId: req.user?._id || null
+      originalName
     });
 
     res.status(201).json({
@@ -65,25 +59,43 @@ router.post('/', isAdmin, upload.single('file'), async (req, res) => {
   }
 });
 
-// 📌 사전 서명된 URL 발급 (브라우저가 직접 다운로드)
+// 📌 파일 다운로드 링크 (사전 서명 URL)
 router.get('/download/:id', async (req, res) => {
   try {
     const material = await Material.findById(req.params.id);
-    if (!material) {
-      return res.status(404).json({ message: '파일을 찾을 수 없습니다.' });
-    }
+    if (!material) return res.status(404).json({ message: '자료가 없습니다.' });
 
-    const signedUrl = s3.getSignedUrl('getObject', {
+    const url = s3.getSignedUrl('getObject', {
       Bucket: process.env.R2_BUCKET,
       Key: material.file,
-      Expires: 60, // 1분간 유효
-      ResponseContentDisposition: `attachment; filename="${encodeURIComponent(material.originalName)}"`
+      Expires: 3600,
+      ResponseContentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(material.originalName)}`
     });
 
-    res.json({ url: signedUrl });
+    res.json({ url });
   } catch (err) {
-    console.error('[사전 서명 URL 발급 에러]', err);
+    console.error('[파일 다운로드 에러]', err);
     res.status(500).json({ message: '다운로드 실패', error: err.message });
+  }
+});
+
+// 📌 파일 삭제 (R2 + DB)
+router.delete('/:id', isAdmin, async (req, res) => {
+  try {
+    const material = await Material.findById(req.params.id);
+    if (!material) return res.status(404).json({ message: '자료를 찾을 수 없습니다.' });
+
+    await s3.deleteObject({
+      Bucket: process.env.R2_BUCKET,
+      Key: material.file
+    }).promise();
+
+    await material.deleteOne();
+
+    res.json({ message: '삭제 완료' });
+  } catch (err) {
+    console.error('[파일 삭제 에러]', err);
+    res.status(500).json({ message: '삭제 실패', error: err.message });
   }
 });
 
