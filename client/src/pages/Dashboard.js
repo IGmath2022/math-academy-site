@@ -13,7 +13,6 @@ import SchoolManager from "../components/Admin/SchoolManager";
 import StudentManager from "../components/Admin/StudentManager";
 import SchoolPeriodManager from "../components/Admin/SchoolPeriodManager";
 import AttendanceManager from "../components/Admin/AttendanceManager";
-import FileUpload from "../components/Admin/FileUpload";
 import { API_URL } from '../api';
 
 // ★★★ 모든 챕터ID는 여기서 추출! (id/_id/문자열 커버) ★★★
