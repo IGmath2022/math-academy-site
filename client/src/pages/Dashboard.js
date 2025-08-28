@@ -381,25 +381,6 @@ function AdminDashboard() {
         운영자 대시보드{" "}
         <span style={{ color: "#678", fontSize: 15 }}>(관리자용)</span>
       </h2>
-       {/* === 예시: 자료실 파일업로드 폼 === */}
-       <div style={{ margin: "24px 0" }}>
-        <h4 style={{ fontSize: 16 }}>자료실 파일 업로드</h4>
-        <FileUpload
-          folder="materials"
-          academyId="academy123" // 실제 학원별 ID를 props로
-          onUploaded={handleFileUploaded}
-        />
-      </div>
-
-      {/* === 예시: 팝업 배너 이미지 업로드 === */}
-      <div style={{ margin: "24px 0" }}>
-        <h4 style={{ fontSize: 16 }}>팝업 배너 이미지 업로드</h4>
-        <FileUpload
-          folder="banner"
-          academyId="academy123"
-          onUploaded={handleFileUploaded}
-        />
-      </div>
       <BlogSettingSwitch />
       <PopupBannerAdmin />
       <NewsAdmin />
