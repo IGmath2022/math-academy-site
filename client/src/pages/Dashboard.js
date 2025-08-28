@@ -154,24 +154,24 @@ function StudentDashboard() {
         </div>
       )}
       {assignments.length > 0 ? (
-        <div style={{ marginTop: 20 }}>
-          <h3 style={{ fontSize: 18, marginBottom: 12 }}>내 수업 영상</h3>
-          <ul style={{ listStyle: "none", padding: 0 }}>
-            {assignments.map(a => (
-              <li key={a._id} style={{ marginBottom: 12, padding: 10, border: "1px solid #eee", borderRadius: 6 }}>
-                <b>{a.Chapter?.title || "제목 없음"}</b>
-                {a.Chapter?.videoUrl && (
-                  <div style={{ marginTop: 8 }}>
-                    <video width="100%" controls src={a.Chapter.videoUrl} />
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : (
-        <p style={{ textAlign: "center", marginTop: 20, color: "#666" }}>할당된 수업 영상이 없습니다.</p>
-      )}
+  <div style={{ marginTop: 20 }}>
+    <h3 style={{ fontSize: 18, marginBottom: 12 }}>내 수업 영상</h3>
+    <ul style={{ listStyle: "none", padding: 0 }}>
+      {assignments.map(a => (
+        <li key={a._id} style={{ marginBottom: 12, padding: 10, border: "1px solid #eee", borderRadius: 6 }}>
+          <b>{a.Chapter?.name || "제목 없음"}</b>
+          {a.Chapter?.video_url && (
+            <div style={{ marginTop: 8 }}>
+              <video width="100%" controls src={a.Chapter.video_url} />
+            </div>
+          )}
+        </li>
+      ))}
+    </ul>
+  </div>
+) : (
+  <p style={{ textAlign: "center", marginTop: 20, color: "#666" }}>할당된 수업 영상이 없습니다.</p>
+)}
     
       {/* 이하 진도 리스트/캘린더, 블로그 등 기존 로직 동일 */}
       {showBlog && <Blog limit={3} />}
