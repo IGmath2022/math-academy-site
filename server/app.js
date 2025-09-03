@@ -5,14 +5,16 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const axios = require('axios');
-const cron = require('node-cron'); // ★ 크론 등록
+const cron = require('node-cron'); // 서버 내부 크론 사용 (Render 스케줄드 잡 불필요)
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+
+// 라우트 불러오기
 const attendanceRoutes = require('./routes/attendanceRoutes');
 const bannerUploadRoutes = require('./routes/bannerUpload');
 
-// === 알림톡 키/템플릿 등 환경변수 세팅 ===
+// === 알림톡 키/템플릿 등 환경변수 (기존 사용값 유지; 여기서는 참조만) ===
 const senderKey = process.env.KAKAO_SENDER_KEY;
 const apiKey = process.env.KAKAO_API_KEY;
 const templateCode = process.env.ALIMTALK_TEMPLATE_CODE;
@@ -23,17 +25,6 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
-
-// === ★ [자동 하원 처리: 매일 밤 11시(23:00)] ===
-cron.schedule('0 23 * * *', async () => {
-  try {
-    // 실서버 주소/포트로 맞춰서 입력!
-    await axios.post('https://math-academy-server.onrender.com/api/attendance/auto-leave');
-    console.log(`[CRON] [${new Date().toLocaleString()}] 23:00 자동 하원처리 완료`);
-  } catch (e) {
-    console.error(`[CRON] [${new Date().toLocaleString()}] 자동 하원처리 실패:`, e.message);
-  }
-});
 
 // === 서버 외부 IP 조회 라우터(운영용) ===
 app.get('/myip', async (req, res) => {
@@ -73,11 +64,10 @@ mongoose.connect(process.env.MONGO_URL, {
     app.use('/api/schools', require('./routes/schoolRoutes'));
     app.use('/api/schoolschedules', require('./routes/schoolScheduleRoutes'));
     app.use('/api/school-periods', require("./routes/schoolPeriodRoutes"));
-    app.use('/api/attendance', require('./routes/attendanceRoutes'));
+    // ✅ attendance 라우터는 한 번만 마운트 (중복 제거)
     app.use('/api/attendance', attendanceRoutes);
     app.use('/api/files', require('./routes/upload'));
     app.use('/api/banner', bannerUploadRoutes);
-    
 
     // 메인
     app.get('/', (req, res) => {
@@ -148,6 +138,30 @@ mongoose.connect(process.env.MONGO_URL, {
     // ==== 서버 시작 ====
     app.listen(PORT, () => {
       console.log(`서버가 http://localhost:${PORT} 에서 실행중`);
+
+      // ============================
+      // ✅ 크론 등록 (안정성 우선)
+      // - DB 연결/라우터 마운트/리스닝 완료 이후에 등록
+      // - Render 스케줄드 잡 없이 서버 내부에서만 예약 실행
+      // - 외부 URL 대신 내부 엔드포인트(127.0.0.1) 호출
+      // ============================
+      const KST = 'Asia/Seoul';
+      const CRON_ENABLED = process.env.CRON_ENABLED !== '0'; // 기본 ON
+      if (CRON_ENABLED && !global.__AUTO_LEAVE_CRON_STARTED__) {
+        global.__AUTO_LEAVE_CRON_STARTED__ = true;
+        cron.schedule('30 22 * * *', async () => {
+          try {
+            const baseURL = process.env.SELF_BASE_URL || `http://127.0.0.1:${PORT}`;
+            await axios.post(`${baseURL}/api/attendance/auto-leave`, {}, { timeout: 60_000 });
+            console.log(`[CRON] [${new Date().toLocaleString('ko-KR',{ timeZone: KST })}] 22:30 자동 하원처리 완료`);
+          } catch (e) {
+            console.error(
+              `[CRON] [${new Date().toLocaleString('ko-KR',{ timeZone: KST })}] 자동 하원처리 실패:`,
+              e.message
+            );
+          }
+        }, { timezone: KST });
+      }
     });
   })
   .catch(err => {
