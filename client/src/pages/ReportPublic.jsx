@@ -13,7 +13,7 @@ function fmtNewline(s) {
   ));
 }
 
-// 분 → "X시간 Y분" 포맷
+// 분 → "X시간 Y분"
 function fmtHM(min) {
   if (min === null || min === undefined || min === "") return "-";
   const n = Number(min);
@@ -46,8 +46,13 @@ export default function ReportPublic() {
   if (err) return <div style={{ maxWidth: 920, margin: "32px auto", padding: 16 }}>{err}</div>;
   if (!data) return <div style={{ maxWidth: 920, margin: "32px auto", padding: 16 }}>불러오는 중…</div>;
 
-  const { student, log, attendance, profile, counsels } = data;
+  const { student, log, attendance, recent = [], profile, counsels } = data;
   const dateLabel = log?.dateLabel || log?.date || "";
+  const teacherDisp = log?.teacherName || log?.teacher || "-";
+  const durMin = data?.studyTimeMin ?? log?.durationMin;
+
+  // 최근 5회만 요약 (서버가 10회 줘도 5개 컷)
+  const recent5 = recent.slice(0, 5);
 
   return (
     <div style={{ fontFamily: "Pretendard, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans KR, sans-serif", background:"#f5f7fb", minHeight:"100vh" }}>
@@ -75,7 +80,7 @@ export default function ReportPublic() {
                 title="출결"
                 body={<>등원 {attendance?.checkIn || log?.inTime || "-"} / 하원 {attendance?.checkOut || log?.outTime || "-"}</>}
               />
-              <Section title="형태·강사" body={<>{log?.classType || "-"} / {log?.teacher || "-"}</>} />
+              <Section title="형태·강사" body={<>{log?.classType || "-"} / {teacherDisp}</>} />
               {!!log?.headline && <Section title="핵심 한줄" body={fmtNewline(log.headline)} />}
               <Section
                 title="태그"
@@ -87,9 +92,50 @@ export default function ReportPublic() {
               />
               <Section
                 title="학습지표"
-                body={<>집중도: {log?.focus ?? "-"} · 학습시간: {fmtHM(log?.durationMin)} · 진행률: {log?.progressPct ?? "-"}%</>}
+                body={<>집중도: {log?.focus ?? "-"} · 진행률: {log?.progressPct ?? "-"}% · 학습시간: {fmtHM(durMin)}</>}
               />
             </div>
+          </div>
+        </div>
+
+        {/* 누적 5회 요약 */}
+        <div style={{ background:"#fff", borderRadius:18, boxShadow:"0 6px 20px #0001", overflow:"hidden", marginBottom:18 }}>
+          <div style={{ padding:"22px 26px", background:"linear-gradient(180deg,#f7fbff,#eef4ff)" }}>
+            <div style={{ fontSize:20, fontWeight:800 }}>누적 5회 지표</div>
+          </div>
+          <div style={{ padding:"12px 18px 18px" }}>
+            <table style={{ width:"100%", borderCollapse:"collapse" }}>
+              <thead>
+                <tr style={{ background:"#f7f9ff" }}>
+                  <Th>날짜</Th>
+                  <Th>과정</Th>
+                  <Th>집중도</Th>
+                  <Th>진행률</Th>
+                  <Th>학습시간</Th>
+                  <Th>핵심/태그</Th>
+                  <Th>보기</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {recent5.map(r => (
+                  <tr key={r._id}>
+                    <Td>{r.date}</Td>
+                    <Td>{r.course || "-"}</Td>
+                    <Td>{r.focus ?? "-"}</Td>
+                    <Td>{r.progressPct ?? "-"}</Td>
+                    <Td>{fmtHM(r.studyTimeMin)}</Td>
+                    <Td>
+                      {(r.headline || "").split(/\r?\n/).map((ln,i)=><span key={i}>{ln}<br/></span>)}
+                      {(r.tags || []).map((t,i)=><span key={i} style={tag}>{t}</span>)}
+                    </Td>
+                    <Td><a href={`/r/${r._id}`} target="_blank" rel="noreferrer">열람</a></Td>
+                  </tr>
+                ))}
+                {recent5.length === 0 && (
+                  <tr><Td colSpan={7} style={{ color:"#888", textAlign:"center" }}>표시할 기록이 없습니다.</Td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -145,6 +191,13 @@ function Section({ title, body }) {
       <div style={box}>{body || "-"}</div>
     </div>
   );
+}
+
+function Th({ children }) {
+  return <th style={{ borderBottom:"1px solid #eef2ff", padding:"10px 8px", textAlign:"left", fontSize:14 }}>{children}</th>;
+}
+function Td({ children, colSpan }) {
+  return <td colSpan={colSpan} style={{ borderBottom:"1px solid #eef2ff", padding:"10px 8px", textAlign:"left", fontSize:14 }}>{children}</td>;
 }
 
 const card = { background:"#fff", borderRadius:18, boxShadow:"0 6px 20px #0001", overflow:"hidden", marginBottom:18 };

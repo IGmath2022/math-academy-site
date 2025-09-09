@@ -5,17 +5,17 @@ import { API_URL } from "../../api";
 
 export default function DailyReportEditor() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0,10));
-  const [list, setList] = useState([]);           // /by-date 목록 (이름/출결/상태)
-  const [studentId, setStudentId] = useState(""); // 선택된 학생
+  const [list, setList] = useState([]);
+  const [studentId, setStudentId] = useState("");
   const [form, setForm] = useState({
     course: "", book: "", content: "", homework: "", feedback: "",
-    tags: "", classType: "", teacherName: "", planNext: ""
+    tags: "", classType: "", teacher: "", headline: "",
+    focus: "", progressPct: "", planNext: ""
   });
   const [msg, setMsg] = useState("");
   const token = localStorage.getItem("token");
   const auth = { headers: { Authorization: `Bearer ${token}` } };
 
-  // 날짜별 목록 로드 (학생 선택 소스)
   const fetchList = async () => {
     try {
       const { data } = await axios.get(`${API_URL}/api/admin/lessons/by-date`, { ...auth, params: { date } });
@@ -28,7 +28,7 @@ export default function DailyReportEditor() {
 
   useEffect(() => { if (token) { fetchList(); setStudentId(""); } /* eslint-disable-next-line */ }, [date]);
 
-  // 학생 변경 시 상세 로드
+  // 학생 변경 시 해당일 로그 로드
   useEffect(() => {
     const load = async () => {
       if (!studentId) return;
@@ -42,14 +42,17 @@ export default function DailyReportEditor() {
           feedback: data?.feedback || "",
           tags: (data?.tags || []).join(", "),
           classType: data?.classType || "",
-          teacherName: data?.teacherName || "",
-          planNext: data?.planNext || ""
+          teacher: data?.teacher || data?.teacherName || "",
+          headline: data?.headline || "",
+          focus: data?.focus ?? "",
+          progressPct: data?.progressPct ?? "",
+          planNext: data?.planNext || data?.nextPlan || ""
         });
       } catch {
-        // 없으면 빈 폼
         setForm({
           course: "", book: "", content: "", homework: "", feedback: "",
-          tags: "", classType: "", teacherName: "", planNext: ""
+          tags: "", classType: "", teacher: "", headline: "",
+          focus: "", progressPct: "", planNext: ""
         });
       }
     };
@@ -74,7 +77,10 @@ export default function DailyReportEditor() {
         feedback: form.feedback,
         tags: form.tags.split(",").map(s => s.trim()).filter(Boolean),
         classType: form.classType,
-        teacherName: form.teacherName,
+        teacher: form.teacher,
+        headline: form.headline,
+        focus: form.focus === "" ? undefined : Number(form.focus),
+        progressPct: form.progressPct === "" ? undefined : Number(form.progressPct),
         planNext: form.planNext,
         notifyStatus: "대기",
         scheduledAt: tmr
@@ -114,7 +120,12 @@ export default function DailyReportEditor() {
         <Area  label="개별 피드백" value={form.feedback} onChange={v=>setForm(f=>({...f,feedback:v}))}/>
         <Field label="태그(쉼표 구분)" value={form.tags} onChange={v=>setForm(f=>({...f,tags:v}))}/>
         <Field label="수업형태" value={form.classType} onChange={v=>setForm(f=>({...f,classType:v}))} placeholder="개별맞춤수업/판서강의/방학특강 등"/>
-        <Field label="강사표기" value={form.teacherName} onChange={v=>setForm(f=>({...f,teacherName:v}))}/>
+        <Field label="강사표기" value={form.teacher} onChange={v=>setForm(f=>({...f,teacher:v}))}/>
+        <Area  label="핵심 한줄 요약" value={form.headline} onChange={v=>setForm(f=>({...f,headline:v}))}/>
+        <Field label="집중도(0~100)" type="number" value={form.focus}
+               onChange={v=>setForm(f=>({...f,focus:v}))} placeholder="예: 85"/>
+        <Field label="진행률(%)" type="number" value={form.progressPct}
+               onChange={v=>setForm(f=>({...f,progressPct:v}))} placeholder="예: 60"/>
         <Area  label="다음 수업 계획" value={form.planNext} onChange={v=>setForm(f=>({...f,planNext:v}))}/>
       </div>
 
