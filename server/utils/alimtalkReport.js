@@ -1,87 +1,67 @@
 // server/utils/alimtalkReport.js
-// 등·하원 알림톡 구조를 그대로 따르는 "리포트 전용" 발송기
+// 리포트(강조표기형) 전용 알림톡 발송기 — 버튼은 템플릿 정의를 그대로 사용하고,
+// 템플릿 변수(예: #{code})는 "<변수명>_1" 파라미터로 전달.
 
 const axios = require('axios');
 
-// 강조형 타이틀(2줄) — 등하원 방식 그대로, 변수만 리포트에 맞춤
-// 1행: "#{name} 학생"
-// 2행: "#{course} #{date}"
-const TITLE_TEMPLATE =
-  '#{name} 학생\n#{course} #{date}';
-
-// 본문 — 승인 템플릿과 줄/콜론/띄어쓰기까지 맞춰주세요
-const BODY_TEMPLATE =
-  '1. 과정 : #{course}\n' +
-  '2. 교재 : #{book}\n' +
-  '3. 수업내용 : #{content}\n' +
-  '4. 과제 : #{homework}\n' +
-  '5. 개별 피드백 : #{feedback}\n\n' +
-  "자세한 내용은 아래 '리포트 보기' 버튼을 눌러 확인해주세요.";
-
-function fillTemplate(template, v = {}) {
-  return String(template || '').replace(/#\{(\w+)\}/g, (_, k) => {
-    const key = String(k);
-    return v[key] != null ? String(v[key]) : '';
-  });
-}
-
-// 알리고 버튼 JSON(WL) — 단일 버튼만 사용 (배열 형태로 직렬화)
-function buildButtonJson(button) {
-  if (!button) return undefined;
-  const name   = button.name || '리포트 보기';
-  const linkM  = button.url_mobile || button.linkMobile || button.linkM || '';
-  const linkP  = button.url_pc     || button.linkPc     || button.linkP || linkM;
-  if (!linkM && !linkP) return undefined;
-  return JSON.stringify([{ name, linkType: 'WL', linkM, linkP }]);
-}
+const DEFAULT_SUBJECT = 'IG수학 데일리 리포트';
 
 /**
  * 리포트 알림톡 발송
- * @param {string} phone            수신자 휴대폰번호(숫자만)
- * @param {string} template_code    알리고 리포트용 템플릿 코드(강조형)
- * @param {object} variables        { name, course, date, book, content, homework, feedback, button?, senddate?, failover?, fsubject?, fmessage?, testMode? }
- *  - button: { name?, url_mobile, url_pc }  // 개인화 링크(모바일/PC)
+ * @param {string} phone         수신자 번호(숫자만)
+ * @param {string} templateCode  알리고 템플릿 코드 (강조표기형)
+ * @param {object} vars          {
+ *   emtitle: 최종 강조 타이틀(2줄 포함 가능),
+ *   message: 최종 본문(템플릿과 100% 동일 포맷),
+ *   name?: 수신자명(학생명),
+ *   subject?: 제목(없으면 기본값),
+ *   // 예약/대체문자/테스트모드(선택)
+ *   senddate?, failover?, fsubject?, fmessage?, testMode?,
+ *   // 템플릿 변수 주입(중요): 템플릿/버튼의 #{변수명}에 값을 넣기
+ *   extraVars?: { [varName: string]: string }  // 예: { code: 'abcdef' }
+ * }
  */
-exports.sendReportAlimtalk = async (phone, template_code, variables = {}) => {
-  // 1) 타이틀/본문 조립 (등하원과 동일한 방식 — emtitle_1 + message_1)
-  const emtitle = fillTemplate(TITLE_TEMPLATE, {
-    name:     variables.name     || '',
-    course:   variables.course   || '',
-    date:     variables.date     || ''
-  });
-  const message = fillTemplate(BODY_TEMPLATE, {
-    course:   variables.course   || '',
-    book:     variables.book     || '',
-    content:  variables.content  || '',
-    homework: variables.homework || '',
-    feedback: variables.feedback || ''
-  });
+exports.sendReportAlimtalk = async (phone, templateCode, vars = {}) => {
+  const emtitle = (vars.emtitle || '').toString();
+  const message = (vars.message || '').toString();
+  if (!emtitle || !message) {
+    console.error('[alimtalkReport] emtitle/message 누락');
+    return false;
+  }
 
-  // 2) 파라미터 — 등하원용과 동일 구조(굳이 subject_1 등 추가 안함)
   const params = {
-    apikey:     process.env.ALIGO_API_KEY,
-    userid:     process.env.ALIGO_USER_ID,
-    senderkey:  process.env.ALIGO_SENDER_KEY,
-    tpl_code:   template_code || process.env.DAILY_REPORT_TPL_CODE, // 없으면 ENV에서
-    sender:     process.env.ALIGO_SENDER,
+    apikey:    process.env.ALIGO_API_KEY,
+    userid:    process.env.ALIGO_USER_ID,
+    senderkey: process.env.ALIGO_SENDER_KEY,
+    tpl_code:  templateCode || process.env.DAILY_REPORT_TPL_CODE,
+    sender:    process.env.ALIGO_SENDER,
 
     receiver_1: phone,
-    recvname_1: variables.name || '',
+    recvname_1: vars.name || '',
 
-    emtitle_1:  emtitle,   // 강조형 타이틀
-    message_1:  message    // 본문
+    // 명세상 subject_1 표시: 계정에 따라 필수 취급되므로 안전하게 포함
+    subject_1: vars.subject || DEFAULT_SUBJECT,
+
+    // 강조표기형 필드
+    emtitle_1: emtitle,
+    message_1: message,
+    // ★중요: 버튼은 템플릿 정의를 사용 — 여기서 button_1은 보내지 않습니다★
   };
 
-  // 3) 버튼(JSON) — 템플릿에 웹링크 버튼이 등록되어 있어도 함께 주면 대부분 안전
-  const buttonJson = buildButtonJson(variables.button);
-  if (buttonJson) params.button_1 = buttonJson;
+  // (선택) 예약/대체문자/테스트모드
+  if (vars.senddate)  params.senddate   = vars.senddate;         // YYYYMMDDHHmm
+  if (vars.failover)  params.failover   = vars.failover;         // 'Y' | 'N'
+  if (vars.fsubject)  params.fsubject_1 = vars.fsubject;
+  if (vars.fmessage)  params.fmessage_1 = vars.fmessage;
+  if (vars.testMode)  params.testMode   = vars.testMode;         // 'Y' | 'N'
 
-  // 4) (선택) 예약/대체문자/테스트모드 — 필요시만
-  if (variables.senddate)  params.senddate   = variables.senddate;   // 예: 202509051030
-  if (variables.failover)  params.failover   = variables.failover;   // 'Y' | 'N'
-  if (variables.fsubject)  params.fsubject_1 = variables.fsubject;
-  if (variables.fmessage)  params.fmessage_1 = variables.fmessage;
-  if (variables.testMode)  params.testMode   = variables.testMode;   // 'Y' | 'N'
+  // ★ 템플릿 변수 주입: #{변수명} → "<변수명>_1" 로 전달
+  if (vars.extraVars && typeof vars.extraVars === 'object') {
+    for (const [k, v] of Object.entries(vars.extraVars)) {
+      // ex) #{code} → code_1
+      params[`${k}_1`] = (v ?? '').toString();
+    }
+  }
 
   try {
     const form = new URLSearchParams(params);
