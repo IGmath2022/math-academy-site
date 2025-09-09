@@ -1,147 +1,95 @@
-// server/routes/reportRoutes.js
 const express = require('express');
 const router = express.Router();
-const moment = require('moment-timezone');
-
 const LessonLog = require('../models/LessonLog');
 const User = require('../models/User');
 const Attendance = require('../models/Attendance');
-
-let StudentProfile = null;
-let CounselLog = null;
-try { StudentProfile = require('../models/StudentProfile'); } catch {}
-try { CounselLog = require('../models/CounselLog'); } catch {}
+const moment = require('moment-timezone');
 
 const KST = 'Asia/Seoul';
 
-function firstNonEmpty(arr, def = '') {
-  for (const v of arr) {
-    if (v === 0) return 0;
-    if (v === false) continue;
-    if (v === null || v === undefined) continue;
-    const s = String(v);
-    if (s.trim().length) return v;
-  }
-  return def;
-}
-
-router.get('/api/reports/public/:id', async (req, res) => {
+// 공개 리포트: /r/:code
+router.get('/r/:code', async (req, res) => {
   try {
-    const id = req.params.id;
-    const log = await LessonLog.findById(id).lean();
-    if (!log) return res.status(404).json({ ok: false, message: '리포트를 찾을 수 없습니다.' });
+    const log = await LessonLog.findById(req.params.code).lean();
+    if (!log) return res.status(404).send('<h3>리포트를 찾을 수 없습니다.</h3>');
 
-    const student = await User.findById(log.studentId).lean().catch(() => null);
+    const student = await User.findById(log.studentId).lean();
 
-    // 출결
-    const inOut = await Attendance.find({ userId: log.studentId, date: log.date }).lean();
-    const checkIn  = inOut.find(x => x.type === 'IN')?.time?.slice(0,5) || '';
-    const checkOut = inOut.find(x => x.type === 'OUT')?.time?.slice(0,5) || '';
+    // 출결 + 자동 학습시간 계산
+    const recs = await Attendance.find({ userId: log.studentId, date: log.date }).lean();
+    const checkIn  = recs.find(x => x.type === 'IN')?.time?.slice(0,5) || '';
+    const checkOut = recs.find(x => x.type === 'OUT')?.time?.slice(0,5) || '';
 
-    // 최근 5회
-    const recent = await LessonLog.find({ studentId: log.studentId })
-      .sort({ date: -1 }).limit(5).lean();
-
-    const series = recent.slice().reverse().map(r => ({
-      id: String(r._id),
-      date: r.date,
-      focus: r.focus ?? null,
-      progressPct: r.progressPct ?? null,
-      studyTimeMin: (typeof r.studyTimeMin === 'number' ? r.studyTimeMin :
-                    (typeof r.durationMin === 'number' ? r.durationMin : null)),
-      headline: r.headline || '',
-      tags: Array.isArray(r.tags) ? r.tags : []
-    }));
-
-    // 필드 폴백
-    const course   = firstNonEmpty([log.course, log.courseName, log.curriculum]);
-    const book     = firstNonEmpty([log.book, log.textbook, log.books]);
-    const content  = firstNonEmpty([log.content, log.summary, log.lessonContent, log.classContent]);
-    const homework = firstNonEmpty([log.homework, log.hw, log.assignment]);
-    const feedback = firstNonEmpty([log.feedback, log.comment, log.personalFeedback]);
-
-    const classType    = firstNonEmpty([log.classType, log.class_type]);
-    const teacherName  = firstNonEmpty([log.teacherName, log.teacher, log.tutor]);
-    const studyTimeMin = (typeof log.studyTimeMin === 'number'
-                          ? log.studyTimeMin
-                          : (typeof log.durationMin === 'number' ? log.durationMin : null));
-    const planNext     = firstNonEmpty([log.planNext, log.nextPlan, log.nextLessonPlan]);
-    const tags         = Array.isArray(log.tags) ? log.tags
-                         : (typeof log.tags === 'string' ? log.tags.split(',').map(s=>s.trim()).filter(Boolean) : []);
-
-    // 신규 지표/요약
-    const headline     = firstNonEmpty([log.headline, log.headlineOneLine, log.summaryLine]);
-    const focus        = (typeof log.focus === 'number') ? log.focus : null;
-    const progressPct  = (typeof log.progressPct === 'number') ? log.progressPct : null;
-
-    const dateLabel = moment.tz(log.date, 'YYYY-MM-DD', KST).format('YYYY-MM-DD');
-
-    const report = {
-      id: String(log._id),
-      date: log.date,
-      dateLabel,
-
-      student: { id: String(student?._id || ''), name: student?.name || firstNonEmpty([log.studentName]) || '' },
-      studentName: student?.name || firstNonEmpty([log.studentName]) || '',
-
-      course: course || '',
-      book: book || '',
-      content: content || '',
-      homework: homework || '',
-      feedback: feedback || '',
-
-      classType,
-      teacherName,
-      studyTimeMin,
-      planNext,
-      tags,
-
-      // 신규
-      headline,
-      focus,
-      progressPct,
-
-      // 출결
-      checkIn,
-      checkOut
-    };
-
-    // 프로필/상담(있으면)
-    let profile = null;
-    if (StudentProfile) {
-      const p = await StudentProfile.findOne({ studentId: log.studentId }).lean();
-      if (p) {
-        profile = {
-          publicOn: !!p.publicOn,
-          school: p.school || '',
-          grade: p.grade || '',
-          targetHigh: p.targetHigh || '',
-          targetUniv: p.targetUniv || '',
-          roadmap3m: p.roadmap3m || '',
-          roadmap6m: p.roadmap6m || '',
-          roadmap12m: p.roadmap12m || ''
-        };
+    let studyMin = log.studyTimeMin ?? log.durationMin ?? null;
+    if (studyMin == null) {
+      const ins  = recs.filter(r => r.type === 'IN').map(r => r.time).sort();
+      const outs = recs.filter(r => r.type === 'OUT').map(r => r.time).sort();
+      if (ins.length && outs.length) {
+        const mIn  = moment.tz(`${log.date} ${ins[0]}`, 'YYYY-MM-DD HH:mm:ss', KST);
+        const mOut = moment.tz(`${log.date} ${outs[outs.length-1]}`, 'YYYY-MM-DD HH:mm:ss', KST);
+        const diff = mOut.diff(mIn, 'minutes');
+        studyMin = diff > 0 ? diff : 0;
       }
     }
 
-    let counsels = [];
-    if (CounselLog) {
-      const cs = await CounselLog.find({ studentId: log.studentId, publicOn: true })
-        .sort({ date: -1 }).limit(3).lean();
-      counsels = cs.map(c => ({ date: c.date, memo: c.memo || '' }));
-    }
+    const dateLabel = moment.tz(log.date, 'YYYY-MM-DD', KST).format('YYYY-MM-DD');
+    const fmt = s => String(s || '-').replace(/\n/g,'<br/>');
 
-    return res.json({ ok: true, report, series, profile, counsels });
+    const html = `<!doctype html>
+<html lang="ko"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>IG수학학원 데일리 리포트</title>
+<link href="https://cdn.jsdelivr.net/npm/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+<style>
+  body{font-family:Pretendard,system-ui,-apple-system,Segoe UI,Roboto,'Noto Sans KR',sans-serif;background:#f5f7fb;margin:0}
+  .wrap{max-width:920px;margin:24px auto;padding:20px}
+  .card{background:#fff;border-radius:18px;box-shadow:0 6px 20px #0001;overflow:hidden;margin-bottom:18px}
+  .hd{padding:22px 26px;background:linear-gradient(180deg,#f7fbff,#eef4ff)}
+  .tit{font-size:26px;font-weight:800;margin:6px 0 2px}
+  .sub{color:#5a6; font-size:14px;font-weight:700}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;padding:18px 26px}
+  .col{padding:0}
+  h4{margin:4px 0 10px;font-size:16px;color:#223}
+  .box{background:#f9fbff;border:1px solid #e5ecff;border-radius:12px;padding:14px;min-height:44px}
+  .footer{padding:14px 26px;text-align:center;color:#6a7}
+  @media (max-width:768px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="hd">
+      <div class="sub">IG수학학원 데일리 리포트</div>
+      <div class="tit">${student?.name || '학생'} 학생</div>
+      <div style="color:#5b6">${fmt(log.course)} · ${dateLabel}</div>
+    </div>
+    <div class="grid">
+      <div class="col">
+        <h4>과정</h4><div class="box">${fmt(log.course)}</div>
+        <h4>교재</h4><div class="box">${fmt(log.book)}</div>
+        <h4>수업내용</h4><div class="box">${fmt(log.content)}</div>
+        <h4>과제</h4><div class="box">${fmt(log.homework)}</div>
+        <h4>개별 피드백</h4><div class="box">${fmt(log.feedback)}</div>
+      </div>
+      <div class="col">
+        <h4>출결</h4><div class="box">등원 ${checkIn || '-'} / 하원 ${checkOut || '-'}</div>
+        <h4>학습시간(분)</h4><div class="box">${(studyMin ?? '-') }</div>
+        <h4>형태·강사</h4><div class="box">${fmt(log.classType)} / ${fmt(log.teacherName || log.teacher)}</div>
+        <h4>태그</h4><div class="box">${(log.tags||[]).join(', ') || '-'}</div>
+        <h4>다음 수업 계획</h4><div class="box">${fmt(log.planNext || log.nextPlan)}</div>
+      </div>
+    </div>
+  </div>
+  <div class="footer">이 링크는 리포트 열람용 공개 페이지입니다.</div>
+</div>
+</body></html>`;
+
+    res.setHeader('Content-Type','text/html; charset=utf-8');
+    res.send(html);
   } catch (e) {
-    console.error('[reportRoutes /api/reports/public/:id] ERR:', e);
-    return res.status(500).json({ ok: false, message: '리포트 조회 중 오류가 발생했습니다.' });
+    console.error('[reportRoutes]', e);
+    res.status(500).send('<h3>리포트 생성 중 오류가 발생했습니다.</h3>');
   }
-});
-
-// 서버로 온 /r/:code는 프론트로 리다이렉트
-router.get('/r/:code', (req, res) => {
-  const FRONT_BASE = (process.env.FRONT_BASE_URL || 'https://ig-math-2022.onrender.com').replace(/\/+$/, '');
-  res.redirect(302, `${FRONT_BASE}/r/${encodeURIComponent(req.params.code)}`);
 });
 
 module.exports = router;
