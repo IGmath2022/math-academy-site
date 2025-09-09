@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { API_URL } from "../api";
+import Blog from "./Blog";
 
 // Student
 import StudentProgressCalendar from "../components/Student/StudentProgressCalendar";
