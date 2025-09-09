@@ -1,8 +1,6 @@
 // server/utils/formatDailyReport.js
 // 템플릿 본문과 100% 일치하도록 message_1 문자열을 생성한다.
 
-const TAIL_LINE = "자세한 내용은 아래 '리포트 보기' 버튼을 눌러 확인해주세요."; // 템플릿과 동일 문구
-
 function _clip(text = '', max) {
   const s = String(text || '').trim();
   if (!max || s.length <= max) return s;
@@ -47,7 +45,7 @@ function buildDailyTemplateMessage({ studentName, course, dateLabel, book, conte
     `4. 과제 : ${h || '-'}`,
     `5. 개별 피드백 : ${f || '-'}`,
     '',                       // 빈 줄
-    TAIL_LINE,
+    "자세한 내용은 아래 '리포트 보기' 버튼을 눌러 확인해주세요.",
   ];
   return lines.join('\r\n');
 }

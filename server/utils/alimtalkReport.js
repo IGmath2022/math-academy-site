@@ -1,67 +1,84 @@
 // server/utils/alimtalkReport.js
-// 리포트(강조표기형) 전용 알림톡 발송기 — 버튼은 템플릿 정의를 그대로 사용하고,
-// 템플릿 변수(예: #{code})는 "<변수명>_1" 파라미터로 전달.
+// 데일리 리포트(강조표기형) 전용. 템플릿 버튼(WL) 포함 전송.
 
 const axios = require('axios');
 
-const DEFAULT_SUBJECT = 'IG수학 데일리 리포트';
+// 2줄 강조 타이틀(템플릿과 동일 레이아웃)
+const TITLE_TEMPLATE =
+  '#{학생명} 학생\n' +
+  '#{과정} #{수업일자}';
+
+// 본문(템플릿과 100% 동일해야 함)
+const BODY_TEMPLATE = [
+  'IG수학학원 데일리 리포트',
+  '',
+  '#{학생명} 학생',
+  '#{과정} #{수업일자}',
+  '',
+  '1. 과정 : #{과정}',
+  '2. 교재 : #{교재}',
+  '3. 수업내용 : #{수업요약}',
+  '4. 과제 : #{과제요약}',
+  '5. 개별 피드백 : #{피드백요약}',
+  '',
+  "자세한 내용은 아래 '리포트 보기' 버튼을 눌러 확인해주세요."
+].join('\n'); // 필요 시 '\r\n'로만 교체하면 됩니다.
+
+function fill(tpl, v = {}) {
+  return String(tpl)
+    .replace(/#\{학생명\}/g, v.학생명 ?? '')
+    .replace(/#\{과정\}/g, v.과정 ?? '')
+    .replace(/#\{수업일자\}/g, v.수업일자 ?? '')
+    .replace(/#\{교재\}/g, v.교재 ?? '')
+    .replace(/#\{수업요약\}/g, v.수업요약 ?? '')
+    .replace(/#\{과제요약\}/g, v.과제요약 ?? '')
+    .replace(/#\{피드백요약\}/g, v.피드백요약 ?? '');
+}
 
 /**
- * 리포트 알림톡 발송
- * @param {string} phone         수신자 번호(숫자만)
- * @param {string} templateCode  알리고 템플릿 코드 (강조표기형)
- * @param {object} vars          {
- *   emtitle: 최종 강조 타이틀(2줄 포함 가능),
- *   message: 최종 본문(템플릿과 100% 동일 포맷),
- *   name?: 수신자명(학생명),
- *   subject?: 제목(없으면 기본값),
- *   // 예약/대체문자/테스트모드(선택)
- *   senddate?, failover?, fsubject?, fmessage?, testMode?,
- *   // 템플릿 변수 주입(중요): 템플릿/버튼의 #{변수명}에 값을 넣기
- *   extraVars?: { [varName: string]: string }  // 예: { code: 'abcdef' }
- * }
+ * 리포트 알림톡 전송(강조표기형 + WL 버튼)
+ * @param {string} phone             수신자 번호
+ * @param {string} templateCode      알리고 템플릿 코드(예: 'IG_DAILY_REPORT_V1')
+ * @param {object} v                 템플릿 변수
+ *   - 학생명, 과정, 수업일자, 교재, 수업요약, 과제요약, 피드백요약, code
  */
-exports.sendReportAlimtalk = async (phone, templateCode, vars = {}) => {
-  const emtitle = (vars.emtitle || '').toString();
-  const message = (vars.message || '').toString();
-  if (!emtitle || !message) {
-    console.error('[alimtalkReport] emtitle/message 누락');
-    return false;
-  }
+exports.sendReportAlimtalk = async (phone, templateCode, v = {}) => {
+  const emtitle  = fill(TITLE_TEMPLATE, v);
+  const message  = fill(BODY_TEMPLATE, v);
+
+  // 템플릿에 등록한 버튼: 웹링크(WL)
+  // 링크에 #{code} 변수 사용 -> 전송 시 code_1 로 치환값 전달
+  const buttonJson = JSON.stringify({
+    button: [{
+      name: '리포트 보기',
+      linkType: 'WL',
+      linkM: 'https://ig-math-2022.onrender.com/r/#{code}',
+      linkP: 'https://ig-math-2022.onrender.com/r/#{code}'
+    }]
+  });
 
   const params = {
     apikey:    process.env.ALIGO_API_KEY,
     userid:    process.env.ALIGO_USER_ID,
     senderkey: process.env.ALIGO_SENDER_KEY,
-    tpl_code:  templateCode || process.env.DAILY_REPORT_TPL_CODE,
+    tpl_code:  templateCode,
     sender:    process.env.ALIGO_SENDER,
 
     receiver_1: phone,
-    recvname_1: vars.name || '',
+    recvname_1: v.학생명 ?? '',
 
-    // 명세상 subject_1 표시: 계정에 따라 필수 취급되므로 안전하게 포함
-    subject_1: vars.subject || DEFAULT_SUBJECT,
-
-    // 강조표기형 필드
+    // 강조형 필드
     emtitle_1: emtitle,
     message_1: message,
-    // ★중요: 버튼은 템플릿 정의를 사용 — 여기서 button_1은 보내지 않습니다★
+
+    // 템플릿 버튼 스펙과 동일하게 전송(+ 변수 치환값)
+    button_1: buttonJson,
+    code_1:   String(v.code ?? ''),
+
+    // (문서상 subject_1 필수 표기지만, 강조형에서는 미사용인 계정도 있음)
+    // 문제될 경우만 아래 한 줄 활성화
+    // subject_1: 'IG수학 데일리 리포트',
   };
-
-  // (선택) 예약/대체문자/테스트모드
-  if (vars.senddate)  params.senddate   = vars.senddate;         // YYYYMMDDHHmm
-  if (vars.failover)  params.failover   = vars.failover;         // 'Y' | 'N'
-  if (vars.fsubject)  params.fsubject_1 = vars.fsubject;
-  if (vars.fmessage)  params.fmessage_1 = vars.fmessage;
-  if (vars.testMode)  params.testMode   = vars.testMode;         // 'Y' | 'N'
-
-  // ★ 템플릿 변수 주입: #{변수명} → "<변수명>_1" 로 전달
-  if (vars.extraVars && typeof vars.extraVars === 'object') {
-    for (const [k, v] of Object.entries(vars.extraVars)) {
-      // ex) #{code} → code_1
-      params[`${k}_1`] = (v ?? '').toString();
-    }
-  }
 
   try {
     const form = new URLSearchParams(params);
