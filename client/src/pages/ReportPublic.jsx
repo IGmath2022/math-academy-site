@@ -36,7 +36,7 @@ export default function ReportPublic() {
       try {
         const { data } = await axios.get(`${API_URL}/api/reports/public/${code}`);
         if (mounted) setData(data);
-      } catch (e) {
+      } catch {
         setErr("리포트를 불러올 수 없습니다.");
       }
     })();
@@ -46,7 +46,7 @@ export default function ReportPublic() {
   if (err) return <div style={{ maxWidth: 920, margin: "32px auto", padding: 16 }}>{err}</div>;
   if (!data) return <div style={{ maxWidth: 920, margin: "32px auto", padding: 16 }}>불러오는 중…</div>;
 
-  const { student, log, attendance, series, profile, counsels } = data;
+  const { student, log, attendance, profile, counsels } = data;
   const dateLabel = log?.dateLabel || log?.date || "";
 
   return (
@@ -71,21 +71,24 @@ export default function ReportPublic() {
             </div>
 
             <div>
-              <Section title="출결" body={
-                <>등원 {attendance?.checkIn || "-"} / 하원 {attendance?.checkOut || "-"}</>
-              } />
-              <Section title="형태·강사" body={
-                <>{log?.classType || "-"} / {log?.teacher || "-"}</>
-              } />
+              <Section
+                title="출결"
+                body={<>등원 {attendance?.checkIn || log?.inTime || "-"} / 하원 {attendance?.checkOut || log?.outTime || "-"}</>}
+              />
+              <Section title="형태·강사" body={<>{log?.classType || "-"} / {log?.teacher || "-"}</>} />
               {!!log?.headline && <Section title="핵심 한줄" body={fmtNewline(log.headline)} />}
-              <Section title="태그" body={
-                (log?.tags || []).length
-                  ? <div>{log.tags.map((t,i)=><span key={i} style={tag}>{t}</span>)}</div>
-                  : <>-</>
-              } />
-              <Section title="학습지표" body={
-                <>집중도: {log?.focus ?? "-"} · 학습시간: {fmtHM(log?.durationMin)} · 진행률: {log?.progressPct ?? "-"}%</>
-              } />
+              <Section
+                title="태그"
+                body={
+                  (log?.tags || []).length
+                    ? <div>{log.tags.map((t,i)=><span key={i} style={tag}>{t}</span>)}</div>
+                    : <>-</>
+                }
+              />
+              <Section
+                title="학습지표"
+                body={<>집중도: {log?.focus ?? "-"} · 학습시간: {fmtHM(log?.durationMin)} · 진행률: {log?.progressPct ?? "-"}%</>}
+              />
             </div>
           </div>
         </div>

@@ -20,20 +20,23 @@ function getDailyTplCodeFallback() {
   return null;
 }
 
-/** IN/OUT 으로 학습시간(분) 계산 */
-async function computeStudyTimeMinFromAttendance(studentId, date) {
+/** 출결에서 첫 IN, 마지막 OUT, 학습시간(분) 계산 */
+async function getInOutAndDuration(studentId, date) {
   const rows = await Attendance.find({ userId: studentId, date }).lean();
   const ins  = rows.filter(r => r.type === 'IN').map(r => r.time).sort();
   const outs = rows.filter(r => r.type === 'OUT').map(r => r.time).sort();
-  if (!ins.length || !outs.length) return null;
 
-  const firstIn  = ins[0];                    // 가장 이른 등원
-  const lastOut  = outs[outs.length - 1];     // 가장 늦은 하원
-  const start = moment.tz(`${date} ${firstIn}`, 'YYYY-MM-DD HH:mm:ss', KST);
-  const end   = moment.tz(`${date} ${lastOut}`, 'YYYY-MM-DD HH:mm:ss', KST);
-  let diffMin = end.diff(start, 'minutes');
-  if (!Number.isFinite(diffMin) || diffMin < 0) diffMin = 0;
-  return diffMin;
+  const inTime  = ins.length  ? ins[0].slice(0,5) : null;                // HH:mm
+  const outTime = outs.length ? outs[outs.length - 1].slice(0,5) : null; // HH:mm
+
+  let durationMin = null;
+  if (inTime && outTime) {
+    const start = moment.tz(`${date} ${inTime}:00`,  'YYYY-MM-DD HH:mm:ss', KST);
+    const end   = moment.tz(`${date} ${outTime}:00`, 'YYYY-MM-DD HH:mm:ss', KST);
+    const diff  = end.diff(start, 'minutes');
+    durationMin = Number.isFinite(diff) && diff >= 0 ? diff : 0;
+  }
+  return { inTime, outTime, durationMin };
 }
 
 // ====== 날짜별 목록(등원 ∪ 해당일 로그보유) ======
@@ -88,7 +91,6 @@ exports.getDetail = async (req, res) => {
   const log = await LessonLog.findOne({ studentId, date }).lean();
   if (!log) return res.json({});
 
-  // 프론트 호환용 별칭(studyTimeMin) 포함
   res.json({
     ...log,
     studyTimeMin: log.durationMin ?? null
@@ -113,10 +115,12 @@ exports.createOrUpdate = async (req, res) => {
     body.feedback = body.feedback.slice(0, 1999) + '…';
   }
 
-  // durationMin 없으면 Attendance로 자동 계산해서 채움
-  if (body.durationMin === undefined || body.durationMin === null || body.durationMin === '') {
-    const autoMin = await computeStudyTimeMinFromAttendance(studentId, date);
-    if (autoMin !== null) body.durationMin = autoMin;
+  // 출결 기반 in/out/duration 자동 보정
+  const { inTime, outTime, durationMin } = await getInOutAndDuration(studentId, date);
+  if (inTime  != null) body.inTime  = inTime;
+  if (outTime != null) body.outTime = outTime;
+  if ((body.durationMin === undefined || body.durationMin === null || body.durationMin === '') && durationMin != null) {
+    body.durationMin = durationMin;
   }
 
   const doc = await LessonLog.findOneAndUpdate(
@@ -153,14 +157,15 @@ exports.sendOne = async (req, res) => {
       return res.status(400).json({ message: '학부모 연락처 없음' });
     }
 
-    // 발송 전 durationMin 자동 보정(없으면 계산해서 저장)
-    if (log.durationMin === undefined || log.durationMin === null) {
-      const autoMin = await computeStudyTimeMinFromAttendance(log.studentId, log.date);
-      if (autoMin !== null) {
-        log.durationMin = autoMin;
-        await log.save();
-      }
+    // 발송 전 출결 기반 보정(없으면 계산해서 저장)
+    const { inTime, outTime, durationMin } = await getInOutAndDuration(log.studentId, log.date);
+    let changed = false;
+    if (inTime  && !log.inTime)  { log.inTime = inTime; changed = true; }
+    if (outTime && !log.outTime) { log.outTime = outTime; changed = true; }
+    if ((log.durationMin === undefined || log.durationMin === null) && durationMin != null) {
+      log.durationMin = durationMin; changed = true;
     }
+    if (changed) await log.save();
 
     let tpl = getDailyTplCodeFallback();
     if (!tpl) tpl = await getSetting('daily_tpl_code', '');

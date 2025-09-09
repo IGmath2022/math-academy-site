@@ -4,6 +4,8 @@ const router = express.Router();
 const LessonLog = require('../models/LessonLog');
 const User = require('../models/User');
 const Attendance = require('../models/Attendance');
+const StudentProfile = require('../models/StudentProfile'); // 선택
+const CounselLog = require('../models/CounselLog');         // 선택
 const moment = require('moment-timezone');
 
 const KST = 'Asia/Seoul';
@@ -17,19 +19,15 @@ async function loadReportData(code, recentLimit = 10) {
 
   // 당일 출결 + 학습시간 계산
   const recs = await Attendance.find({ userId: log.studentId, date: log.date }).lean();
-  const checkIn  = recs.find(x => x.type === 'IN')?.time?.slice(0, 5) || '';
-  const checkOut = recs.find(x => x.type === 'OUT')?.time?.slice(0, 5) || '';
+  const checkIn  = recs.filter(x => x.type === 'IN').sort((a,b)=>a.time.localeCompare(b.time))[0]?.time?.slice(0,5) || (log.inTime  || '');
+  const checkOut = recs.filter(x => x.type === 'OUT').sort((a,b)=>b.time.localeCompare(a.time))[0]?.time?.slice(0,5) || (log.outTime || '');
 
-  let studyMin = log.studyTimeMin ?? log.durationMin ?? null;
-  if (studyMin == null) {
-    const ins  = recs.filter(r => r.type === 'IN').map(r => r.time).sort();
-    const outs = recs.filter(r => r.type === 'OUT').map(r => r.time).sort();
-    if (ins.length && outs.length) {
-      const mIn  = moment.tz(`${log.date} ${ins[0]}`, 'YYYY-MM-DD HH:mm:ss', KST);
-      const mOut = moment.tz(`${log.date} ${outs[outs.length - 1]}`, 'YYYY-MM-DD HH:mm:ss', KST);
-      const diff = mOut.diff(mIn, 'minutes');
-      studyMin = diff > 0 ? diff : 0;
-    }
+  let studyMin = log.durationMin ?? log.studyTimeMin ?? null;
+  if (studyMin == null && checkIn && checkOut) {
+    const mIn  = moment.tz(`${log.date} ${checkIn}:00`,  'YYYY-MM-DD HH:mm:ss', KST);
+    const mOut = moment.tz(`${log.date} ${checkOut}:00`, 'YYYY-MM-DD HH:mm:ss', KST);
+    const diff = mOut.diff(mIn, 'minutes');
+    studyMin = diff > 0 ? diff : 0;
   }
 
   // 누적(최근 N회) — 최신이 먼저
@@ -41,14 +39,17 @@ async function loadReportData(code, recentLimit = 10) {
   // 각 회차 메타 + 출결기반 학습시간 + 지표
   const recentWithMeta = await Promise.all(
     recent.map(async (r) => {
-      let m = r.studyTimeMin ?? r.durationMin ?? null;
+      // 우선 저장값
+      let m = r.durationMin ?? r.studyTimeMin ?? null;
+
+      // 없으면 출결로 계산
       if (m == null) {
         const recs2 = await Attendance.find({ userId: r.studentId, date: r.date }).lean();
-        const ins2  = recs2.filter(x => x.type === 'IN').map(x => x.time).sort();
-        const outs2 = recs2.filter(x => x.type === 'OUT').map(x => x.time).sort();
-        if (ins2.length && outs2.length) {
-          const mi  = moment.tz(`${r.date} ${ins2[0]}`, 'YYYY-MM-DD HH:mm:ss', KST);
-          const mo  = moment.tz(`${r.date} ${outs2[outs2.length - 1]}`, 'YYYY-MM-DD HH:mm:ss', KST);
+        const in2  = recs2.filter(x => x.type === 'IN').sort((a,b)=>a.time.localeCompare(b.time))[0]?.time?.slice(0,5) || r.inTime || null;
+        const out2 = recs2.filter(x => x.type === 'OUT').sort((a,b)=>b.time.localeCompare(a.time))[0]?.time?.slice(0,5) || r.outTime || null;
+        if (in2 && out2) {
+          const mi  = moment.tz(`${r.date} ${in2}:00`,  'YYYY-MM-DD HH:mm:ss', KST);
+          const mo  = moment.tz(`${r.date} ${out2}:00`, 'YYYY-MM-DD HH:mm:ss', KST);
           const dff = mo.diff(mi, 'minutes');
           m = dff > 0 ? dff : 0;
         }
@@ -60,19 +61,51 @@ async function loadReportData(code, recentLimit = 10) {
         headline: r.headline || '',
         tags: r.tags || [],
         studyTimeMin: m,
-        focus: r.focus ?? null,          // 0~100
+        focus: r.focus ?? null,            // 0~100
         progressPct: r.progressPct ?? null // %
       };
     })
   );
 
+  // 선택: 프로필/상담
+  let profileOut = null;
+  try {
+    const profile = await StudentProfile.findOne({ studentId: log.studentId }).lean();
+    if (profile?.publicOn) {
+      profileOut = {
+        publicOn: true,
+        school: profile.school || '',
+        grade: profile.grade || '',
+        targetHigh: profile.targetHigh || '',
+        targetUniv: profile.targetUniv || '',
+        roadmap3m: profile.roadmap3m || '',
+        roadmap6m: profile.roadmap6m || '',
+        roadmap12m: profile.roadmap12m || ''
+      };
+    }
+  } catch {}
+
+  let counselOut = [];
+  try {
+    const counsels = await CounselLog.find({ studentId: log.studentId, publicOn: true })
+      .sort({ date: -1 }).limit(3).lean();
+    counselOut = (counsels || []).map(c => ({ date: c.date, memo: c.memo }));
+  } catch {}
+
+  const dateLabel = moment.tz(log.date, 'YYYY-MM-DD', KST).format('YYYY-MM-DD');
+
   return {
-    log,
     student,
+    log: {
+      ...log,
+      dateLabel
+    },
     checkIn,
     checkOut,
     studyMin,
-    recent: recentWithMeta
+    recent: recentWithMeta,
+    profile: profileOut,
+    counsels: counselOut
   };
 }
 
@@ -84,9 +117,11 @@ router.get('/api/reports/public/:code', async (req, res) => {
     res.json({
       student: { _id: data.student?._id, name: data.student?.name || '' },
       log: data.log,
-      attendance: { in: data.checkIn, out: data.checkOut },
+      attendance: { checkIn: data.checkIn, checkOut: data.checkOut }, // ⬅︎ 프론트 키와 일치
       studyTimeMin: data.studyMin,
-      recent: data.recent
+      recent: data.recent,
+      profile: data.profile,
+      counsels: data.counsels
     });
   } catch (e) {
     console.error('[reportRoutes.json]', e);
@@ -135,12 +170,10 @@ router.get('/r/:code', async (req, res) => {
   .tag{display:inline-block;background:#eef2ff;border:1px solid #dde5ff;color:#345;padding:2px 8px;border-radius:999px;margin-right:6px;margin-bottom:4px;font-size:12px}
   @media (max-width:768px){.grid{grid-template-columns:1fr}}
 </style>
-<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
 <div class="wrap">
-  <!-- 현재 회차 -->
   <div class="card">
     <div class="hd">
       <div class="sub">IG수학학원 데일리 리포트</div>
@@ -165,41 +198,6 @@ router.get('/r/:code', async (req, res) => {
     </div>
   </div>
 
-  <!-- 누적(최근 N회) -->
-  <div class="card">
-    <div class="hd">
-      <div class="tit">누적 리포트 (최근 ${recent.length}회)</div>
-    </div>
-    <div style="padding: 12px 18px 18px">
-      <table>
-        <thead>
-          <tr>
-            <th style="width:110px">날짜</th>
-            <th style="width:180px">과정</th>
-            <th style="width:120px">학습시간(분)</th>
-            <th>핵심/태그</th>
-            <th style="width:120px">보기</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${recent.map(r => `
-            <tr>
-              <td>${r.date}</td>
-              <td>${(r.course||'-')}</td>
-              <td>${r.studyTimeMin ?? '-'}</td>
-              <td>
-                ${(r.headline||'').replace(/\n/g,'<br/>')}
-                ${(r.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('')}
-              </td>
-              <td><a href="/r/${r._id}" target="_blank">열람</a></td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- 최근 추세 차트 -->
   <div class="card">
     <div class="hd">
       <div class="tit">최근 추세</div>
@@ -219,39 +217,20 @@ router.get('/r/:code', async (req, res) => {
   const focus    = series.map(s => s.focus == null ? null : Number(s.focus));
   const progress = series.map(s => s.progress == null ? null : Number(s.progress));
   const duration = series.map(s => s.duration == null ? null : Number(s.duration));
-
-  // null 값을 0으로 처리(차트 끊김 방지). 끊김을 원하면 그대로 두고 spanGaps 옵션 사용해도 됨.
   const nz = arr => arr.map(v => (v == null ? 0 : v));
 
-  // 집중도(라인)
   new Chart(document.getElementById('chartFocus'), {
     type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        label: '집중도(0~100)',
-        data: nz(focus),
-        tension: 0.3
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        y: { suggestedMin: 0, suggestedMax: 100, ticks: { stepSize: 20 } }
-      }
-    }
+    data: { labels, datasets: [{ label: '집중도(0~100)', data: nz(focus), tension: 0.3 }]},
+    options: { responsive: true, scales: { y: { suggestedMin: 0, suggestedMax: 100, ticks: { stepSize: 20 } } } }
   });
 
-  // 진행률/학습시간(막대)
   new Chart(document.getElementById('chartBar'), {
     type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        { label: '진행률(%)', data: nz(progress) },
-        { label: '학습시간(분)', data: nz(duration) }
-      ]
-    },
+    data: { labels, datasets: [
+      { label: '진행률(%)', data: nz(progress) },
+      { label: '학습시간(분)', data: nz(duration) }
+    ]},
     options: { responsive: true }
   });
 </script>
