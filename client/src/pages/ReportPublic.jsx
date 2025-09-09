@@ -5,7 +5,7 @@ import axios from "axios";
 import { API_URL } from "../api";
 
 export default function ReportPublic() {
-  const { code } = useParams(); // /r/:code
+  const { code } = useParams();
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
 
@@ -57,6 +57,8 @@ export default function ReportPublic() {
             <Section title="형태·강사" value={`${fmt(r.classType)} / ${fmt(r.teacherName)}`} />
             <Section title="학습시간(분)" value={r.studyTimeMin ?? "-"} />
             <Section title="다음 수업 계획" value={fmt(r.planNext)} multiline />
+            <Section title="핵심 한줄" value={fmt(r.headline)} />
+            <Section title="학습 지표" value={`집중도 ${r.focus ?? "-"} · 진행률 ${r.progressPct ?? "-"}%`} />
             <div style={{marginBottom:12}}>
               <h4 style={h4}>태그</h4>
               <div style={box}>

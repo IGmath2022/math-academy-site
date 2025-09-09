@@ -25,14 +25,12 @@ function firstNonEmpty(arr, def = '') {
   return def;
 }
 
-/** 공개 JSON */
 router.get('/api/reports/public/:id', async (req, res) => {
   try {
     const id = req.params.id;
     const log = await LessonLog.findById(id).lean();
     if (!log) return res.status(404).json({ ok: false, message: '리포트를 찾을 수 없습니다.' });
 
-    // 학생
     const student = await User.findById(log.studentId).lean().catch(() => null);
 
     // 출결
@@ -55,7 +53,7 @@ router.get('/api/reports/public/:id', async (req, res) => {
       tags: Array.isArray(r.tags) ? r.tags : []
     }));
 
-    // 값 폴백(이전/다른 이름까지 커버)
+    // 필드 폴백
     const course   = firstNonEmpty([log.course, log.courseName, log.curriculum]);
     const book     = firstNonEmpty([log.book, log.textbook, log.books]);
     const content  = firstNonEmpty([log.content, log.summary, log.lessonContent, log.classContent]);
@@ -71,6 +69,11 @@ router.get('/api/reports/public/:id', async (req, res) => {
     const tags         = Array.isArray(log.tags) ? log.tags
                          : (typeof log.tags === 'string' ? log.tags.split(',').map(s=>s.trim()).filter(Boolean) : []);
 
+    // 신규 지표/요약
+    const headline     = firstNonEmpty([log.headline, log.headlineOneLine, log.summaryLine]);
+    const focus        = (typeof log.focus === 'number') ? log.focus : null;
+    const progressPct  = (typeof log.progressPct === 'number') ? log.progressPct : null;
+
     const dateLabel = moment.tz(log.date, 'YYYY-MM-DD', KST).format('YYYY-MM-DD');
 
     const report = {
@@ -78,23 +81,25 @@ router.get('/api/reports/public/:id', async (req, res) => {
       date: log.date,
       dateLabel,
 
-      // 학생 정보(중복 제공: nested + flat)
       student: { id: String(student?._id || ''), name: student?.name || firstNonEmpty([log.studentName]) || '' },
       studentName: student?.name || firstNonEmpty([log.studentName]) || '',
 
-      // 본문
       course: course || '',
       book: book || '',
       content: content || '',
       homework: homework || '',
       feedback: feedback || '',
 
-      // 확장
       classType,
       teacherName,
       studyTimeMin,
       planNext,
       tags,
+
+      // 신규
+      headline,
+      focus,
+      progressPct,
 
       // 출결
       checkIn,
@@ -133,7 +138,7 @@ router.get('/api/reports/public/:id', async (req, res) => {
   }
 });
 
-/** 안전 리다이렉트(서버 도메인으로 /r/:code 들어온 경우 프론트로 보내기) */
+// 서버로 온 /r/:code는 프론트로 리다이렉트
 router.get('/r/:code', (req, res) => {
   const FRONT_BASE = (process.env.FRONT_BASE_URL || 'https://ig-math-2022.onrender.com').replace(/\/+$/, '');
   res.redirect(302, `${FRONT_BASE}/r/${encodeURIComponent(req.params.code)}`);
