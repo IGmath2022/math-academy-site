@@ -10,6 +10,7 @@ import Materials from "./pages/Materials";
 import Contact from "./pages/Contact";
 import Blog from "./pages/Blog";
 import AttendancePage from './pages/AttendancePage';
+import ReportPublic from "./pages/ReportPublic";
 
 function App() {
   return (
@@ -33,6 +34,13 @@ function App() {
         >
           <Route index element={<AttendancePage />} />
         </Route>
+        {/* 공개 리포트 뷰 */}
+      <Route
+         path="/r/:code"
+         element={<Layout hideNavBar={true} />}
+       >
+         <Route index element={<ReportPublic />} />
+       </Route>
       </Routes>
     </BrowserRouter>
   );
