@@ -1,3 +1,4 @@
+// client/App.js
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
@@ -9,7 +10,7 @@ import Layout from "./components/Layout";
 import Materials from "./pages/Materials";
 import Contact from "./pages/Contact";
 import Blog from "./pages/Blog";
-import AttendancePage from './pages/AttendancePage';
+import AttendancePage from "./pages/AttendancePage";
 import ReportPublic from "./pages/ReportPublic";
 
 function App() {
@@ -27,22 +28,19 @@ function App() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/blog" element={<Blog />} />
         </Route>
+
         {/* NavBar/FloatingContact 없는 Layout */}
-        <Route
-          path="/attendancePage"
-          element={<Layout hideNavBar={true} />}
-        >
+        <Route path="/attendancePage" element={<Layout hideNavBar={true} />}>
           <Route index element={<AttendancePage />} />
         </Route>
+
         {/* 공개 리포트 뷰 */}
-      <Route
-         path="/r/:code"
-         element={<Layout hideNavBar={true} />}
-       >
-         <Route index element={<ReportPublic />} />
-       </Route>
+        <Route path="/r/:code" element={<Layout hideNavBar={true} />}>
+          <Route index element={<ReportPublic />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );
 }
+
 export default App;
