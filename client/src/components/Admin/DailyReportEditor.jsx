@@ -5,12 +5,11 @@ import { API_URL } from "../../api";
 
 export default function DailyReportEditor() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0,10));
-  const [list, setList] = useState([]);          // /by-date 목록 (이름/출결/상태)
+  const [list, setList] = useState([]);           // /by-date 목록 (이름/출결/상태)
   const [studentId, setStudentId] = useState(""); // 선택된 학생
   const [form, setForm] = useState({
     course: "", book: "", content: "", homework: "", feedback: "",
-    tags: "", classType: "", teacherName: "", studyTimeMin: "",
-    planNext: "", headline: "", focus: "", progressPct: ""
+    tags: "", classType: "", teacherName: "", planNext: ""
   });
   const [msg, setMsg] = useState("");
   const token = localStorage.getItem("token");
@@ -44,18 +43,13 @@ export default function DailyReportEditor() {
           tags: (data?.tags || []).join(", "),
           classType: data?.classType || "",
           teacherName: data?.teacherName || "",
-          studyTimeMin: data?.studyTimeMin ?? "",
-          planNext: data?.planNext || "",
-          headline: data?.headline || "",
-          focus: (data?.focus ?? "") === null ? "" : (data?.focus ?? ""),
-          progressPct: (data?.progressPct ?? "") === null ? "" : (data?.progressPct ?? "")
+          planNext: data?.planNext || ""
         });
       } catch {
         // 없으면 빈 폼
         setForm({
           course: "", book: "", content: "", homework: "", feedback: "",
-          tags: "", classType: "", teacherName: "", studyTimeMin: "",
-          planNext: "", headline: "", focus: "", progressPct: ""
+          tags: "", classType: "", teacherName: "", planNext: ""
         });
       }
     };
@@ -70,9 +64,6 @@ export default function DailyReportEditor() {
       const d = new Date(date + "T10:30:00");
       const tmr = new Date(d.getTime() + 24*60*60*1000);
 
-      const toNum = v => (v === "" || v === null || v === undefined) ? undefined : Number(v);
-      const clamp = (n, lo, hi) => (typeof n === "number" && !isNaN(n) ? Math.max(lo, Math.min(hi, n)) : undefined);
-
       const payload = {
         studentId,
         date,
@@ -84,11 +75,7 @@ export default function DailyReportEditor() {
         tags: form.tags.split(",").map(s => s.trim()).filter(Boolean),
         classType: form.classType,
         teacherName: form.teacherName,
-        studyTimeMin: toNum(form.studyTimeMin),
         planNext: form.planNext,
-        headline: form.headline,
-        focus: clamp(toNum(form.focus), 0, 100),
-        progressPct: clamp(toNum(form.progressPct), 0, 100),
         notifyStatus: "대기",
         scheduledAt: tmr
       };
@@ -128,13 +115,7 @@ export default function DailyReportEditor() {
         <Field label="태그(쉼표 구분)" value={form.tags} onChange={v=>setForm(f=>({...f,tags:v}))}/>
         <Field label="수업형태" value={form.classType} onChange={v=>setForm(f=>({...f,classType:v}))} placeholder="개별맞춤수업/판서강의/방학특강 등"/>
         <Field label="강사표기" value={form.teacherName} onChange={v=>setForm(f=>({...f,teacherName:v}))}/>
-
-        <Field label="학습시간(분)" type="number" value={form.studyTimeMin} onChange={v=>setForm(f=>({...f,studyTimeMin:v}))}/>
         <Area  label="다음 수업 계획" value={form.planNext} onChange={v=>setForm(f=>({...f,planNext:v}))}/>
-
-        <Field label="핵심 한줄 요약" value={form.headline} onChange={v=>setForm(f=>({...f,headline:v}))} placeholder="예) 연산 정확도↑, 활용도형 넓이 개념 재정리 필요"/>
-        <Field label="집중도(0~100)" type="number" value={form.focus} onChange={v=>setForm(f=>({...f,focus:v}))}/>
-        <Field label="진행률%(0~100)" type="number" value={form.progressPct} onChange={v=>setForm(f=>({...f,progressPct:v}))}/>
       </div>
 
       <div style={{ display:"flex", gap:8, justifyContent:"flex-end", marginTop:12 }}>
