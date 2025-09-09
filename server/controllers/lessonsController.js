@@ -7,7 +7,8 @@ const LessonLog = require('../models/LessonLog');
 const NotificationLog = require('../models/NotificationLog');
 const { buildDailyTemplateBody, makeTwoLineTitle } = require('../utils/formatDailyReport');
 const { issueToken } = require('../utils/reportToken');
-const { sendAlimtalk } = require('../utils/alimtalk');
+// ✅ 등·하원용이 아니라, 리포트 전용 발송기를 사용
+const { sendReportAlimtalk } = require('../utils/alimtalkReport');
 
 const KST = 'Asia/Seoul';
 
@@ -124,6 +125,7 @@ exports.sendOne = async (req, res) => {
   const m = moment.tz(log.date, 'YYYY-MM-DD', KST);
   const dateLabel = m.format('YYYY.MM.DD(ddd)');
 
+  // 강조형 2줄 타이틀 + 본문(템플릿 본문 구조와 동일)
   const emtitle = makeTwoLineTitle(student.name, log.course || '', dateLabel, 23);
   const message = buildDailyTemplateBody({
     course: log.course || '-',
@@ -133,17 +135,30 @@ exports.sendOne = async (req, res) => {
     feedback: log.feedback || ''
   });
 
+  // 개인화 링크
   const code = String(log._id);
+  const reportBase = REPORT_BASE.replace(/\/+$/, '');
   const button = {
     name: '리포트 보기',
-    url_mobile: `${REPORT_BASE.replace(/\/+$/,'')}/r/${code}`,
-    url_pc:     `${REPORT_BASE.replace(/\/+$/,'')}/r/${code}`
+    url_mobile: `${reportBase}/r/${code}`,
+    url_pc:     `${reportBase}/r/${code}`
   };
 
-  const ok = await sendAlimtalk(student.parentPhone, tpl, {
-    name: student.name,
+  // ✅ 등·하원용 발송기가 아니라, 리포트 전용 발송기로 전송
+  //    - 등하원과 동일한 강조형 방식(emtitle_1 + message_1)
+  //    - 혹시 alimtalkReport가 내부 생성 로직을 쓰더라도 안전하게 원본 필드 모두 전달
+  const ok = await sendReportAlimtalk(student.parentPhone, tpl, {
+    // override용 (강조형 그대로 사용)
     emtitle,
     message,
+    // 내부 생성이 필요한 경우를 대비해 원자료도 함께 전달
+    name:     student.name,
+    course:   log.course || '-',
+    date:     dateLabel,
+    book:     log.book || '-',
+    content:  log.content || '',
+    homework: log.homework || '',
+    feedback: log.feedback || '',
     button
   });
 
