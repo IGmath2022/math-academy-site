@@ -13,6 +13,9 @@ import SchoolManager from "../components/Admin/SchoolManager";
 import StudentManager from "../components/Admin/StudentManager";
 import SchoolPeriodManager from "../components/Admin/SchoolPeriodManager";
 import AttendanceManager from "../components/Admin/AttendanceManager";
+import DailyReportAutoSwitch from "../components/Admin/DailyReportAutoSwitch";
+import AutoLeaveSwitch from "../components/Admin/AutoLeaveSwitch";
+import DailyReportSender from "../components/Admin/DailyReportSender";
 import { API_URL } from '../api';
 
 // ★★★ 모든 챕터ID는 여기서 추출! (id/_id/문자열 커버) ★★★
@@ -380,11 +383,14 @@ function AdminDashboard() {
         운영자 대시보드{" "}
         <span style={{ color: "#678", fontSize: 15 }}>(관리자용)</span>
       </h2>
+      <DailyReportAutoSwitch />
+      <DailyReportSender />
       <BlogSettingSwitch />
       <PopupBannerAdmin />
       <NewsAdmin />
       <StudentManager />
       <AttendanceManager />
+      <AutoLeaveSwitch />
       <ProgressManager />
       <SchoolManager />
       <SchoolPeriodManager />

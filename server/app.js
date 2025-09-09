@@ -5,19 +5,16 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const axios = require('axios');
-const cron = require('node-cron'); // 서버 내부 크론 사용 (Render 스케줄드 잡 불필요)
+const cron = require('node-cron');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// 라우트 불러오기
-const attendanceRoutes = require('./routes/attendanceRoutes');
-const bannerUploadRoutes = require('./routes/bannerUpload');
-
-// === 알림톡 키/템플릿 등 환경변수 (기존 사용값 유지; 여기서는 참조만) ===
-const senderKey = process.env.KAKAO_SENDER_KEY;
-const apiKey = process.env.KAKAO_API_KEY;
-const templateCode = process.env.ALIMTALK_TEMPLATE_CODE;
+// 기존/신규 라우트
+const attendanceRoutes     = require('./routes/attendanceRoutes');
+const bannerUploadRoutes   = require('./routes/bannerUpload');
+const adminLessonRoutes    = require('./routes/adminLessonRoutes'); // /api/admin/*
+const reportRoutes         = require('./routes/reportRoutes');      // /report, /r/:code
 
 // === CORS (프론트 주소 넣기!) ===
 app.use(cors({
@@ -44,10 +41,10 @@ mongoose.connect(process.env.MONGO_URL, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
-  .then(() => {
+  .then(async () => {
     console.log("MongoDB Connected!");
 
-    // ==== 라우트 연결 ====
+    // ==== 라우트 연결 (기존 유지) ====
     app.use('/uploads', express.static('uploads'));
     app.use('/api/auth', require('./routes/authRoutes'));
     app.use('/api/subjects', require('./routes/subjectRoutes'));
@@ -64,10 +61,14 @@ mongoose.connect(process.env.MONGO_URL, {
     app.use('/api/schools', require('./routes/schoolRoutes'));
     app.use('/api/schoolschedules', require('./routes/schoolScheduleRoutes'));
     app.use('/api/school-periods', require("./routes/schoolPeriodRoutes"));
-    // ✅ attendance 라우터는 한 번만 마운트 (중복 제거)
+    // ✅ 출결 라우트는 "한 번만" 마운트하세요(중복 제거)
     app.use('/api/attendance', attendanceRoutes);
     app.use('/api/files', require('./routes/upload'));
     app.use('/api/banner', bannerUploadRoutes);
+
+    // ==== 신규 라우트 추가 ====
+    app.use('/api/admin', adminLessonRoutes); // 오늘 수업 입력/예약/발송(관리자)
+    app.use('/', reportRoutes);               // 공개 리포트 뷰(/report, /r/:code)
 
     // 메인
     app.get('/', (req, res) => {
@@ -80,7 +81,6 @@ mongoose.connect(process.env.MONGO_URL, {
     const bcrypt = require("bcryptjs");
 
     (async () => {
-      // Setting 테이블(컬렉션) 초기값
       const defaultSettings = [
         { key: "banner1_text", value: "" },
         { key: "banner1_on", value: "false" },
@@ -91,7 +91,12 @@ mongoose.connect(process.env.MONGO_URL, {
         { key: "banner3_text", value: "" },
         { key: "banner3_on", value: "false" },
         { key: "banner3_img", value: "" },
-        { key: "blog_show", value: "true" }
+        { key: "blog_show", value: "true" },
+
+        // 신규: 자동/예약용 설정
+        { key: "daily_report_auto_on", value: "false" }, // 리포트 자동발송 기본 OFF
+        { key: "auto_leave_on", value: "true" },         // 자동하원 기본 ON
+        { key: "report_jwt_exp_days", value: "7" }       // 리포트 링크 만료일(일)
       ];
       for (const s of defaultSettings) {
         const found = await Setting.findOne({ key: s.key });
@@ -100,29 +105,14 @@ mongoose.connect(process.env.MONGO_URL, {
       console.log("Setting 테이블 기본값 초기화 완료!");
 
       // 샘플 계정 (admin, student)
-      const adminPass = await bcrypt.hash("admin1234", 10);
+      const adminPass    = await bcrypt.hash("admin1234", 10);
       const student1Pass = await bcrypt.hash("student1234", 10);
       const student2Pass = await bcrypt.hash("student1234", 10);
 
       const defaultUsers = [
-        {
-          name: "운영자",
-          email: "admin@example.com",
-          password: adminPass,
-          role: "admin",
-        },
-        {
-          name: "학생A",
-          email: "student1@example.com",
-          password: student1Pass,
-          role: "student",
-        },
-        {
-          name: "학생B",
-          email: "student2@example.com",
-          password: student2Pass,
-          role: "student",
-        }
+        { name: "운영자", email: "admin@example.com",  password: adminPass,    role: "admin"   },
+        { name: "학생A",  email: "student1@example.com", password: student1Pass, role: "student" },
+        { name: "학생B",  email: "student2@example.com", password: student2Pass, role: "student" }
       ];
       for (const user of defaultUsers) {
         const found = await User.findOne({ email: user.email });
@@ -130,38 +120,72 @@ mongoose.connect(process.env.MONGO_URL, {
       }
       console.log("운영자/샘플 학생 계정 자동 생성 완료!");
 
-      // DB 전체 사용자 콘솔 확인
       const allUsers = await User.find();
       console.log("DB User 전체 목록:", allUsers.map(u => u.email));
     })();
 
+    // ==== 크론 등록 (DB 연결 이후) ====
+    const KST = 'Asia/Seoul';
+    const BASE_URL = (process.env.SELF_BASE_URL || `http://127.0.0.1:${PORT}`).replace(/\/+$/,'');
+
+    // 1) 자동 하원 처리 — DB/ENV 토글 지원
+    const AUTO_LEAVE_CRON = process.env.AUTO_LEAVE_CRON || '30 22 * * *'; // 기본 22:30 KST
+    if (!global.__AUTO_LEAVE_CRON_STARTED__) {
+      global.__AUTO_LEAVE_CRON_STARTED__ = true;
+      cron.schedule(AUTO_LEAVE_CRON, async () => {
+        try {
+          const Setting = require('./models/Setting');
+
+          // ENV 기본값(없으면 ON), DB값 있으면 DB 우선
+          const ENV_ON = (process.env.CRON_ENABLED_AUTO_LEAVE ?? '1') !== '0';
+          const s = await Setting.findOne({ key: 'auto_leave_on' });
+          const DB_ON = (s?.value === 'true');
+          const SHOULD_RUN = (typeof s?.value === 'string') ? DB_ON : ENV_ON;
+
+          if (!SHOULD_RUN) {
+            console.log(`[CRON][AUTO-LEAVE] SKIP (auto OFF) @ ${new Date().toLocaleString('ko-KR', { timeZone: KST })}`);
+            return;
+          }
+
+          await axios.post(`${BASE_URL}/api/attendance/auto-leave`);
+          console.log(`[CRON][AUTO-LEAVE] OK @ ${new Date().toLocaleString('ko-KR', { timeZone: KST })}`);
+        } catch (e) {
+          console.error(`[CRON][AUTO-LEAVE] FAIL:`, e.message);
+        }
+      }, { timezone: KST });
+    }
+
+    // 2) 일일 리포트 자동 발송 — ENV/DB 토글 지원(기본 OFF)
+    const DAILY_REPORT_CRON = process.env.DAILY_REPORT_CRON || '30 10 * * *'; // 기본 10:30 KST
+    if (!global.__DAILY_REPORT_CRON_STARTED__) {
+      global.__DAILY_REPORT_CRON_STARTED__ = true;
+      cron.schedule(DAILY_REPORT_CRON, async () => {
+        try {
+          // ENV 스위치 (기본 OFF)
+          const ENV_ON = (process.env.DAILY_REPORT_AUTO === '1');
+
+          // DB 스위치 (없으면 ENV 기준)
+          const Setting = require('./models/Setting');
+          const s = await Setting.findOne({ key: 'daily_report_auto_on' });
+          const DB_ON = (s?.value === 'true');
+
+          const SHOULD_RUN = (typeof s?.value === 'string') ? DB_ON : ENV_ON;
+          if (!SHOULD_RUN) {
+            console.log(`[CRON][DAILY-REPORT] SKIP (auto OFF) @ ${new Date().toLocaleString('ko-KR', { timeZone: KST })}`);
+            return;
+          }
+
+          await axios.post(`${BASE_URL}/api/admin/lessons/send-bulk`);
+          console.log(`[CRON][DAILY-REPORT] OK @ ${new Date().toLocaleString('ko-KR', { timeZone: KST })}`);
+        } catch (e) {
+          console.error(`[CRON][DAILY-REPORT] FAIL:`, e.message);
+        }
+      }, { timezone: KST });
+    }
+
     // ==== 서버 시작 ====
     app.listen(PORT, () => {
       console.log(`서버가 http://localhost:${PORT} 에서 실행중`);
-
-      // ============================
-      // ✅ 크론 등록 (안정성 우선)
-      // - DB 연결/라우터 마운트/리스닝 완료 이후에 등록
-      // - Render 스케줄드 잡 없이 서버 내부에서만 예약 실행
-      // - 외부 URL 대신 내부 엔드포인트(127.0.0.1) 호출
-      // ============================
-      const KST = 'Asia/Seoul';
-      const CRON_ENABLED = process.env.CRON_ENABLED !== '0'; // 기본 ON
-      if (CRON_ENABLED && !global.__AUTO_LEAVE_CRON_STARTED__) {
-        global.__AUTO_LEAVE_CRON_STARTED__ = true;
-        cron.schedule('30 22 * * *', async () => {
-          try {
-            const baseURL = process.env.SELF_BASE_URL || `http://127.0.0.1:${PORT}`;
-            await axios.post(`${baseURL}/api/attendance/auto-leave`, {}, { timeout: 60_000 });
-            console.log(`[CRON] [${new Date().toLocaleString('ko-KR',{ timeZone: KST })}] 22:30 자동 하원처리 완료`);
-          } catch (e) {
-            console.error(
-              `[CRON] [${new Date().toLocaleString('ko-KR',{ timeZone: KST })}] 자동 하원처리 실패:`,
-              e.message
-            );
-          }
-        }, { timezone: KST });
-      }
     });
   })
   .catch(err => {

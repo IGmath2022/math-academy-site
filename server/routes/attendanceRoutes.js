@@ -1,9 +1,11 @@
+// server/routes/attendanceRoutes.js
 const express = require('express');
 const router = express.Router();
 const Attendance = require('../models/Attendance');
 const User = require('../models/User');
 const { sendAlimtalk } = require('../utils/alimtalk');
 const moment = require('moment-timezone');
+const { isAdmin } = require('../middleware/auth');
 
 // ✅ 상태 검증 함수 (시간 제한 제거)
 async function canCheck(userId, type) {
@@ -94,7 +96,7 @@ router.post('/check-out', async (req, res) => {
   res.json({ status: 'OUT', message: '하원 처리되었습니다.' });
 });
 
-// 4) 자동 하원처리(22:30)
+// 4) 자동 하원처리(크론에서 호출)
 router.post('/auto-leave', async (req, res) => {
   const now = moment().tz('Asia/Seoul');
   const today = now.format('YYYY-MM-DD');
@@ -174,6 +176,35 @@ router.get('/by-student', async (req, res) => {
     count,
     records: Object.values(map).sort((a, b) => a.date.localeCompare(b.date))
   });
+});
+
+// 7) (신규) 관리자: IN 보정 생성
+// - 수업은 했는데 등원 누락된 케이스를 보정하기 위한 엔드포인트
+// - time 미지정 시 현재 시각(HH:mm:ss)로 기록
+router.post('/admin/fix-in', isAdmin, async (req, res) => {
+  const { studentId, date, time } = req.body;
+  if (!studentId || !date) {
+    return res.status(400).json({ message: 'studentId, date 필수' });
+  }
+
+  const exists = await Attendance.findOne({ userId: studentId, date, type: 'IN' });
+  if (exists) return res.status(409).json({ message: '이미 IN 기록이 있습니다.' });
+
+  const now = moment().tz('Asia/Seoul');
+  const t = (time && /^\d{2}:\d{2}(:\d{2})?$/.test(time))
+    ? (time.length === 5 ? time + ':00' : time)
+    : now.format('HH:mm:ss');
+
+  await Attendance.create({
+    userId: studentId,
+    date,
+    type: 'IN',
+    time: t,
+    auto: true,        // 보정 생성 표식(자동/보정 공통적으로 auto=true 사용)
+    notified: false
+  });
+
+  res.json({ ok: true, message: `보정 IN 생성(${t})` });
 });
 
 module.exports = router;
