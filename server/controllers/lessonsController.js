@@ -5,7 +5,7 @@ const User = require('../models/User');
 const Setting = require('../models/Setting');
 const LessonLog = require('../models/LessonLog');
 const NotificationLog = require('../models/NotificationLog');
-const { buildDailyTemplateBody, makeTwoLineTitle } = require('../utils/formatDailyReport');
+// ⛔️ formatDailyReport 사용 안 함 (alimtalkReport가 타이틀/본문을 생성)
 const { sendReportAlimtalk } = require('../utils/alimtalkReport');
 
 const KST = 'Asia/Seoul';
@@ -20,23 +20,20 @@ function getDailyTplCodeFallback() {
   return null;
 }
 
-/** 출결에서 첫 IN, 마지막 OUT, 학습시간(분) 계산 */
-async function getInOutAndDuration(studentId, date) {
+/** IN/OUT 으로 학습시간(분) 계산 */
+async function computeStudyTimeMinFromAttendance(studentId, date) {
   const rows = await Attendance.find({ userId: studentId, date }).lean();
   const ins  = rows.filter(r => r.type === 'IN').map(r => r.time).sort();
   const outs = rows.filter(r => r.type === 'OUT').map(r => r.time).sort();
+  if (!ins.length || !outs.length) return null;
 
-  const inTime  = ins.length  ? ins[0].slice(0,5) : null;                // HH:mm
-  const outTime = outs.length ? outs[outs.length - 1].slice(0,5) : null; // HH:mm
-
-  let durationMin = null;
-  if (inTime && outTime) {
-    const start = moment.tz(`${date} ${inTime}:00`,  'YYYY-MM-DD HH:mm:ss', KST);
-    const end   = moment.tz(`${date} ${outTime}:00`, 'YYYY-MM-DD HH:mm:ss', KST);
-    const diff  = end.diff(start, 'minutes');
-    durationMin = Number.isFinite(diff) && diff >= 0 ? diff : 0;
-  }
-  return { inTime, outTime, durationMin };
+  const firstIn  = ins[0];                    // 가장 이른 등원
+  const lastOut  = outs[outs.length - 1];     // 가장 늦은 하원
+  const start = moment.tz(`${date} ${firstIn}`, 'YYYY-MM-DD HH:mm:ss', KST);
+  const end   = moment.tz(`${date} ${lastOut}`, 'YYYY-MM-DD HH:mm:ss', KST);
+  let diffMin = end.diff(start, 'minutes');
+  if (!Number.isFinite(diffMin) || diffMin < 0) diffMin = 0;
+  return diffMin;
 }
 
 // ====== 날짜별 목록(등원 ∪ 해당일 로그보유) ======
@@ -91,6 +88,7 @@ exports.getDetail = async (req, res) => {
   const log = await LessonLog.findOne({ studentId, date }).lean();
   if (!log) return res.json({});
 
+  // 프론트 호환용 별칭(studyTimeMin) 포함
   res.json({
     ...log,
     studyTimeMin: log.durationMin ?? null
@@ -115,12 +113,10 @@ exports.createOrUpdate = async (req, res) => {
     body.feedback = body.feedback.slice(0, 1999) + '…';
   }
 
-  // 출결 기반 in/out/duration 자동 보정
-  const { inTime, outTime, durationMin } = await getInOutAndDuration(studentId, date);
-  if (inTime  != null) body.inTime  = inTime;
-  if (outTime != null) body.outTime = outTime;
-  if ((body.durationMin === undefined || body.durationMin === null || body.durationMin === '') && durationMin != null) {
-    body.durationMin = durationMin;
+  // durationMin 없으면 Attendance로 자동 계산해서 채움
+  if (body.durationMin === undefined || body.durationMin === null || body.durationMin === '') {
+    const autoMin = await computeStudyTimeMinFromAttendance(studentId, date);
+    if (autoMin !== null) body.durationMin = autoMin;
   }
 
   const doc = await LessonLog.findOneAndUpdate(
@@ -157,15 +153,14 @@ exports.sendOne = async (req, res) => {
       return res.status(400).json({ message: '학부모 연락처 없음' });
     }
 
-    // 발송 전 출결 기반 보정(없으면 계산해서 저장)
-    const { inTime, outTime, durationMin } = await getInOutAndDuration(log.studentId, log.date);
-    let changed = false;
-    if (inTime  && !log.inTime)  { log.inTime = inTime; changed = true; }
-    if (outTime && !log.outTime) { log.outTime = outTime; changed = true; }
-    if ((log.durationMin === undefined || log.durationMin === null) && durationMin != null) {
-      log.durationMin = durationMin; changed = true;
+    // 발송 전 durationMin 자동 보정(없으면 계산해서 저장)
+    if (log.durationMin === undefined || log.durationMin === null) {
+      const autoMin = await computeStudyTimeMinFromAttendance(log.studentId, log.date);
+      if (autoMin !== null) {
+        log.durationMin = autoMin;
+        await log.save();
+      }
     }
-    if (changed) await log.save();
 
     let tpl = getDailyTplCodeFallback();
     if (!tpl) tpl = await getSetting('daily_tpl_code', '');
@@ -174,15 +169,7 @@ exports.sendOne = async (req, res) => {
     const m = moment.tz(log.date, 'YYYY-MM-DD', KST);
     const dateLabel = m.format('YYYY.MM.DD(ddd)');
 
-    const emtitle = makeTwoLineTitle(student.name, log.course || '', dateLabel, 23);
-    const message = buildDailyTemplateBody({
-      course: log.course || '-',
-      book: log.book || '-',
-      content: log.content || '',
-      homework: log.homework || '',
-      feedback: log.feedback || ''
-    });
-
+    // alimtalkReport가 타이틀/본문/버튼/치환을 모두 처리함
     const code = String(log._id); // 공개 링크용 식별자
     const ok = await sendReportAlimtalk(student.parentPhone, tpl, {
       학생명: student.name,
@@ -195,13 +182,22 @@ exports.sendOne = async (req, res) => {
       code
     });
 
+    // 로깅용 payloadSize(본문 대략 길이)
+    const bodyForSize = [
+      `1. 과정 : ${log.course || '-'}`,
+      `2. 교재 : ${log.book || '-'}`,
+      `3. 수업내용 : ${log.content || ''}`,
+      `4. 과제 : ${log.homework || ''}`,
+      `5. 개별 피드백 : ${log.feedback || ''}`
+    ].join('\n');
+
     await NotificationLog.create({
       studentId: log.studentId,
       type: '일일리포트',
       status: ok ? '성공' : '실패',
       code: ok ? '0' : 'ERR',
       message: ok ? 'OK' : '알림톡 발송 실패',
-      payloadSize: Buffer.byteLength((message || ''), 'utf8')
+      payloadSize: Buffer.byteLength(bodyForSize, 'utf8')
     });
 
     log.notifyStatus = ok ? '발송' : '실패';
