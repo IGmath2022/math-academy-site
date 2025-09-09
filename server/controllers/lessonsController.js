@@ -11,33 +11,29 @@ const { sendAlimtalk } = require('../utils/alimtalk');
 
 const KST = 'Asia/Seoul';
 
-// ====== 환경설정 ======
+// ====== 공용 ======
 const REPORT_BASE = process.env.REPORT_BASE_URL || 'https://ig-math-2022.onrender.com';
-function getDailyTplCodeFallback() {
-  if (process.env.DAILY_REPORT_TPL_CODE) return process.env.DAILY_REPORT_TPL_CODE;
-  return null;
-}
 async function getSetting(key, defVal = '') {
   const s = await Setting.findOne({ key });
   return s?.value ?? defVal;
 }
+function getDailyTplCodeFallback() {
+  if (process.env.DAILY_REPORT_TPL_CODE) return process.env.DAILY_REPORT_TPL_CODE;
+  return null;
+}
 
-// ====== 날짜별 목록 조회 (관리자용) ======
+// ====== 날짜별 목록(등원 ∪ 해당일 로그보유) ======
 exports.listByDate = async (req, res) => {
   const date = (req.query.date || moment().tz(KST).format('YYYY-MM-DD'));
 
-  // A. 등원(IN)한 학생
   const inRecs = await Attendance.find({ date, type: 'IN' }).lean();
   const inIds = inRecs.map(r => String(r.userId));
 
-  // B. 그날 LessonLog가 있는 학생 (등원 미체크라도 포함)
   const logs = await LessonLog.find({ date }).lean();
   const logIds = logs.map(l => String(l.studentId));
 
-  // A ∪ B (중복 제거)
   const ids = [...new Set([...inIds, ...logIds])];
 
-  // 학생/로그/OUT 맵
   const users = await User.find({ _id: { $in: ids } }).lean();
   const byId = Object.fromEntries(users.map(u => [String(u._id), u]));
   const logByStudent = Object.fromEntries(logs.map(l => [String(l.studentId), l]));
@@ -63,14 +59,22 @@ exports.listByDate = async (req, res) => {
       scheduledAt: log?.scheduledAt || null,
       checkIn,
       checkOut,
-      missingIn: !!log && !checkIn // ← 리포트는 있지만 IN이 없는 상태
+      missingIn: !!log && !checkIn
     };
   });
 
   res.json({ date, items });
 };
 
-// ====== 작성/수정 ======
+// ====== 리포트 1건 상세(학생+날짜) ======
+exports.getDetail = async (req, res) => {
+  const { studentId, date } = req.query;
+  if (!studentId || !date) return res.status(400).json({ message: 'studentId, date 필수' });
+  const log = await LessonLog.findOne({ studentId, date }).lean();
+  res.json(log || {});
+};
+
+// ====== 작성/수정(업서트) ======
 exports.createOrUpdate = async (req, res) => {
   const body = req.body || {};
   const { studentId, date } = body;
@@ -99,12 +103,11 @@ exports.listPending = async (_req, res) => {
   res.json(items);
 };
 
-// ====== 1건 발송 (이미 발송이면 409) ======
+// ====== 1건 발송 ======
 exports.sendOne = async (req, res) => {
   const { id } = req.params;
   const log = await LessonLog.findById(id);
   if (!log) return res.status(404).json({ message: 'LessonLog 없음' });
-
   if (log.notifyStatus === '발송') {
     return res.status(409).json({ ok: false, message: '이미 발송됨' });
   }
@@ -122,7 +125,6 @@ exports.sendOne = async (req, res) => {
   const dateLabel = m.format('YYYY.MM.DD(ddd)');
 
   const emtitle = makeTwoLineTitle(student.name, log.course || '', dateLabel, 23);
-
   const message = buildDailyTemplateBody({
     course: log.course || '-',
     book: log.book || '-',
@@ -161,9 +163,9 @@ exports.sendOne = async (req, res) => {
   res.json({ ok, id: log._id });
 };
 
-// ====== 선택 발송 (여러 건 즉시 발송) ======
+// ====== 선택 발송(여러 건) ======
 exports.sendSelected = async (req, res) => {
-  const { ids } = req.body; // LessonLog _id 배열
+  const { ids } = req.body;
   if (!Array.isArray(ids) || ids.length === 0) {
     return res.status(400).json({ message: 'ids 배열 필요' });
   }
@@ -175,7 +177,6 @@ exports.sendSelected = async (req, res) => {
       if (!log) { failed++; continue; }
       if (log.notifyStatus === '발송') { skipped++; continue; }
 
-      // sendOne 재사용(HTTP 없이 내부 호출)
       const fakeReq = { params: { id: String(_id) } };
       const fakeRes = { json: () => {}, status: () => ({ json: () => {} }) };
       await exports.sendOne(fakeReq, fakeRes);
@@ -203,7 +204,7 @@ exports.sendBulk = async (_req, res) => {
     try {
       const r = await LessonLog.findById(item._id);
       if (!r) { failed++; continue; }
-      if (r.notifyStatus === '발송') { continue; } // 더블가드
+      if (r.notifyStatus === '발송') { continue; }
 
       const fakeReq = { params: { id: String(item._id) } };
       const fakeRes = { json: () => {}, status: () => ({ json: () => {} }) };

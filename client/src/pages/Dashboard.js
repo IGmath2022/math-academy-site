@@ -16,6 +16,7 @@ import AttendanceManager from "../components/Admin/AttendanceManager";
 import DailyReportAutoSwitch from "../components/Admin/DailyReportAutoSwitch";
 import AutoLeaveSwitch from "../components/Admin/AutoLeaveSwitch";
 import DailyReportSender from "../components/Admin/DailyReportSender";
+import DailyReportEditor from "../components/Admin/DailyReportEditor";
 import { API_URL } from '../api';
 
 // ★★★ 모든 챕터ID는 여기서 추출! (id/_id/문자열 커버) ★★★
@@ -384,6 +385,7 @@ function AdminDashboard() {
         <span style={{ color: "#678", fontSize: 15 }}>(관리자용)</span>
       </h2>
       <DailyReportAutoSwitch />
+      <DailyReportEditor />
       <DailyReportSender />
       <BlogSettingSwitch />
       <PopupBannerAdmin />
