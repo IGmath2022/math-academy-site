@@ -1,26 +1,23 @@
 // server/routes/adminLessonRoutes.js
 const express = require('express');
 const router = express.Router();
+const { isAdmin } = require('../middleware/auth');
 const ctrl = require('../controllers/lessonsController');
 
-// 저장/수정(업서트)
-router.post('/lessons', ctrl.createOrUpdate);
+// 날짜별 목록(등원 ∪ 로그)
+router.get('/lessons', isAdmin, ctrl.listByDate);
 
-// 날짜별 목록(등원 ∪ 해당일 로그보유)
-router.get('/lessons/by-date', ctrl.listByDate);
+// 단건 조회/업서트
+router.get('/lessons/detail', isAdmin, ctrl.getDetail);
+router.post('/lessons', isAdmin, ctrl.createOrUpdate);
 
-// 특정 1건 상세
-router.get('/lessons/detail', ctrl.getDetail);
-
-// 예약 대기 목록
-router.get('/lessons/pending', ctrl.listPending);
+// 시리즈(최근 N회)
+router.get('/lessons/series/:studentId', isAdmin, ctrl.getSeries);
 
 // 발송
-router.post('/lessons/send-one/:id', ctrl.sendOne);
-router.post('/lessons/send-selected', ctrl.sendSelected);
-router.post('/lessons/send-bulk', ctrl.sendBulk);
-
-// 라우트 살아있는지 확인용
-router.get('/ping', (_req, res) => res.json({ ok: true }));
+router.post('/lessons/send-one/:id', isAdmin, ctrl.sendOne);
+router.post('/lessons/send-selected', isAdmin, ctrl.sendSelected);
+router.post('/lessons/send-bulk', isAdmin, ctrl.sendBulk);
+router.get('/lessons/pending', isAdmin, ctrl.listPending);
 
 module.exports = router;

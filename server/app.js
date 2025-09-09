@@ -68,7 +68,10 @@ mongoose.connect(process.env.MONGO_URL, {
 
     // ==== 신규 라우트 추가 ====
     app.use('/api/admin', adminLessonRoutes); // 오늘 수업 입력/예약/발송(관리자)
-    app.use('/', reportRoutes);               // 공개 리포트 뷰(/report, /r/:code)
+    app.use('/api/admin', require('./routes/adminProfileRoutes'));
+    app.use('/api/admin', require('./routes/adminCounselRoutes'));
+    app.use('/api/admin', require('./routes/adminClassTypeRoutes'));
+    app.use('/', require('./routes/reportRoutes'));              // 공개 리포트 뷰(/report, /r/:code)
 
     // 메인
     app.get('/', (req, res) => {
