@@ -1,25 +1,35 @@
 // server/routes/adminLessonRoutes.js
 const express = require('express');
 const router = express.Router();
-const { isAdmin } = require('../middleware/auth');
+
+const { isAuthenticated, isAdmin } = require('../middleware/auth');
 const lessons = require('../controllers/lessonsController');
 
-// 날짜별 목록 (등원자 ∪ 해당일 LessonLog 보유자)
-router.get('/lessons/by-date', isAdmin, lessons.listByDate);
+// ★ 모든 admin/lessons 트래픽 로깅 (디버깅용)
+router.use('/lessons', (req, _res, next) => {
+  console.log(`[ADMIN][LESSONS] ${req.method} ${req.originalUrl}`);
+  next();
+});
 
-// 리포트 상세(학생+날짜)
-router.get('/lessons/detail', isAdmin, lessons.getDetail);
+// 날짜별 목록(등원 ∪ 로그보유)
+router.get('/lessons/by-date', isAuthenticated, isAdmin, lessons.listByDate);
+
+// 리포트 1건 상세
+router.get('/lessons/detail', isAuthenticated, isAdmin, lessons.getDetail);
 
 // 작성/수정(업서트)
-router.post('/lessons', isAdmin, lessons.createOrUpdate);
+router.post('/lessons/upsert', isAuthenticated, isAdmin, lessons.createOrUpdate);
 
-// 단건 즉시 발송
-router.post('/lessons/:id/send', isAdmin, lessons.sendOne);
+// 예약 대기 목록
+router.get('/lessons/pending', isAuthenticated, isAdmin, lessons.listPending);
+
+// 1건 발송
+router.post('/lessons/send-one/:id', isAuthenticated, isAdmin, lessons.sendOne);
 
 // 선택 발송(여러 건)
-router.post('/lessons/send-selected', isAdmin, lessons.sendSelected);
+router.post('/lessons/send-selected', isAuthenticated, isAdmin, lessons.sendSelected);
 
-// 예약분 자동 발송(크론에서 호출)
+// 자동 발송(예약분; 크론이 때릴 엔드포인트)
 router.post('/lessons/send-bulk', lessons.sendBulk);
 
 module.exports = router;

@@ -1,208 +1,207 @@
 // client/src/components/Admin/DailyReportSender.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { API_URL } from "../../api";
 
-function StatusPill({ v }) {
-  const map = {
-    "발송": { bg: "#e6f7ee", color: "#0a8f4a" },
-    "대기": { bg: "#fff7e6", color: "#aa6b00" },
-    "실패": { bg: "#fdeaea", color: "#c21d1d" },
-    "없음": { bg: "#eef1f7", color: "#556" }
-  };
-  const s = map[v] || map["없음"];
-  return (
-    <span style={{ padding: "4px 8px", borderRadius: 999, background: s.bg, color: s.color, fontSize: 13, fontWeight: 700 }}>
-      {v}
-    </span>
-  );
+// JWT에서 payload 추출
+function parseJwt(token) {
+  try { return JSON.parse(atob(token.split(".")[1])); } catch { return {}; }
 }
 
 export default function DailyReportSender() {
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0,10));
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [items, setItems] = useState([]);
-  const [sel, setSel] = useState({});
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [sendingId, setSendingId] = useState("");
+  const [error, setError] = useState("");
 
-  const token = localStorage.getItem("token");
-  const auth = { headers: { Authorization: `Bearer ${token}` } };
+  const token = useMemo(() => localStorage.getItem("token") || "", []);
+  const auth = useMemo(() => ({ headers: { Authorization: `Bearer ${token}` } }), [token]);
 
-  const fetchList = async () => {
-    setLoading(true);
+  // 공통 네트워크 래퍼 (콘솔 로깅)
+  async function call(method, url, data) {
     try {
-      // 관리자용 날짜별 목록 (등원자 ∪ 해당일 LessonLog 보유자)
-      const { data } = await axios.get(`${API_URL}/api/admin/lessons/by-date`, { ...auth, params: { date } });
-      setItems(data.items || []);
-      setSel({});
+      console.log("[REPORT] REQ:", method, url, data || {});
+      const res = await axios({ method, url, data, ...auth });
+      console.log("[REPORT] RES:", res.status, res.data);
+      return res.data;
     } catch (e) {
-      setMsg("목록 조회 실패");
-      setTimeout(() => setMsg(""), 1500);
+      const msg = e?.response?.data?.message || e.message || "요청 실패";
+      console.error("[REPORT] ERR:", msg, e?.response?.data || {});
+      throw new Error(msg);
+    }
+  }
+
+  // 날짜별 목록 로드
+  async function refresh() {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await call(
+        "get",
+        `${API_URL}/api/admin/lessons/by-date?date=${date}`
+      );
+      setItems(data.items || []);
+    } catch (e) {
+      setError(e.message);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  useEffect(() => { if (token) fetchList(); /* eslint-disable-next-line */ }, [date]);
+  useEffect(() => { refresh(); /* eslint-disable-next-line */ }, [date]);
 
-  const toggle = (logId, v) => setSel(prev => ({ ...prev, [logId]: v }));
+  // 업서트 저장
+  async function handleSaveLog(row) {
+    const payload = {
+      studentId: row.studentId,
+      date,
+      course: row.course || "",
+      book: row.book || "",
+      content: row.content || "",
+      homework: row.homework || "",
+      feedback: row.feedback || "",
+      scheduledAt: row.scheduledAt || null,
+      notifyStatus: row.notifyStatus || "대기"
+    };
+    await call("post", `${API_URL}/api/admin/lessons/upsert`, payload);
+    await refresh();
+  }
 
-  const sendOne = async (logId) => {
+  // 단건 발송
+  async function handleSendOne(id) {
+    setSendingId(id);
     try {
-      await axios.post(`${API_URL}/api/admin/lessons/${logId}/send`, {}, auth);
-      await fetchList();
-      setMsg("발송 완료");
-      setTimeout(() => setMsg(""), 1200);
+      await call("post", `${API_URL}/api/admin/lessons/send-one/${id}`, {});
+      await refresh();
     } catch (e) {
-      setMsg(e?.response?.data?.message || "발송 실패");
-      setTimeout(() => setMsg(""), 1500);
+      alert("발송 실패: " + e.message);
+    } finally {
+      setSendingId("");
     }
-  };
+  }
 
-  const sendSelected = async () => {
-    const ids = Object.keys(sel).filter(k => sel[k]);
+  // 선택 발송
+  async function handleSendSelected() {
+    const ids = items
+      .filter(x => x.hasLog && x.notifyStatus !== "발송")
+      .map(x => x.logId)
+      .filter(Boolean);
     if (ids.length === 0) {
-      setMsg("선택된 항목이 없습니다.");
-      setTimeout(() => setMsg(""), 1000);
+      alert("발송 대상이 없습니다.");
       return;
     }
-    try {
-      await axios.post(`${API_URL}/api/admin/lessons/send-selected`, { ids }, auth);
-      await fetchList();
-      setMsg("선택 발송 완료");
-      setTimeout(() => setMsg(""), 1200);
-    } catch {
-      setMsg("선택 발송 실패");
-      setTimeout(() => setMsg(""), 1500);
-    }
-  };
-
-  // IN 보정 (로그는 있는데 등원 누락된 학생)
-  const fixIn = async (studentId) => {
-    try {
-      await axios.post(`${API_URL}/api/attendance/admin/fix-in`, {
-        studentId,
-        date
-      }, auth);
-      await fetchList();
-      setMsg("보정 IN 생성됨");
-      setTimeout(() => setMsg(""), 1200);
-    } catch (e) {
-      setMsg(e?.response?.data?.message || "보정 실패");
-      setTimeout(() => setMsg(""), 1500);
-    }
-  };
+    await call("post", `${API_URL}/api/admin/lessons/send-selected`, { ids });
+    await refresh();
+  }
 
   return (
-    <div style={{ margin: "12px 0 20px", padding: 16, background: "#fff", border: "1px solid #e6e9f2", borderRadius: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-        <b style={{ fontSize: 16 }}>데일리 리포트 발송(수동)</b>
+    <div style={{
+      border: "1px solid #e5e5e5",
+      background: "#fff",
+      borderRadius: 12,
+      padding: 16,
+      marginTop: 18
+    }}>
+      <h3 style={{ margin: "0 0 12px 0" }}>일일 리포트 발송</h3>
+
+      <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12 }}>
         <input
           type="date"
           value={date}
           onChange={e => setDate(e.target.value)}
-          style={{ padding: "6px 8px", borderRadius: 8, border: "1px solid #ccd3e0" }}
+          style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid #ccc" }}
         />
         <button
-          onClick={fetchList}
-          disabled={loading}
-          style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: "#eef3ff", color: "#246", fontWeight: 700 }}
+          onClick={refresh}
+          style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: "#eee" }}
         >
           새로고침
         </button>
-        <div style={{ marginLeft: "auto", color: "#678", fontSize: 13 }}>
-          상태: 없음=로그 미작성, 대기=예약, 발송=완료
-        </div>
+        <button
+          onClick={handleSendSelected}
+          style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: "#226ad6", color: "#fff", fontWeight: 700 }}
+        >
+          선택 발송(미발송 전체)
+        </button>
       </div>
+
+      {loading && <div style={{ color: "#888" }}>불러오는 중...</div>}
+      {error && <div style={{ color: "#d22" }}>{error}</div>}
 
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
-            <tr style={{ background: "#f5f7fc" }}>
-              <th style={th}>선택</th>
-              <th style={th}>이름</th>
-              <th style={th}>등원</th>
-              <th style={th}>하원</th>
-              <th style={th}>상태</th>
-              <th style={th}>작업</th>
+            <tr style={{ background: "#f7f8fb" }}>
+              <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #eee" }}>학생</th>
+              <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #eee" }}>등원</th>
+              <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #eee" }}>하원</th>
+              <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #eee" }}>작성여부</th>
+              <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #eee" }}>발송상태</th>
+              <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #eee" }}>액션</th>
             </tr>
           </thead>
           <tbody>
-            {items.map(it => {
-              const disabled = !it.hasLog || it.notifyStatus === "발송";
-              return (
-                <tr key={it.studentId} style={{ borderTop: "1px solid #eef1f7" }}>
-                  <td style={tdCenter}>
-                    <input
-                      type="checkbox"
-                      disabled={!it.logId || it.notifyStatus === "발송"}
-                      checked={!!sel[it.logId]}
-                      onChange={e => toggle(it.logId, e.target.checked)}
-                    />
-                  </td>
-                  <td style={td}>{it.name}</td>
-                  <td style={tdCenter}>{it.checkIn || "-"}</td>
-                  <td style={tdCenter}>{it.checkOut || "-"}</td>
-                  <td style={tdCenter}><StatusPill v={it.hasLog ? it.notifyStatus : "없음"} /></td>
-                  <td style={tdCenter}>
+            {items.map(row => (
+              <tr key={row.studentId}>
+                <td style={{ padding: 8, borderBottom: "1px solid #f0f0f0" }}>{row.name}</td>
+                <td style={{ padding: 8, borderBottom: "1px solid #f0f0f0" }}>{row.checkIn || '-'}</td>
+                <td style={{ padding: 8, borderBottom: "1px solid #f0f0f0" }}>{row.checkOut || '-'}</td>
+                <td style={{ padding: 8, borderBottom: "1px solid #f0f0f0" }}>
+                  {row.hasLog ? 'Y' : 'N'}
+                  {row.missingIn && <span style={{ marginLeft: 8, color: "#d22" }}>(등원기록 없음)</span>}
+                </td>
+                <td style={{ padding: 8, borderBottom: "1px solid #f0f0f0" }}>{row.notifyStatus}</td>
+                <td style={{ padding: 8, borderBottom: "1px solid #f0f0f0" }}>
+                  {row.hasLog ? (
                     <button
-                      disabled={!it.logId || disabled}
-                      onClick={() => sendOne(it.logId)}
+                      onClick={() => handleSendOne(row.logId)}
+                      disabled={sendingId === row.logId || row.notifyStatus === '발송'}
                       style={{
                         padding: "6px 10px",
                         borderRadius: 8,
                         border: "none",
-                        background: disabled ? "#eee" : "#226ad6",
-                        color: disabled ? "#999" : "#fff",
+                        background: row.notifyStatus === '발송' ? "#aaa" : "#3cbb2c",
+                        color: "#fff",
                         fontWeight: 700
                       }}
                     >
-                      발송
+                      {sendingId === row.logId ? "전송중..." : (row.notifyStatus === '발송' ? "발송완료" : "보내기")}
                     </button>
-
-                    {/* 리포트는 있는데 IN이 없을 때 보정 버튼 노출 */}
-                    {it.hasLog && !it.checkIn && (
-                      <button
-                        onClick={() => fixIn(it.studentId)}
-                        style={{
-                          marginLeft: 6,
-                          padding: "6px 10px",
-                          borderRadius: 8,
-                          border: "1px solid #f0b2b2",
-                          background: "#fff5f5",
-                          color: "#b21d1d",
-                          fontWeight: 700
-                        }}
-                        title="로그는 있지만 등원이 없어 보정 IN을 생성합니다."
-                      >
-                        보정IN
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-            {items.length === 0 && (
-              <tr><td colSpan={6} style={{ padding: 28, textAlign: "center", color: "#789" }}>해당 날짜 데이터가 없습니다.</td></tr>
+                  ) : (
+                    <button
+                      onClick={async () => {
+                        // 최초 작성(업서트) 다이얼로그 대신 간단 입력
+                        const course = prompt("과정", "");
+                        const book = prompt("교재", "");
+                        const content = prompt("수업내용(요약)", "");
+                        const homework = prompt("과제(줄바꿈으로 여러개)", "");
+                        const feedback = prompt("개별 피드백(요약)", "");
+                        await handleSaveLog({
+                          ...row,
+                          course, book, content, homework, feedback,
+                          notifyStatus: "대기"
+                        });
+                      }}
+                      style={{
+                        padding: "6px 10px",
+                        borderRadius: 8,
+                        border: "1px solid #ccc",
+                        background: "#fff"
+                      }}
+                    >
+                      작성
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {items.length === 0 && !loading && (
+              <tr><td colSpan={6} style={{ padding: 12, color: "#888" }}>데이터 없음</td></tr>
             )}
           </tbody>
         </table>
       </div>
-
-      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
-        <button
-          onClick={sendSelected}
-          style={{ padding: "8px 14px", borderRadius: 10, border: "none", background: "#1e7b34", color: "#fff", fontWeight: 800 }}
-        >
-          선택 발송
-        </button>
-      </div>
-
-      {msg && <div style={{ marginTop: 8, color: "#226ad6", fontWeight: 700 }}>{msg}</div>}
     </div>
   );
 }
-
-const th = { textAlign: "left", padding: "10px 8px", fontSize: 14, color: "#456" };
-const td = { padding: "10px 8px", fontSize: 14, color: "#333" };
-const tdCenter = { ...td, textAlign: "center" };
