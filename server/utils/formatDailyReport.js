@@ -1,9 +1,7 @@
 // server/utils/formatDailyReport.js
-/**
- * 일일 리포트용 제목/본문 포맷터
- * - lessonsController:  makeTwoLineTitle(), buildDailyTemplateBody()
- * - alimtalkReport:     makeReportTitleAndBody()  (타이틀+본문 한 번에)
- */
+// 템플릿 본문과 100% 일치하도록 message_1 문자열을 생성한다.
+
+const TAIL_LINE = "자세한 내용은 아래 '리포트 보기' 버튼을 눌러 확인해주세요."; // 템플릿과 동일 문구
 
 function _clip(text = '', max) {
   const s = String(text || '').trim();
@@ -24,32 +22,37 @@ function _joinHomework(text = '', maxLines = 4) {
   return [...arr.slice(0, maxLines), `외 ${arr.length - maxLines}건`].join(', ');
 }
 
-/**
- * 템플릿 본문과 동일한 구조로 생성
- * - course, book, content, homework, feedback 에 맞춰 1~5번 라인 구성
- */
-function buildDailyTemplateBody({ course, book, content, homework, feedback }) {
-  // 수업내용: 2문장/120자 권장
+// ====== 템플릿 본문과 “완전히 동일”한 message_1 생성 (CRLF 사용) ======
+function buildDailyTemplateMessage({ studentName, course, dateLabel, book, content, homework, feedback }) {
+  // 템플릿: “IG수학학원 데일리 리포트” 헤더 + 빈 줄
+  const header = 'IG수학학원 데일리 리포트';
+
+  const titleLine1 = `${studentName || ''} 학생`;
+  const titleLine2 = `${course || ''} ${dateLabel || ''}`.trim();
+
   const c = _clip(String(content || '').replace(/\s+\n/g, ' ').trim(), 120);
-  // 과제: 최대 4개 항목 요약
   const h = _clip(_joinHomework(homework || '', 4), 180);
-  // 피드백: 300~350자 권장
   const f = _clip(String(feedback || '').replace(/\n{2,}/g, '\n').trim(), 350);
 
-  return [
+  // 템플릿과 줄 구성/빈 줄을 1:1로 맞춤 (CRLF)
+  const lines = [
+    header,
+    '',                       // 빈 줄
+    titleLine1,
+    titleLine2,
+    '',                       // 빈 줄
     `1. 과정 : ${course || '-'}`,
     `2. 교재 : ${book || '-'}`,
     `3. 수업내용 : ${c || '-'}`,
     `4. 과제 : ${h || '-'}`,
     `5. 개별 피드백 : ${f || '-'}`,
-  ].join('\n');
+    '',                       // 빈 줄
+    TAIL_LINE,
+  ];
+  return lines.join('\r\n');
 }
 
-/**
- * 타이틀 2줄(각 23자 가드)
- *  1행: "{학생명} 학생"
- *  2행: "{과정} {YYYY.MM.DD(요일)}" → 길면 단계적 축약
- */
+// ====== (옵션) 강조표기 2줄 생성: 화면용. 본문 비교에는 영향 없음 ======
 function makeTwoLineTitle(studentName, course, dateLabel, max = 23) {
   const ell = s => (String(s).length <= max ? String(s) : String(s).slice(0, max - 1) + '…');
   const line1 = ell(`${studentName || ''} 학생`);
@@ -57,12 +60,10 @@ function makeTwoLineTitle(studentName, course, dateLabel, max = 23) {
   let line2 = `${course || ''} ${dateLabel || ''}`.trim();
 
   if (line2.length > max) {
-    // 요일 제거
     const noDow = String(dateLabel || '').replace(/\(.+?\)/, '').trim();
     line2 = `${course || ''} ${noDow}`.trim();
   }
   if (line2.length > max) {
-    // 과정 축약 규칙
     const repl = [
       ['개별맞춤수업','개별'], ['판서강의','판서'], ['방학특강','특강'],
       ['중등수학','중수'], ['고등수학','고수'], ['심화반','심화'], ['기본반','기본'],
@@ -73,7 +74,6 @@ function makeTwoLineTitle(studentName, course, dateLabel, max = 23) {
     line2 = `${c} ${noDow2}`.trim();
   }
   if (line2.length > max) {
-    // 날짜 더 축약: YYYY.MM.DD → MM.DD
     const mmdd = (String(dateLabel || '').match(/\d{4}\.(\d{2}\.\d{2})/) || [,''])[1] || String(dateLabel || '');
     line2 = `${course || ''} ${mmdd}`.trim();
   }
@@ -82,27 +82,7 @@ function makeTwoLineTitle(studentName, course, dateLabel, max = 23) {
   return `${line1}\n${line2}`;
 }
 
-/**
- * 타이틀+본문을 한 번에 만들어 반환
- *  - alimtalkReport 등에서 사용
- */
-function makeReportTitleAndBody({
-  학생명, 과정, 수업일자, 교재, content, homework, feedback,
-  titleMax = 23,
-}) {
-  const emtitle = makeTwoLineTitle(학생명 || '', 과정 || '', 수업일자 || '', titleMax);
-  const message = buildDailyTemplateBody({
-    course:   과정    || '-',
-    book:     교재    || '-',
-    content:  content || '',
-    homework: homework|| '',
-    feedback: feedback|| '',
-  });
-  return { emtitle, message };
-}
-
 module.exports = {
-  buildDailyTemplateBody,
+  buildDailyTemplateMessage,
   makeTwoLineTitle,
-  makeReportTitleAndBody,
 };

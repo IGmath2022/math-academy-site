@@ -5,10 +5,10 @@ const User = require('../models/User');
 const Setting = require('../models/Setting');
 const LessonLog = require('../models/LessonLog');
 const NotificationLog = require('../models/NotificationLog');
-const { buildDailyTemplateBody, makeTwoLineTitle } = require('../utils/formatDailyReport');
-const { issueToken } = require('../utils/reportToken');
-const { sendReportAlimtalk } = require('../utils/alimtalkReport'); // ← 리포트 전용 발송기
-const { sendAlimtalk } = require('../utils/alimtalk');             // ← 등/하원용 그대로 사용
+
+const { buildDailyTemplateMessage, makeTwoLineTitle } = require('../utils/formatDailyReport');
+const { sendReportAlimtalk } = require('../utils/alimtalkReport'); // 리포트 전용(버튼은 템플릿, 변수만 주입)
+const { sendAlimtalk } = require('../utils/alimtalk');             // 등/하원용 (기존)
 
 const KST = 'Asia/Seoul';
 const REPORT_BASE = process.env.REPORT_BASE_URL || 'https://ig-math-2022.onrender.com';
@@ -22,7 +22,7 @@ function getDailyTplCodeFallback() {
   return null;
 }
 
-// ====== 날짜별 목록(등원 ∪ 해당일 로그보유) ======
+// ====== 날짜별 목록 ======
 exports.listByDate = async (req, res) => {
   const date = (req.query.date || moment().tz(KST).format('YYYY-MM-DD'));
 
@@ -66,7 +66,7 @@ exports.listByDate = async (req, res) => {
   res.json({ date, items });
 };
 
-// ====== 리포트 1건 상세(학생+날짜) ======
+// ====== 리포트 상세 ======
 exports.getDetail = async (req, res) => {
   const { studentId, date } = req.query;
   if (!studentId || !date) return res.status(400).json({ message: 'studentId, date 필수' });
@@ -125,38 +125,44 @@ exports.sendOne = async (req, res) => {
     const m = moment.tz(log.date, 'YYYY-MM-DD', KST);
     const dateLabel = m.format('YYYY.MM.DD(ddd)');
 
-    const emtitle = makeTwoLineTitle(student.name, log.course || '', dateLabel, 23);
-    const message = buildDailyTemplateBody({
+    // ★ 템플릿 본문과 1:1로 같은 message_1 생성(헤더/타이틀 2줄 포함)
+    const message = buildDailyTemplateMessage({
+      studentName: student.name,
       course:   log.course   || '-',
+      dateLabel,
       book:     log.book     || '-',
       content:  log.content  || '',
       homework: log.homework || '',
       feedback: log.feedback || ''
     });
 
-    // ★ 버튼은 템플릿에 등록된 “https://.../r/#{code}”를 그대로 사용
-    //    → 여기서는 템플릿 변수 #{code}에 값을 꽂아주는 extraVars 만 전달
-    const code = String(log._id);
+    // (선택) 강조 타이틀: UI용. 본문 비교에는 영향 없음
+    const emtitle = makeTwoLineTitle(student.name, log.course || '', dateLabel, 23);
 
-    const ok = await sendReportAlimtalk(student.parentPhone, tpl, {
+    // 버튼은 템플릿: https://ig-math-2022.onrender.com/r/#{code}
+    // → 여기서는 #{code} 변수만 주입
+    const code = String(log._id);
+    const { ok, mid, raw } = await sendReportAlimtalk(student.parentPhone, tpl, {
       name: student.name,
-      emtitle,
-      message,
-      subject: 'IG수학 데일리 레포트',
-      extraVars: { code }, // ← 템플릿 버튼 URL의 #{code} 채움
+      emtitle,                // 보내도 되고 빼도 됩니다(강조형 UI용)
+      message,                // 템플릿과 완전 동일
+      subject: 'IG수학 데일리 리포트', // 필요시 유지
+      extraVars: { code },    // ★ 버튼 변수 주입
+      // failover 등은 의도적으로 사용 안 함
     });
 
     await NotificationLog.create({
       studentId: log.studentId,
       type: '일일리포트',
       status: ok ? '성공' : '실패',
-      code: ok ? '0' : 'ERR',
-      message: ok ? 'OK' : '알림톡 발송 실패',
+      code: ok ? '0' : (raw?.code ?? 'ERR'),
+      message: ok ? 'OK' : (raw?.message ?? '알림톡 발송 실패'),
+      providerMid: mid || '',
       payloadSize: Buffer.byteLength((message || ''), 'utf8')
     });
 
     log.notifyStatus = ok ? '발송' : '실패';
-    log.notifyLog = ok ? 'OK' : '알림톡 발송 실패';
+    log.notifyLog = ok ? 'OK' : (raw?.message ?? '알림톡 발송 실패');
     await log.save();
 
     res.json({ ok, id: log._id });
@@ -166,7 +172,7 @@ exports.sendOne = async (req, res) => {
   }
 };
 
-// ====== 선택 발송(여러 건) / 자동 발송(sendBulk) 이하 동일 ======
+// ====== 선택 발송 ======
 exports.sendSelected = async (req, res) => {
   const { ids } = req.body;
   if (!Array.isArray(ids) || ids.length === 0) {
@@ -193,6 +199,7 @@ exports.sendSelected = async (req, res) => {
   res.json({ ok: true, sent, skipped, failed });
 };
 
+// ====== 자동 발송 ======
 exports.sendBulk = async (_req, res) => {
   const list = await LessonLog.find({
     notifyStatus: '대기',
