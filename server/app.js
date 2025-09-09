@@ -71,7 +71,7 @@ mongoose.connect(process.env.MONGO_URL, {
     app.use('/api/admin', require('./routes/adminProfileRoutes'));
     app.use('/api/admin', require('./routes/adminCounselRoutes'));
     app.use('/api/admin', require('./routes/adminClassTypeRoutes'));
-    app.use('/', require('./routes/reportRoutes'));              // 공개 리포트 뷰(/report, /r/:code)
+    app.use('/', reportRoutes);            // 공개 리포트 뷰(/report, /r/:code)
 
     // 메인
     app.get('/', (req, res) => {
