@@ -266,3 +266,121 @@ exports.sendBulk = async (_req, res) => {
   }
   res.json({ ok: true, sent, failed });
 };
+
+/* ------------------------------------------------------------------
+ * 👇👇👇 여기부터 ‘등/하원 수동 수정’ 신규 API 2개 추가 👇👇👇
+ * -----------------------------------------------------------------*/
+
+// HH:mm → HH:mm:ss 보정
+function toHHMMSS(t) {
+  if (!t) return null;
+  if (/^\d{2}:\d{2}$/.test(t)) return `${t}:00`;
+  if (/^\d{2}:\d{2}:\d{2}$/.test(t)) return t;
+  return null;
+}
+
+// 등/하원 1건 조회 (학생+날짜)
+exports.getAttendanceOne = async (req, res) => {
+  try {
+    const { studentId, date } = req.query;
+    if (!studentId || !date) return res.status(400).json({ message: 'studentId, date 필수' });
+
+    const rows = await Attendance.find({ userId: studentId, date }).lean();
+    const ins  = rows.filter(r => r.type === 'IN').map(r => r.time).sort();
+    const outs = rows.filter(r => r.type === 'OUT').map(r => r.time).sort();
+
+    let checkIn = ins[0] || null;                  // HH:mm:ss
+    let checkOut = outs[outs.length - 1] || null;  // HH:mm:ss
+    let source = 'attendance';
+
+    // Attendance가 없으면 LessonLog에 기록된 inTime/outTime 사용
+    if (!checkIn || !checkOut) {
+      const log = await LessonLog.findOne({ studentId, date }).lean();
+      if (log?.inTime)  checkIn = toHHMMSS(log.inTime);
+      if (log?.outTime) checkOut = toHHMMSS(log.outTime);
+      if (checkIn || checkOut) source = 'log';
+    }
+
+    // 학습시간 계산(가능하면)
+    let studyMin = null;
+    if (checkIn && checkOut) {
+      const start = moment.tz(`${date} ${checkIn}`,  'YYYY-MM-DD HH:mm:ss', KST);
+      const end   = moment.tz(`${date} ${checkOut}`, 'YYYY-MM-DD HH:mm:ss', KST);
+      const diff  = end.diff(start, 'minutes');
+      studyMin = diff > 0 ? diff : 0;
+    }
+
+    res.json({
+      studentId, date,
+      checkIn: checkIn ? checkIn.slice(0,5) : "",   // HH:mm
+      checkOut: checkOut ? checkOut.slice(0,5) : "",
+      source, studyMin
+    });
+  } catch (e) {
+    console.error('[lessonsController.getAttendanceOne]', e);
+    res.status(500).json({ message: '출결 조회 오류', error: String(e?.message || e) });
+  }
+};
+
+// 등/하원 수동 설정(관리자). 기본 동작: 해당 날짜의 기존 출결을 덮어쓰기(overwrite=true)
+exports.setAttendanceTimes = async (req, res) => {
+  try {
+    const { studentId, date, checkIn, checkOut, overwrite = true } = req.body || {};
+    if (!studentId || !date) return res.status(400).json({ message: 'studentId, date 필수' });
+    const tIn  = toHHMMSS(checkIn);
+    const tOut = toHHMMSS(checkOut);
+
+    // 덮어쓰기면 해당 날짜의 모든 출결 삭제 후, 새로 기록
+    if (overwrite) {
+      await Attendance.deleteMany({ userId: studentId, date });
+      if (tIn)  await Attendance.create({ userId: studentId, date, type: 'IN',  time: tIn  });
+      if (tOut) await Attendance.create({ userId: studentId, date, type: 'OUT', time: tOut });
+    } else {
+      // overwrite=false면 upsert 방식 (가장 이른 IN / 가장 늦은 OUT을 이 값으로 만들기 보장은 어렵지만, 기본 업데이트)
+      if (tIn) {
+        await Attendance.findOneAndUpdate(
+          { userId: studentId, date, type: 'IN' },
+          { $set: { time: tIn } },
+          { upsert: true }
+        );
+      }
+      if (tOut) {
+        await Attendance.findOneAndUpdate(
+          { userId: studentId, date, type: 'OUT' },
+          { $set: { time: tOut } },
+          { upsert: true }
+        );
+      }
+    }
+
+    // LessonLog에도 반영(보고서 일관성 유지)
+    let durationMin = null;
+    if (tIn && tOut) {
+      const start = moment.tz(`${date} ${tIn}`,  'YYYY-MM-DD HH:mm:ss', KST);
+      const end   = moment.tz(`${date} ${tOut}`, 'YYYY-MM-DD HH:mm:ss', KST);
+      const diff  = end.diff(start, 'minutes');
+      durationMin = diff > 0 ? diff : 0;
+    }
+
+    await LessonLog.findOneAndUpdate(
+      { studentId, date },
+      { $set: {
+        inTime:  tIn  ? tIn.slice(0,5) : null,   // HH:mm (로그에는 분까지만 저장해도 충분)
+        outTime: tOut ? tOut.slice(0,5) : null,
+        ...(durationMin !== null ? { durationMin } : {})
+      }},
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    res.json({
+      ok: true,
+      studentId, date,
+      checkIn:  tIn  ? tIn.slice(0,5)  : "",
+      checkOut: tOut ? tOut.slice(0,5) : "",
+      durationMin
+    });
+  } catch (e) {
+    console.error('[lessonsController.setAttendanceTimes]', e);
+    res.status(500).json({ message: '출결 수정 오류', error: String(e?.message || e) });
+  }
+};

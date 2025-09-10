@@ -13,6 +13,11 @@ export default function DailyReportEditor() {
     focus: "", progressPct: "", planNext: ""
   });
   const [msg, setMsg] = useState("");
+
+  // ⬇️ 출결 수동 수정용 상태
+  const [inOut, setInOut] = useState({ inTime: "", outTime: "", source: "", studyMin: null });
+  const [savingInOut, setSavingInOut] = useState(false);
+
   const token = localStorage.getItem("token");
   const auth = { headers: { Authorization: `Bearer ${token}` } };
 
@@ -60,6 +65,26 @@ export default function DailyReportEditor() {
     // eslint-disable-next-line
   }, [studentId, date]);
 
+  // ⬇️ 학생/날짜 선택 시 출결 조회
+  useEffect(() => {
+    const loadAttendance = async () => {
+      if (!studentId) { setInOut({ inTime:"", outTime:"", source:"", studyMin:null }); return; }
+      try{
+        const { data } = await axios.get(`${API_URL}/api/admin/attendance/one`, { ...auth, params: { studentId, date } });
+        setInOut({
+          inTime: data?.checkIn || "",
+          outTime: data?.checkOut || "",
+          source: data?.source || "",
+          studyMin: data?.studyMin ?? null
+        });
+      }catch {
+        setInOut({ inTime:"", outTime:"", source:"", studyMin:null });
+      }
+    };
+    loadAttendance();
+    // eslint-disable-next-line
+  }, [studentId, date]);
+
   const handleSave = async () => {
     if (!studentId) { setMsg("학생을 선택하세요."); setTimeout(() => setMsg(""), 1200); return; }
     try {
@@ -95,6 +120,32 @@ export default function DailyReportEditor() {
     }
   };
 
+  // ⬇️ 출결 수동 저장
+  const handleSaveInOut = async () => {
+    if (!studentId) { setMsg("학생을 선택하세요."); setTimeout(()=>setMsg(""),1200); return; }
+    setSavingInOut(true);
+    try{
+      const payload = {
+        studentId,
+        date,
+        checkIn: inOut.inTime || "",   // "HH:mm"
+        checkOut: inOut.outTime || "",
+        overwrite: true                // 해당 날짜 출결 전체를 덮어쓰기(가장 확실)
+      };
+      const { data } = await axios.post(`${API_URL}/api/admin/attendance/set-times`, payload, auth);
+      setInOut(prev => ({ ...prev, studyMin: data?.durationMin ?? prev.studyMin }));
+      setMsg("출결 수정 완료");
+      setTimeout(() => setMsg(""), 1200);
+      // 목록/상태 갱신
+      fetchList();
+    }catch(e){
+      setMsg(e?.response?.data?.message || "출결 수정 실패");
+      setTimeout(() => setMsg(""), 1500);
+    }finally{
+      setSavingInOut(false);
+    }
+  };
+
   const studentOptions = useMemo(() => {
     const arr = [...list].sort((a,b) => a.name.localeCompare(b.name, 'ko'));
     return arr.map(it => ({ value: it.studentId, label: `${it.name}${it.hasLog ? " (작성됨)" : ""}` }));
@@ -110,6 +161,33 @@ export default function DailyReportEditor() {
           {studentOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
         <button onClick={fetchList} style={btnGhost}>목록 새로고침</button>
+      </div>
+
+      {/* ⬇️ 출결 수동 수정(관리자) 블록 */}
+      <div style={{ border:"1px dashed #ccd3e0", borderRadius:10, padding:12, marginBottom:14, background:"#f9fbff" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
+          <span style={{ fontWeight:800, color:"#224" }}>출결 수동 수정(관리자)</span>
+          <span style={{ color:"#667" }}>현재 근거: {inOut.source ? (inOut.source === "attendance" ? "출결기록" : "리포트로그") : "-"}</span>
+          <span style={{ color:"#667" }}>
+            추정 학습시간: {inOut.studyMin == null ? "-" : `${inOut.studyMin}분`}
+          </span>
+        </div>
+        <div style={{ display:"flex", gap:12, marginTop:10, flexWrap:"wrap" }}>
+          <label style={{ display:"flex", flexDirection:"column", gap:6 }}>
+            <span style={{ fontSize:13, color:"#556", fontWeight:700 }}>등원(HH:MM)</span>
+            <input type="time" value={inOut.inTime} onChange={e=>setInOut(v=>({ ...v, inTime:e.target.value }))} style={ipt}/>
+          </label>
+          <label style={{ display:"flex", flexDirection:"column", gap:6 }}>
+            <span style={{ fontSize:13, color:"#556", fontWeight:700 }}>하원(HH:MM)</span>
+            <input type="time" value={inOut.outTime} onChange={e=>setInOut(v=>({ ...v, outTime:e.target.value }))} style={ipt}/>
+          </label>
+          <button onClick={handleSaveInOut} disabled={savingInOut || !studentId} style={btnPrimary}>
+            {savingInOut ? "저장 중…" : "출결 적용(덮어쓰기)"}
+          </button>
+          <div style={{ color:"#889" }}>
+            ※ 덮어쓰기는 해당 날짜의 기존 IN/OUT 기록을 정정하여 정확한 학습시간을 재계산합니다.
+          </div>
+        </div>
       </div>
 
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>

@@ -35,4 +35,16 @@ router.post('/lessons/send-selected', isAdmin, lessons.sendSelected);
 // 예약분 일괄 발송(크론/수동)
 router.post('/lessons/send-bulk', isAdmin, lessons.sendBulk);
 
+/* ===========================
+ * 출결 수동 수정(관리자용) 추가
+ * =========================== */
+
+// 등/하원 1건 조회 (studentId, date 쿼리필수)
+// -> GET /api/admin/attendance/one?studentId=...&date=YYYY-MM-DD
+router.get('/attendance/one', isAdmin, lessons.getAttendanceOne);
+
+// 등/하원 수동 설정 (body: { studentId, date, checkIn, checkOut, overwrite? })
+// -> POST /api/admin/attendance/set-times
+router.post('/attendance/set-times', isAdmin, lessons.setAttendanceTimes);
+
 module.exports = router;
