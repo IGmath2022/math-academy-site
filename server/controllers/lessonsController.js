@@ -70,7 +70,7 @@ exports.listByDate = async (req, res) => {
   const items = ids.map(id => {
     const log = logByStudent[id];
     const checkIn = byUserType[id]?.IN || '';
-    theCheckOut = byUserType[id]?.OUT || '';
+    const checkOut = byUserType[id]?.OUT || '';
     return {
       studentId: id,
       name: byId[id]?.name || '',
