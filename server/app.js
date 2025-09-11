@@ -16,11 +16,27 @@ const bannerUploadRoutes   = require('./routes/bannerUpload');
 const adminLessonRoutes    = require('./routes/adminLessonRoutes'); // /api/admin/*
 const reportRoutes         = require('./routes/reportRoutes');      // /report, /r/:code
 
-// === CORS (프론트 주소 넣기!) ===
+/* =========================
+ * CORS 설정 (다중 오리진)
+ *  - .env에 CORS_ORIGINS="http://localhost:3000,http://localhost:5173,https://ig-math-2022.onrender.com"
+ *    처럼 콤마로 구분하여 넣어둡니다.
+ * ========================= */
+const allowedOrigins = (process.env.CORS_ORIGINS || 'https://ig-math-2022.onrender.com')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
 app.use(cors({
-  origin: 'https://ig-math-2022.onrender.com',
+  origin(origin, callback) {
+    // 서버-서버 호출, 헬스체크 등 'Origin' 헤더가 없는 경우 허용
+    if (!origin) return callback(null, true);
+    // 화이트리스트에 포함된 오리진만 허용
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error(`Not allowed by CORS: ${origin}`));
+  },
   credentials: true
 }));
+
 app.use(express.json());
 
 // === 서버 외부 IP 조회 라우터(운영용) ===
@@ -189,6 +205,7 @@ mongoose.connect(process.env.MONGO_URL, {
     // ==== 서버 시작 ====
     app.listen(PORT, () => {
       console.log(`서버가 http://localhost:${PORT} 에서 실행중`);
+      console.log(`[CORS] allowed origins:`, allowedOrigins);
     });
   })
   .catch(err => {

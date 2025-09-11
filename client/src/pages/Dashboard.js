@@ -26,6 +26,11 @@ import AutoLeaveSwitch from "../components/Admin/AutoLeaveSwitch";
 import DailyReportSender from "../components/Admin/DailyReportSender";
 import DailyReportEditor from "../components/Admin/DailyReportEditor";
 
+// 신규 연결: 상담/프로필/수업형태 패널
+import StudentProfilePanel from "../components/Admin/StudentProfilePanel";
+import CounselManager from "../components/Admin/CounselManager";
+import ClassTypeManager from "../components/Admin/ClassTypeManager";
+
 // ★★★ 모든 챕터ID는 여기서 추출! (id/_id/문자열 커버) ★★★
 const getChapterId = (chapter) => chapter?.id || chapter?._id || chapter;
 
@@ -250,7 +255,7 @@ function StudentDashboard() {
             borderRadius: 8,
             border: "none",
             background: viewMode === "list" ? "#226ad6" : "#eee",
-            color: viewMode === "list" ? "#fff" : "#555",
+            color: "white",
             fontWeight: 600,
             cursor: "pointer",
           }}
@@ -264,7 +269,7 @@ function StudentDashboard() {
             borderRadius: 8,
             border: "none",
             background: viewMode === "calendar" ? "#226ad6" : "#eee",
-            color: viewMode === "calendar" ? "#fff" : "#555",
+            color: "white",
             fontWeight: 600,
             cursor: "pointer",
           }}
@@ -344,7 +349,7 @@ function StudentDashboard() {
                       <input
                         type="checkbox"
                         checked={
-                          chapterId && progressMap[chapterId]?.date === today
+                          chapterId && (progressMap[chapterId]?.date === today)
                         }
                         onChange={(e) => {
                           setProgressList((prev) => {
@@ -499,6 +504,11 @@ function AdminDashboard() {
       {/* 리포트 작성/발송 */}
       <DailyReportEditor />
       <DailyReportSender />
+
+      {/* 신규: 상담/프로필/수업형태 관리 */}
+      <CounselManager />
+      <StudentProfilePanel />
+      <ClassTypeManager />
 
       {/* 기존 관리자 기능들 */}
       <BlogSettingSwitch />
