@@ -20,6 +20,12 @@ function getDailyTplCodeFallback() {
   return null;
 }
 
+/** 🔒 자동발송 스위치 (DB 키 통일: daily_report_auto_on) */
+async function isDailyAutoOn() {
+  const s = await Setting.findOne({ key: 'daily_report_auto_on' });
+  return s?.value === 'true';
+}
+
 /** IN/OUT 으로 학습시간(분) 계산 */
 async function computeStudyTimeMinFromAttendance(studentId, date) {
   const rows = await Attendance.find({ userId: studentId, date }).lean();
@@ -27,8 +33,8 @@ async function computeStudyTimeMinFromAttendance(studentId, date) {
   const outs = rows.filter(r => r.type === 'OUT').map(r => r.time).sort();
   if (!ins.length || !outs.length) return null;
 
-  const firstIn  = ins[0];                    // 가장 이른 등원
-  const lastOut  = outs[outs.length - 1];     // 가장 늦은 하원
+  const firstIn  = ins[0];
+  const lastOut  = outs[outs.length - 1];
   const start = moment.tz(`${date} ${firstIn}`, 'YYYY-MM-DD HH:mm:ss', KST);
   const end   = moment.tz(`${date} ${lastOut}`, 'YYYY-MM-DD HH:mm:ss', KST);
   let diffMin = end.diff(start, 'minutes');
@@ -88,7 +94,6 @@ exports.getDetail = async (req, res) => {
   const log = await LessonLog.findOne({ studentId, date }).lean();
   if (!log) return res.json({});
 
-  // 프론트 호환용 별칭(studyTimeMin) 포함
   res.json({
     ...log,
     studyTimeMin: log.durationMin ?? null
@@ -101,25 +106,16 @@ exports.createOrUpdate = async (req, res) => {
   const { studentId, date } = body;
   if (!studentId || !date) return res.status(400).json({ message: 'studentId, date 필수' });
 
-  // ✅ 호환: planNext(프론트) -> nextPlan(스키마)
-  if (Object.prototype.hasOwnProperty.call(body, 'planNext')) {
-    body.nextPlan = body.planNext || '';
-    delete body.planNext;
-  }
-
-  // 프론트에서 studyTimeMin으로 들어오면 durationMin에 매핑
   if (body.studyTimeMin !== undefined && body.studyTimeMin !== null && body.studyTimeMin !== '') {
     const n = Number(body.studyTimeMin);
     if (Number.isFinite(n)) body.durationMin = n;
     delete body.studyTimeMin;
   }
 
-  // 긴 텍스트 안전 가드
   if (typeof body.feedback === 'string' && body.feedback.length > 2000) {
     body.feedback = body.feedback.slice(0, 1999) + '…';
   }
 
-  // durationMin 없으면 Attendance로 자동 계산해서 채움
   if (body.durationMin === undefined || body.durationMin === null || body.durationMin === '') {
     const autoMin = await computeStudyTimeMinFromAttendance(studentId, date);
     if (autoMin !== null) body.durationMin = autoMin;
@@ -159,7 +155,6 @@ exports.sendOne = async (req, res) => {
       return res.status(400).json({ message: '학부모 연락처 없음' });
     }
 
-    // 발송 전 durationMin 자동 보정(없으면 계산해서 저장)
     if (log.durationMin === undefined || log.durationMin === null) {
       const autoMin = await computeStudyTimeMinFromAttendance(log.studentId, log.date);
       if (autoMin !== null) {
@@ -175,11 +170,7 @@ exports.sendOne = async (req, res) => {
     const m = moment.tz(log.date, 'YYYY-MM-DD', KST);
     const dateLabel = m.format('YYYY.MM.DD(ddd)');
 
-    // ✅ 템플릿 치환 변수에 다음 수업 계획 추가(템플릿에서 사용)
-    const nextPlanVal = (log.nextPlan || '').trim();
-
-    // alimtalkReport가 타이틀/본문/버튼/치환을 모두 처리함
-    const code = String(log._id); // 공개 링크용 식별자
+    const code = String(log._id);
     const ok = await sendReportAlimtalk(student.parentPhone, tpl, {
       학생명: student.name,
       과정: log.course || '-',
@@ -188,19 +179,15 @@ exports.sendOne = async (req, res) => {
       수업요약: log.content || '',
       과제요약: log.homework || '',
       피드백요약: log.feedback || '',
-      다음수업계획: nextPlanVal, // ← 템플릿에서 이 키 사용 권장
-      다음계획: nextPlanVal,     // ← 혹시 다른 키를 쓰고 있다면 호환
       code
     });
 
-    // 로깅용 payloadSize(본문 대략 길이)
     const bodyForSize = [
       `1. 과정 : ${log.course || '-'}`,
       `2. 교재 : ${log.book || '-'}`,
       `3. 수업내용 : ${log.content || ''}`,
       `4. 과제 : ${log.homework || ''}`,
-      `5. 개별 피드백 : ${log.feedback || ''}`,
-      `6. 다음 수업 계획 : ${nextPlanVal || ''}`
+      `5. 개별 피드백 : ${log.feedback || ''}`
     ].join('\n');
 
     await NotificationLog.create({
@@ -254,6 +241,12 @@ exports.sendSelected = async (req, res) => {
 
 // ====== 자동 발송(예약분) ======
 exports.sendBulk = async (_req, res) => {
+  // 🔒 자동발송 토글 체크
+  const autoOn = await isDailyAutoOn();
+  if (!autoOn) {
+    return res.json({ ok: true, sent: 0, failed: 0, message: 'auto OFF' });
+  }
+
   const list = await LessonLog.find({
     notifyStatus: '대기',
     scheduledAt: { $ne: null, $lte: new Date() }
@@ -280,7 +273,7 @@ exports.sendBulk = async (_req, res) => {
 };
 
 /* ------------------------------------------------------------------
- * 👇👇👇 여기부터 ‘등/하원 수동 수정’ 신규 API 2개 (기존 유지) 👇👇👇
+ * 등/하원 수동 수정 API
  * -----------------------------------------------------------------*/
 
 // HH:mm → HH:mm:ss 보정
@@ -305,7 +298,7 @@ exports.getAttendanceOne = async (req, res) => {
     let checkOut = outs[outs.length - 1] || null;  // HH:mm:ss
     let source = 'attendance';
 
-    // Attendance가 없으면 LessonLog에 기록된 inTime/outTime 사용
+    // Attendance가 없으면 LessonLog inTime/outTime 사용
     if (!checkIn || !checkOut) {
       const log = await LessonLog.findOne({ studentId, date }).lean();
       if (log?.inTime)  checkIn = toHHMMSS(log.inTime);
@@ -313,7 +306,6 @@ exports.getAttendanceOne = async (req, res) => {
       if (checkIn || checkOut) source = 'log';
     }
 
-    // 학습시간 계산(가능하면)
     let studyMin = null;
     if (checkIn && checkOut) {
       const start = moment.tz(`${date} ${checkIn}`,  'YYYY-MM-DD HH:mm:ss', KST);
@@ -324,7 +316,7 @@ exports.getAttendanceOne = async (req, res) => {
 
     res.json({
       studentId, date,
-      checkIn: checkIn ? checkIn.slice(0,5) : "",   // HH:mm
+      checkIn: checkIn ? checkIn.slice(0,5) : "",
       checkOut: checkOut ? checkOut.slice(0,5) : "",
       source, studyMin
     });
@@ -334,7 +326,7 @@ exports.getAttendanceOne = async (req, res) => {
   }
 };
 
-// 등/하원 수동 설정(관리자). 기본 동작: 해당 날짜의 기존 출결을 덮어쓰기(overwrite=true)
+// 등/하원 수동 설정(관리자)
 exports.setAttendanceTimes = async (req, res) => {
   try {
     const { studentId, date, checkIn, checkOut, overwrite = true } = req.body || {};
@@ -342,13 +334,11 @@ exports.setAttendanceTimes = async (req, res) => {
     const tIn  = toHHMMSS(checkIn);
     const tOut = toHHMMSS(checkOut);
 
-    // 덮어쓰기면 해당 날짜의 모든 출결 삭제 후, 새로 기록
     if (overwrite) {
       await Attendance.deleteMany({ userId: studentId, date });
       if (tIn)  await Attendance.create({ userId: studentId, date, type: 'IN',  time: tIn  });
       if (tOut) await Attendance.create({ userId: studentId, date, type: 'OUT', time: tOut });
     } else {
-      // overwrite=false면 upsert 방식
       if (tIn) {
         await Attendance.findOneAndUpdate(
           { userId: studentId, date, type: 'IN' },
@@ -365,7 +355,6 @@ exports.setAttendanceTimes = async (req, res) => {
       }
     }
 
-    // LessonLog에도 반영(보고서 일관성 유지)
     let durationMin = null;
     if (tIn && tOut) {
       const start = moment.tz(`${date} ${tIn}`,  'YYYY-MM-DD HH:mm:ss', KST);
@@ -377,7 +366,7 @@ exports.setAttendanceTimes = async (req, res) => {
     await LessonLog.findOneAndUpdate(
       { studentId, date },
       { $set: {
-        inTime:  tIn  ? tIn.slice(0,5) : null,   // HH:mm
+        inTime:  tIn  ? tIn.slice(0,5) : null,
         outTime: tOut ? tOut.slice(0,5) : null,
         ...(durationMin !== null ? { durationMin } : {})
       }},
@@ -394,5 +383,35 @@ exports.setAttendanceTimes = async (req, res) => {
   } catch (e) {
     console.error('[lessonsController.setAttendanceTimes]', e);
     res.status(500).json({ message: '출결 수정 오류', error: String(e?.message || e) });
+  }
+};
+
+/* ===========================
+ * 자동발송 ON/OFF 설정 API
+ * =========================== */
+
+// GET /api/admin/settings/daily-auto -> { on: true|false }
+exports.getDailyAuto = async (_req, res) => {
+  try {
+    const s = await Setting.findOne({ key: 'daily_report_auto_on' });
+    const on = s?.value === 'true';
+    res.json({ on });
+  } catch (e) {
+    res.status(500).json({ message: 'daily-auto 조회 실패', error: String(e?.message || e) });
+  }
+};
+
+// POST /api/admin/settings/daily-auto { on: boolean } -> { ok, on }
+exports.setDailyAuto = async (req, res) => {
+  try {
+    const on = !!req.body?.on;
+    await Setting.findOneAndUpdate(
+      { key: 'daily_report_auto_on' },
+      { $set: { value: on ? 'true' : 'false' } },
+      { upsert: true, new: true }
+    );
+    res.json({ ok: true, on });
+  } catch (e) {
+    res.status(500).json({ message: 'daily-auto 저장 실패', error: String(e?.message || e) });
   }
 };
