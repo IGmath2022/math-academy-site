@@ -47,4 +47,14 @@ router.get('/attendance/one', isAdmin, lessons.getAttendanceOne);
 // -> POST /api/admin/attendance/set-times
 router.post('/attendance/set-times', isAdmin, lessons.setAttendanceTimes);
 
+/* ===========================
+ * 자동발송 ON/OFF 설정(관리자용) 추가
+ * =========================== */
+
+// 상태 조회 -> GET /api/admin/settings/daily-auto
+router.get('/settings/daily-auto', isAdmin, lessons.getDailyAuto);
+
+// 상태 설정 -> POST /api/admin/settings/daily-auto { on: boolean }
+router.post('/settings/daily-auto', isAdmin, lessons.setDailyAuto);
+
 module.exports = router;

@@ -20,6 +20,13 @@ function getDailyTplCodeFallback() {
   return null;
 }
 
+// ✅ truthy 파서 & 자동발송 플래그 리더
+const truthy = (v) => /^(1|true|on|yes)$/i.test(String(v || '').trim());
+async function isDailyAutoOn() {
+  const v = await getSetting('daily_auto_on', 'off');
+  return truthy(v);
+}
+
 /** IN/OUT 으로 학습시간(분) 계산 */
 async function computeStudyTimeMinFromAttendance(studentId, date) {
   const rows = await Attendance.find({ userId: studentId, date }).lean();
@@ -63,7 +70,7 @@ exports.listByDate = async (req, res) => {
   const items = ids.map(id => {
     const log = logByStudent[id];
     const checkIn = byUserType[id]?.IN || '';
-    const checkOut = byUserType[id]?.OUT || '';
+    theCheckOut = byUserType[id]?.OUT || '';
     return {
       studentId: id,
       name: byId[id]?.name || '',
@@ -242,6 +249,12 @@ exports.sendSelected = async (req, res) => {
 
 // ====== 자동 발송(예약분) ======
 exports.sendBulk = async (_req, res) => {
+  // 🔒 자동발송 토글 체크: 꺼져 있으면 즉시 종료
+  const autoOn = await isDailyAutoOn();
+  if (!autoOn) {
+    return res.json({ ok: true, sent: 0, failed: 0, message: 'auto OFF' });
+  }
+
   const list = await LessonLog.find({
     notifyStatus: '대기',
     scheduledAt: { $ne: null, $lte: new Date() }
@@ -336,7 +349,7 @@ exports.setAttendanceTimes = async (req, res) => {
       if (tIn)  await Attendance.create({ userId: studentId, date, type: 'IN',  time: tIn  });
       if (tOut) await Attendance.create({ userId: studentId, date, type: 'OUT', time: tOut });
     } else {
-      // overwrite=false면 upsert 방식 (가장 이른 IN / 가장 늦은 OUT을 이 값으로 만들기 보장은 어렵지만, 기본 업데이트)
+      // overwrite=false면 upsert 방식
       if (tIn) {
         await Attendance.findOneAndUpdate(
           { userId: studentId, date, type: 'IN' },
@@ -365,7 +378,7 @@ exports.setAttendanceTimes = async (req, res) => {
     await LessonLog.findOneAndUpdate(
       { studentId, date },
       { $set: {
-        inTime:  tIn  ? tIn.slice(0,5) : null,   // HH:mm (로그에는 분까지만 저장해도 충분)
+        inTime:  tIn  ? tIn.slice(0,5) : null,   // HH:mm
         outTime: tOut ? tOut.slice(0,5) : null,
         ...(durationMin !== null ? { durationMin } : {})
       }},
@@ -382,5 +395,34 @@ exports.setAttendanceTimes = async (req, res) => {
   } catch (e) {
     console.error('[lessonsController.setAttendanceTimes]', e);
     res.status(500).json({ message: '출결 수정 오류', error: String(e?.message || e) });
+  }
+};
+
+/* ===========================
+ * 자동발송 ON/OFF 설정 API
+ * =========================== */
+
+// GET /api/admin/settings/daily-auto -> { on: true|false }
+exports.getDailyAuto = async (_req, res) => {
+  try {
+    const on = await isDailyAutoOn();
+    res.json({ on });
+  } catch (e) {
+    res.status(500).json({ message: 'daily-auto 조회 실패', error: String(e?.message || e) });
+  }
+};
+
+// POST /api/admin/settings/daily-auto { on: boolean } -> { ok, on }
+exports.setDailyAuto = async (req, res) => {
+  try {
+    const on = !!req.body?.on;
+    await Setting.findOneAndUpdate(
+      { key: 'daily_auto_on' },
+      { $set: { value: on ? 'on' : 'off' } },
+      { upsert: true, new: true }
+    );
+    res.json({ ok: true, on });
+  } catch (e) {
+    res.status(500).json({ message: 'daily-auto 저장 실패', error: String(e?.message || e) });
   }
 };
