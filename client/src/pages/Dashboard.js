@@ -1,4 +1,3 @@
-// client/src/pages/Dashboard.js
 import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { API_URL } from "../api";
@@ -7,29 +6,8 @@ import Blog from "./Blog";
 // Student
 import StudentProgressCalendar from "../components/Student/StudentProgressCalendar";
 
-// Admin - 기존 관리자 모듈
-import SubjectManager from "../components/Admin/SubjectManager";
-import ChapterManager from "../components/Admin/ChapterManager";
-import StudentAssignManager from "../components/Admin/StudentAssignManager";
-import NewsAdmin from "../components/Admin/NewsAdmin";
-import BlogSettingSwitch from "../components/Admin/BlogSettingSwitch";
-import PopupBannerAdmin from "../components/Admin/PopupBannerAdmin";
-import ProgressManager from "../components/Admin/ProgressManager";
-import SchoolManager from "../components/Admin/SchoolManager";
-import StudentManager from "../components/Admin/StudentManager";
-import SchoolPeriodManager from "../components/Admin/SchoolPeriodManager";
-import AttendanceManager from "../components/Admin/AttendanceManager";
-
-// Admin - 이번에 추가된 모듈
-import DailyReportAutoSwitch from "../components/Admin/DailyReportAutoSwitch";
-import AutoLeaveSwitch from "../components/Admin/AutoLeaveSwitch";
-import DailyReportSender from "../components/Admin/DailyReportSender";
-import DailyReportEditor from "../components/Admin/DailyReportEditor";
-
-// 신규 연결: 상담/프로필/수업형태 패널
-import StudentProfilePanel from "../components/Admin/StudentProfilePanel";
-import CounselManager from "../components/Admin/CounselManager";
-import ClassTypeManager from "../components/Admin/ClassTypeManager";
+// Admin (탭 래퍼)
+import AdminDashboardTabs from "../components/Admin/AdminDashboardTabs";
 
 // ★★★ 모든 챕터ID는 여기서 추출! (id/_id/문자열 커버) ★★★
 const getChapterId = (chapter) => chapter?.id || chapter?._id || chapter;
@@ -193,19 +171,11 @@ function StudentDashboard() {
         minHeight: 350,
       }}
     >
-      <h2
-        style={{ textAlign: "center", marginBottom: 26, fontSize: 23 }}
-      >
+      <h2 style={{ textAlign: "center", marginBottom: 26, fontSize: 23 }}>
         내 강의 대시보드
       </h2>
       {error && (
-        <p
-          style={{
-            color: "#e14",
-            textAlign: "center",
-            margin: "8px 0",
-          }}
-        >
+        <p style={{ color: "#e14", textAlign: "center", margin: "8px 0" }}>
           {error}
         </p>
       )}
@@ -312,11 +282,7 @@ function StudentDashboard() {
                   <div>
                     <b>{a.Chapter.name}</b>
                     <span
-                      style={{
-                        color: "#888",
-                        fontSize: 14,
-                        marginLeft: 7,
-                      }}
+                      style={{ color: "#888", fontSize: 14, marginLeft: 7 }}
                     >
                       {a.Chapter.description}
                     </span>
@@ -349,7 +315,7 @@ function StudentDashboard() {
                       <input
                         type="checkbox"
                         checked={
-                          chapterId && (progressMap[chapterId]?.date === today)
+                          chapterId && progressMap[chapterId]?.date === today
                         }
                         onChange={(e) => {
                           setProgressList((prev) => {
@@ -473,83 +439,6 @@ function StudentDashboard() {
 }
 
 /** =========================
- *  운영자 대시보드
- *  ========================= */
-function AdminDashboard() {
-  const [selectedSubject, setSelectedSubject] = useState(null);
-  const [chapterList, setChapterList] = useState([]);
-
-  return (
-    <div
-      className="container"
-      style={{
-        maxWidth: 680,
-        margin: "48px auto",
-        padding: "34px 5vw",
-        background: "#fff",
-        borderRadius: 16,
-        boxShadow: "0 2px 18px #0001",
-        minHeight: 350,
-      }}
-    >
-      <h2 style={{ textAlign: "center", marginBottom: 24, fontSize: 22 }}>
-        운영자 대시보드{" "}
-        <span style={{ color: "#678", fontSize: 15 }}>(관리자용)</span>
-      </h2>
-
-      {/* 자동화 스위치(서버 Setting 연동) */}
-      <DailyReportAutoSwitch />
-      <AutoLeaveSwitch />
-
-      {/* 리포트 작성/발송 */}
-      <DailyReportEditor />
-      <DailyReportSender />
-
-      {/* 신규: 상담/프로필/수업형태 관리 */}
-      <CounselManager />
-      <StudentProfilePanel />
-      <ClassTypeManager />
-
-      {/* 기존 관리자 기능들 */}
-      <BlogSettingSwitch />
-      <PopupBannerAdmin />
-      <NewsAdmin />
-      <StudentManager />
-      <AttendanceManager />
-      <ProgressManager />
-      <SchoolManager />
-      <SchoolPeriodManager />
-
-      <SubjectManager
-        onSelectSubject={setSelectedSubject}
-        selectedSubject={selectedSubject}
-      />
-      {selectedSubject && (
-        <div
-          style={{
-            marginTop: 26,
-            padding: 18,
-            borderRadius: 10,
-            background: "#f7f8fa",
-            border: "1px solid #e5e5e5",
-          }}
-        >
-          <h3 style={{ fontSize: 18, marginBottom: 14 }}>
-            단원/강의 관리:{" "}
-            <span style={{ color: "#226ad6" }}>{selectedSubject.name}</span>
-          </h3>
-          <ChapterManager
-            subject={selectedSubject}
-            onChapterListChange={setChapterList}
-          />
-          <StudentAssignManager chapterList={chapterList} />
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** =========================
  *  라우팅 진입점
  *  ========================= */
 function Dashboard() {
@@ -575,7 +464,7 @@ function Dashboard() {
         로딩 중...
       </div>
     );
-  if (role === "admin") return <AdminDashboard />;
+  if (role === "admin") return <AdminDashboardTabs />;
   if (role === "student") return <StudentDashboard />;
   return (
     <div
