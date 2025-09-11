@@ -20,13 +20,6 @@ function getDailyTplCodeFallback() {
   return null;
 }
 
-// ✅ truthy 파서 & 자동발송 플래그 리더
-const truthy = (v) => /^(1|true|on|yes)$/i.test(String(v || '').trim());
-async function isDailyAutoOn() {
-  const v = await getSetting('daily_auto_on', 'off');
-  return truthy(v);
-}
-
 /** IN/OUT 으로 학습시간(분) 계산 */
 async function computeStudyTimeMinFromAttendance(studentId, date) {
   const rows = await Attendance.find({ userId: studentId, date }).lean();
@@ -108,6 +101,12 @@ exports.createOrUpdate = async (req, res) => {
   const { studentId, date } = body;
   if (!studentId || !date) return res.status(400).json({ message: 'studentId, date 필수' });
 
+  // ✅ 호환: planNext(프론트) -> nextPlan(스키마)
+  if (Object.prototype.hasOwnProperty.call(body, 'planNext')) {
+    body.nextPlan = body.planNext || '';
+    delete body.planNext;
+  }
+
   // 프론트에서 studyTimeMin으로 들어오면 durationMin에 매핑
   if (body.studyTimeMin !== undefined && body.studyTimeMin !== null && body.studyTimeMin !== '') {
     const n = Number(body.studyTimeMin);
@@ -176,6 +175,9 @@ exports.sendOne = async (req, res) => {
     const m = moment.tz(log.date, 'YYYY-MM-DD', KST);
     const dateLabel = m.format('YYYY.MM.DD(ddd)');
 
+    // ✅ 템플릿 치환 변수에 다음 수업 계획 추가(템플릿에서 사용)
+    const nextPlanVal = (log.nextPlan || '').trim();
+
     // alimtalkReport가 타이틀/본문/버튼/치환을 모두 처리함
     const code = String(log._id); // 공개 링크용 식별자
     const ok = await sendReportAlimtalk(student.parentPhone, tpl, {
@@ -186,6 +188,8 @@ exports.sendOne = async (req, res) => {
       수업요약: log.content || '',
       과제요약: log.homework || '',
       피드백요약: log.feedback || '',
+      다음수업계획: nextPlanVal, // ← 템플릿에서 이 키 사용 권장
+      다음계획: nextPlanVal,     // ← 혹시 다른 키를 쓰고 있다면 호환
       code
     });
 
@@ -195,7 +199,8 @@ exports.sendOne = async (req, res) => {
       `2. 교재 : ${log.book || '-'}`,
       `3. 수업내용 : ${log.content || ''}`,
       `4. 과제 : ${log.homework || ''}`,
-      `5. 개별 피드백 : ${log.feedback || ''}`
+      `5. 개별 피드백 : ${log.feedback || ''}`,
+      `6. 다음 수업 계획 : ${nextPlanVal || ''}`
     ].join('\n');
 
     await NotificationLog.create({
@@ -249,12 +254,6 @@ exports.sendSelected = async (req, res) => {
 
 // ====== 자동 발송(예약분) ======
 exports.sendBulk = async (_req, res) => {
-  // 🔒 자동발송 토글 체크: 꺼져 있으면 즉시 종료
-  const autoOn = await isDailyAutoOn();
-  if (!autoOn) {
-    return res.json({ ok: true, sent: 0, failed: 0, message: 'auto OFF' });
-  }
-
   const list = await LessonLog.find({
     notifyStatus: '대기',
     scheduledAt: { $ne: null, $lte: new Date() }
@@ -281,7 +280,7 @@ exports.sendBulk = async (_req, res) => {
 };
 
 /* ------------------------------------------------------------------
- * 👇👇👇 여기부터 ‘등/하원 수동 수정’ 신규 API 2개 추가 👇👇👇
+ * 👇👇👇 여기부터 ‘등/하원 수동 수정’ 신규 API 2개 (기존 유지) 👇👇👇
  * -----------------------------------------------------------------*/
 
 // HH:mm → HH:mm:ss 보정
@@ -395,34 +394,5 @@ exports.setAttendanceTimes = async (req, res) => {
   } catch (e) {
     console.error('[lessonsController.setAttendanceTimes]', e);
     res.status(500).json({ message: '출결 수정 오류', error: String(e?.message || e) });
-  }
-};
-
-/* ===========================
- * 자동발송 ON/OFF 설정 API
- * =========================== */
-
-// GET /api/admin/settings/daily-auto -> { on: true|false }
-exports.getDailyAuto = async (_req, res) => {
-  try {
-    const on = await isDailyAutoOn();
-    res.json({ on });
-  } catch (e) {
-    res.status(500).json({ message: 'daily-auto 조회 실패', error: String(e?.message || e) });
-  }
-};
-
-// POST /api/admin/settings/daily-auto { on: boolean } -> { ok, on }
-exports.setDailyAuto = async (req, res) => {
-  try {
-    const on = !!req.body?.on;
-    await Setting.findOneAndUpdate(
-      { key: 'daily_auto_on' },
-      { $set: { value: on ? 'on' : 'off' } },
-      { upsert: true, new: true }
-    );
-    res.json({ ok: true, on });
-  } catch (e) {
-    res.status(500).json({ message: 'daily-auto 저장 실패', error: String(e?.message || e) });
   }
 };

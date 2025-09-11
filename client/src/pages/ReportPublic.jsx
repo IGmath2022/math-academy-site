@@ -80,6 +80,7 @@ export default function ReportPublic() {
                 title="출결"
                 body={<>등원 {attendance?.checkIn || log?.inTime || "-"} / 하원 {attendance?.checkOut || log?.outTime || "-"}</>}
               />
+              <Section title="학습시간" body={fmtHM(durMin)} />
               <Section title="형태·강사" body={<>{log?.classType || "-"} / {teacherDisp}</>} />
               {!!log?.headline && <Section title="핵심 한줄" body={fmtNewline(log.headline)} />}
               <Section
@@ -90,10 +91,8 @@ export default function ReportPublic() {
                     : <>-</>
                 }
               />
-              <Section
-                title="학습지표"
-                body={<>집중도: {log?.focus ?? "-"} · 진행률: {log?.progressPct ?? "-"}% · 학습시간: {fmtHM(durMin)}</>}
-              />
+              {/* ✅ 다음 수업 계획 표시 (planNext/nextPlan 호환) */}
+              <Section title="다음 수업 계획" body={fmtNewline(log?.planNext || log?.nextPlan || "")} />
             </div>
           </div>
         </div>
