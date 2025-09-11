@@ -8,7 +8,9 @@ router.get('/counsel/:studentId', isAdmin, async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit || '50', 10), 200);
     const rows = await CounselLog.find({ studentId: req.params.studentId })
-      .sort({ date: -1, _id: -1 }).limit(limit).lean();
+      .sort({ date: -1, _id: -1 }) // 동일 날짜일 때 최신 우선
+      .limit(limit)
+      .lean();
     res.json(rows);
   } catch (e) {
     console.error('[adminCounselRoutes.list]', e);
@@ -19,12 +21,20 @@ router.get('/counsel/:studentId', isAdmin, async (req, res) => {
 router.post('/counsel', isAdmin, async (req, res) => {
   try {
     const b = req.body || {};
-    if (!b.studentId || !b.date) return res.status(400).json({ message: 'studentId, date 필요' });
+    if (!b.studentId || !b.date) {
+      return res.status(400).json({ message: 'studentId, date 필요' });
+    }
+
+    // publicOn 불리언 보정
+    let publicOn = b.publicOn;
+    if (typeof publicOn === 'string') publicOn = publicOn === 'true';
+    publicOn = !!publicOn;
+
     const doc = await CounselLog.create({
       studentId: b.studentId,
       date: b.date,
       memo: b.memo || '',
-      publicOn: !!b.publicOn
+      publicOn
     });
     res.json({ ok: true, doc });
   } catch (e) {
@@ -35,7 +45,22 @@ router.post('/counsel', isAdmin, async (req, res) => {
 
 router.put('/counsel/:id', isAdmin, async (req, res) => {
   try {
-    const doc = await CounselLog.findByIdAndUpdate(req.params.id, { $set: req.body }, { new: true });
+    const update = { ...(req.body || {}) };
+
+    // publicOn 불리언 보정 (키가 들어온 경우에만)
+    if (Object.prototype.hasOwnProperty.call(update, 'publicOn')) {
+      if (typeof update.publicOn === 'string') {
+        update.publicOn = update.publicOn === 'true';
+      } else {
+        update.publicOn = !!update.publicOn;
+      }
+    }
+
+    const doc = await CounselLog.findByIdAndUpdate(
+      req.params.id,
+      { $set: update },
+      { new: true }
+    );
     res.json({ ok: true, doc });
   } catch (e) {
     console.error('[adminCounselRoutes.update]', e);
