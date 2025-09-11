@@ -41,20 +41,18 @@ router.post('/lessons/send-bulk', isAdmin, lessons.sendBulk);
 
 // 등/하원 1건 조회 (studentId, date 쿼리필수)
 // -> GET /api/admin/attendance/one?studentId=...&date=YYYY-MM-DD
-router.get('/attendance/one', isAdmin, lessons.getAttendanceOne);
+if (typeof lessons.getAttendanceOne === 'function') {
+  router.get('/attendance/one', isAdmin, lessons.getAttendanceOne);
+} else {
+  console.warn('[adminLessonRoutes] WARN: lessons.getAttendanceOne 미정의 — /attendance/one 라우트 생략');
+}
 
 // 등/하원 수동 설정 (body: { studentId, date, checkIn, checkOut, overwrite? })
 // -> POST /api/admin/attendance/set-times
-router.post('/attendance/set-times', isAdmin, lessons.setAttendanceTimes);
-
-/* ===========================
- * 자동발송 ON/OFF 설정(관리자용) 추가
- * =========================== */
-
-// 상태 조회 -> GET /api/admin/settings/daily-auto
-router.get('/settings/daily-auto', isAdmin, lessons.getDailyAuto);
-
-// 상태 설정 -> POST /api/admin/settings/daily-auto { on: boolean }
-router.post('/settings/daily-auto', isAdmin, lessons.setDailyAuto);
+if (typeof lessons.setAttendanceTimes === 'function') {
+  router.post('/attendance/set-times', isAdmin, lessons.setAttendanceTimes);
+} else {
+  console.warn('[adminLessonRoutes] WARN: lessons.setAttendanceTimes 미정의 — /attendance/set-times 라우트 생략');
+}
 
 module.exports = router;
