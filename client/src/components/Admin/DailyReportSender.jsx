@@ -7,6 +7,7 @@ const isoDate = (d=new Date()) => d.toISOString().slice(0,10);
 
 export default function DailyReportSender(){
   const [date, setDate] = useState(()=>isoDate());
+  const [scope, setScope] = useState("present"); // ⬅️ present | missing | all
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [sendingId, setSendingId] = useState("");
@@ -23,7 +24,7 @@ export default function DailyReportSender(){
   const refresh = async ()=>{
     setLoading(true);
     try{
-      const data = await call("get", `${API_URL}/api/admin/lessons?date=${date}`);
+      const data = await call("get", `${API_URL}/api/admin/lessons?date=${date}&scope=${scope}`);
       setItems(data.items || []);
       setMsg("");
     }catch(e){
@@ -33,7 +34,7 @@ export default function DailyReportSender(){
       setLoading(false);
     }
   };
-  useEffect(()=>{ refresh(); /* eslint-disable-next-line */ },[date]);
+  useEffect(()=>{ refresh(); /* eslint-disable-next-line */ },[date, scope]);
 
   const saveQuick = async (row) => {
     const payload = {
@@ -81,8 +82,13 @@ export default function DailyReportSender(){
     <div style={wrap}>
       <h3 style={{margin:"0 0 12px 0"}}>일일 리포트 발송</h3>
 
-      <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:12}}>
+      <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:12,flexWrap:"wrap"}}>
         <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={ipt}/>
+        <select value={scope} onChange={e=>setScope(e.target.value)} style={ipt}>
+          <option value="present">출석/작성된 학생만</option>
+          <option value="missing">출결 미기록 학생만</option>
+          <option value="all">전체 학생</option>
+        </select>
         <button onClick={refresh} style={btnGhost}>새로고침</button>
         <button onClick={sendSelected} style={btnPrimary}>선택 발송(미발송 전체)</button>
         {msg && <span style={{marginLeft:8,color:"#d33"}}>{msg}</span>}
@@ -140,7 +146,7 @@ export default function DailyReportSender(){
         </table>
       </div>
 
-      {/* 팝업 모달 (기존 파일 내 포함) */}
+      {/* 팝업 모달 */}
       <QuickReportModal
         open={modalOpen}
         onClose={()=>setModalOpen(false)}
@@ -204,7 +210,6 @@ function QuickReportModal({ open, onClose, student, date, auth, onSaved }) {
     if (!student?.studentId) return;
     setSaving(true);
     try {
-      // 예약 시각: “내일 10:30”
       const d = new Date(date + "T10:30:00");
       const tmr = new Date(d.getTime() + 24*60*60*1000);
 
@@ -277,7 +282,6 @@ function QuickReportModal({ open, onClose, student, date, auth, onSaved }) {
   );
 }
 
-/** ===== 모달 내부 공용 입력 컴포넌트 ===== */
 function Field({ label, value, onChange, type="text", placeholder="" }) {
   return (
     <label style={{display:"flex",flexDirection:"column",gap:6}}>
@@ -297,7 +301,7 @@ function Area({ label, value, onChange }) {
   );
 }
 
-/** ===== 스타일 ===== */
+/** 스타일 */
 const wrap = { border:"1px solid #e5e5e5", background:"#fff", borderRadius:12, padding:16, marginTop:18 };
 const ipt = { padding:"6px 10px", borderRadius:8, border:"1px solid #ccc" };
 const th  = { textAlign:"left", padding:8, borderBottom:"1px solid #eee" };

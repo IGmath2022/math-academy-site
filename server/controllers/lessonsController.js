@@ -42,34 +42,76 @@ async function computeStudyTimeMinFromAttendance(studentId, date) {
   return diffMin;
 }
 
-// ====== 날짜별 목록(등원 ∪ 해당일 로그보유) ======
+// ====== 날짜별 목록(필터 지원) ======
 exports.listByDate = async (req, res) => {
   const date = (req.query.date || moment().tz(KST).format('YYYY-MM-DD'));
+  const scope = String(req.query.scope || 'present') // present | all | missing
+                 .toLowerCase();
 
+  // 1) 당일 출석/로그 수집
   const inRecs = await Attendance.find({ date, type: 'IN' }).lean();
   const inIds = inRecs.map(r => String(r.userId));
 
-  const logs = await LessonLog.find({ date }).lean();
-  const logIds = logs.map(l => String(l.studentId));
+  const dayLogs = await LessonLog.find({ date }).lean(); // 해당일 전체 로그
+  const logIds = dayLogs.map(l => String(l.studentId));
 
-  const ids = [...new Set([...inIds, ...logIds])];
+  const presentSet = new Set([...inIds, ...logIds]); // "이미 화면에 나오던" 집합
 
-  const users = await User.find({ _id: { $in: ids } }).lean();
-  const byId = Object.fromEntries(users.map(u => [String(u._id), u]));
-  const logByStudent = Object.fromEntries(logs.map(l => [String(l.studentId), l]));
+  // 2) scope에 따른 대상 학생 ID 결정
+  let ids = [];
+  let users = [];
 
-  const outs = await Attendance.find({ date, type: 'OUT', userId: { $in: ids } }).lean();
+  if (scope === 'present') {
+    // 기존 동작: 출석했거나 이미 로그가 있는 학생
+    ids = [...presentSet];
+    users = await User.find({ _id: { $in: ids } }).lean();
+  } else {
+    // 활성 학생 전체 목록 (inactive === true 제외)
+    const allStudents = await User.find({
+      role: 'student',
+      $or: [{ active: true }, { active: { $exists: false } }]
+    }).select('_id name').lean();
+
+    const allIds = allStudents.map(u => String(u._id));
+
+    if (scope === 'all') {
+      ids = allIds;
+    } else if (scope === 'missing') {
+      // 출석/로그 둘 다 없는 학생만
+      ids = allIds.filter(id => !presentSet.has(id));
+    } else {
+      // 알 수 없는 값이면 기본 present
+      ids = [...presentSet];
+    }
+
+    const idsSet = new Set(ids);
+    users = allStudents.filter(u => idsSet.has(String(u._id)));
+  }
+
+  // 3) 해당 학생들에 한해 당일 출결/로그 재조회(효율적으로)
+  const [ins, outs, logs] = await Promise.all([
+    Attendance.find({ date, type: 'IN',  userId: { $in: ids } }).lean(),
+    Attendance.find({ date, type: 'OUT', userId: { $in: ids } }).lean(),
+    LessonLog.find({ date, studentId: { $in: ids } }).lean(),
+  ]);
+
   const byUserType = {};
-  [...inRecs, ...outs].forEach(r => {
+  [...ins, ...outs].forEach(r => {
     const k = String(r.userId);
     byUserType[k] = byUserType[k] || {};
     byUserType[k][r.type] = r.time?.slice(0, 5) || '';
   });
 
+  const logByStudent = Object.fromEntries(logs.map(l => [String(l.studentId), l]));
+  const byId = Object.fromEntries(users.map(u => [String(u._id), u]));
+
+  // 4) 응답 아이템 만들기
   const items = ids.map(id => {
     const log = logByStudent[id];
     const checkIn = byUserType[id]?.IN || '';
     const checkOut = byUserType[id]?.OUT || '';
+    const hasAttendance = !!(checkIn || checkOut);
+
     return {
       studentId: id,
       name: byId[id]?.name || '',
@@ -79,11 +121,23 @@ exports.listByDate = async (req, res) => {
       scheduledAt: log?.scheduledAt || null,
       checkIn,
       checkOut,
-      missingIn: !!log && !checkIn
+
+      // ✅ 기존 필드 유지(행 강조용)
+      //   - 예전엔 "로그가 있는 경우에만 IN이 없으면 경고"였지만,
+      //     '미체크 학생 보기'에서도 강조되도록 "IN이 없으면 true"로 개선
+      missingIn: !checkIn,
+
+      // ✅ 새 힌트 필드(원하면 프론트에서 활용)
+      hasAttendance,
+      missingAttendance: !hasAttendance,
+      scopeApplied: scope,
     };
   });
 
-  res.json({ date, items });
+  // 이름순 정렬(선택) — 보기 편의
+  items.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
+
+  res.json({ date, scope, items });
 };
 
 // ====== 리포트 1건 상세(학생+날짜) ======

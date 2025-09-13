@@ -5,6 +5,7 @@ import { API_URL } from "../../api";
 
 export default function DailyReportEditor() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0,10));
+  const [scope, setScope] = useState("present"); // ⬅️ present | all | missing
   const [list, setList] = useState([]);
   const [studentId, setStudentId] = useState("");
   const [form, setForm] = useState({
@@ -14,7 +15,7 @@ export default function DailyReportEditor() {
   });
   const [msg, setMsg] = useState("");
 
-  // ⬇️ 출결 수동 수정용 상태
+  // 출결 수동 수정용
   const [inOut, setInOut] = useState({ inTime: "", outTime: "", source: "", studyMin: null });
   const [savingInOut, setSavingInOut] = useState(false);
 
@@ -23,7 +24,10 @@ export default function DailyReportEditor() {
 
   const fetchList = async () => {
     try {
-      const { data } = await axios.get(`${API_URL}/api/admin/lessons/by-date`, { ...auth, params: { date } });
+      const { data } = await axios.get(`${API_URL}/api/admin/lessons/by-date`, {
+        ...auth,
+        params: { date, scope } // ⬅️ scope 전달
+      });
       setList(data.items || []);
     } catch {
       setMsg("목록 조회 실패");
@@ -31,7 +35,10 @@ export default function DailyReportEditor() {
     }
   };
 
-  useEffect(() => { if (token) { fetchList(); setStudentId(""); } /* eslint-disable-next-line */ }, [date]);
+  useEffect(() => {
+    if (token) { fetchList(); setStudentId(""); }
+    // eslint-disable-next-line
+  }, [date, scope]);
 
   // 학생 변경 시 해당일 로그 로드
   useEffect(() => {
@@ -65,7 +72,7 @@ export default function DailyReportEditor() {
     // eslint-disable-next-line
   }, [studentId, date]);
 
-  // ⬇️ 학생/날짜 선택 시 출결 조회
+  // 학생/날짜 선택 시 출결 조회
   useEffect(() => {
     const loadAttendance = async () => {
       if (!studentId) { setInOut({ inTime:"", outTime:"", source:"", studyMin:null }); return; }
@@ -114,13 +121,15 @@ export default function DailyReportEditor() {
       await axios.post(`${API_URL}/api/admin/lessons`, payload, auth);
       setMsg("저장 완료 (예약: 내일 10:30)");
       setTimeout(() => setMsg(""), 1500);
+      // 저장 후 목록 갱신(작성 표기 반영)
+      fetchList();
     } catch (e) {
       setMsg(e?.response?.data?.message || "저장 실패");
       setTimeout(() => setMsg(""), 1500);
     }
   };
 
-  // ⬇️ 출결 수동 저장
+  // 출결 수동 저장
   const handleSaveInOut = async () => {
     if (!studentId) { setMsg("학생을 선택하세요."); setTimeout(()=>setMsg(""),1200); return; }
     setSavingInOut(true);
@@ -130,13 +139,12 @@ export default function DailyReportEditor() {
         date,
         checkIn: inOut.inTime || "",   // "HH:mm"
         checkOut: inOut.outTime || "",
-        overwrite: true                // 해당 날짜 출결 전체를 덮어쓰기(가장 확실)
+        overwrite: true
       };
       const { data } = await axios.post(`${API_URL}/api/admin/attendance/set-times`, payload, auth);
       setInOut(prev => ({ ...prev, studyMin: data?.durationMin ?? prev.studyMin }));
       setMsg("출결 수정 완료");
       setTimeout(() => setMsg(""), 1200);
-      // 목록/상태 갱신
       fetchList();
     }catch(e){
       setMsg(e?.response?.data?.message || "출결 수정 실패");
@@ -154,8 +162,14 @@ export default function DailyReportEditor() {
   return (
     <div style={{ margin: "12px 0 20px", padding: 16, background: "#fff", border: "1px solid #e6e9f2", borderRadius: 12 }}>
       <b style={{ fontSize: 16 }}>데일리 리포트 작성/수정</b>
-      <div style={{ display:"flex", gap:12, marginTop:10, marginBottom:12 }}>
+
+      <div style={{ display:"flex", gap:12, marginTop:10, marginBottom:12, flexWrap:"wrap" }}>
         <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={ipt}/>
+        <select value={scope} onChange={e=>setScope(e.target.value)} style={ipt}>
+          <option value="present">출석/작성된 학생만</option>
+          <option value="missing">출결 미기록 학생만</option>
+          <option value="all">전체 학생</option>
+        </select>
         <select value={studentId} onChange={e=>setStudentId(e.target.value)} style={ipt}>
           <option value="">학생 선택</option>
           {studentOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -163,7 +177,7 @@ export default function DailyReportEditor() {
         <button onClick={fetchList} style={btnGhost}>목록 새로고침</button>
       </div>
 
-      {/* ⬇️ 출결 수동 수정(관리자) 블록 */}
+      {/* 출결 수동 수정 블록 (생략 없음) */}
       <div style={{ border:"1px dashed #ccd3e0", borderRadius:10, padding:12, marginBottom:14, background:"#f9fbff" }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
           <span style={{ fontWeight:800, color:"#224" }}>출결 수동 수정(관리자)</span>
