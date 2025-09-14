@@ -1,277 +1,211 @@
-/* client/src/styles/admin-skin.css
-   - 관리자 대시보드 전용 일관 스킨
-   - 패널 뿐 아니라 내부 input/select/textarea/button/table 크기까지 통일
-   - 기존 컴포넌트의 인라인 스타일이 작게 고정돼 있던 부분도 적당히 덮어씀
-*/
+/* client/src/styles/admin-skin.css */
 
+/* ===== Design Tokens ===== */
 :root {
-    --admin-bg: #f6f8fc;
-    --panel-bg: #ffffff;
-    --panel-soft: #f7f9fe;
-    --text-strong: #1f2430;
-    --text-soft: #5b667a;
-    --brand: #226ad6;
-    --brand-weak: #e7efff;
-    --success: #2da44e;
-    --danger: #e5534b;
-    --border: #e6ebf4;
-    --shadow: 0 6px 20px rgba(22, 34, 61, .06);
-    --radius-lg: 16px;
-    --radius-md: 12px;
-    --radius-sm: 8px;
-    --gap-lg: 18px;
-    --gap-md: 12px;
-    --gap-sm: 8px;
-    --font-base: 15px;
-    --font-lg: 18px;
-    --font-sm: 13px;
+    --admin-font: Pretendard, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Noto Sans KR, Arial, sans-serif;
+  
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+  
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 18px;
+  
+    --bg: #f5f7fb;
+    --card: #fff;
+    --hd-grad-1: #f7fbff;
+    --hd-grad-2: #eef4ff;
+  
+    --text-1: #1e2430;
+    --text-2: #4e5a6b;
+    --muted: #76829a;
+  
+    --primary: #226ad6;
+    --primary-weak: #e7f0ff;
+    --accent: #3cbb2c;
+  
+    --border: #e5e8f2;
+    --shadow: 0 6px 20px rgba(0,0,0,.06);
+  
+    --font-title: 20px;
+    --font-h2: 22px;
+    --font-base: 14px;
+    --font-small: 13px;
   }
   
-  /* 전체 래퍼(페이지) */
-  .admin-shell {
-    background: var(--admin-bg);
-    min-height: 100vh;
-    padding: 28px 20px 44px;
-    box-sizing: border-box;
+  /* ===== Page wrap ===== */
+  .admin-skin {
+    font-family: var(--admin-font);
+    background: var(--bg);
   }
   
-  /* 페이지 타이틀/탭 바 */
-  .admin-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    max-width: 1060px;
-    margin: 0 auto 14px auto;
-  }
+  /* ===== Tabs ===== */
   .admin-tabs {
     display: flex;
+    gap: var(--space-2);
     flex-wrap: wrap;
-    gap: 6px;
+    margin: 0 0 var(--space-4) 0;
   }
   .admin-tab {
-    padding: 9px 14px;
-    border-radius: 999px;
-    background: #eef2fb;
-    color: #2b3a53;
-    border: 1px solid #e2e8f6;
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text-2);
     font-weight: 700;
-    font-size: 14px;
+    font-size: var(--font-base);
     cursor: pointer;
-    user-select: none;
   }
   .admin-tab.is-active {
-    background: var(--brand);
+    background: var(--primary);
     color: #fff;
-    border-color: var(--brand);
-    box-shadow: 0 4px 14px rgba(34,106,214,.25);
+    border-color: var(--primary);
   }
   
-  /* 컨텐츠 컨테이너 (패널들을 가운데로) */
-  .admin-container {
-    max-width: 1060px;
-    margin: 0 auto;
+  /* ===== Layout ===== */
+  .admin-wrap {
+    max-width: 1100px;
+    margin: 36px auto;
+    padding: 0 16px 36px;
   }
-  
-  /* 패널(박스) */
-  .admin-panel {
-    background: var(--panel-bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow);
-    padding: 18px;
-    margin: 18px 0;
-  }
-  .admin-panel__title {
-    font-size: 20px;
+  .admin-page-title {
+    font-size: var(--font-h2);
     font-weight: 800;
-    margin: 0 0 14px 0;
-    color: var(--text-strong);
+    color: var(--text-1);
+    margin: 0 0 var(--space-3);
+  }
+  .admin-page-title .muted { color: var(--muted); font-weight: 600; font-size: 80%; }
+  
+  .admin-content {}
+  
+  /* Grid */
+  .admin-grid { display: grid; gap: var(--space-4); }
+  .admin-grid--cols-1 { grid-template-columns: 1fr; }
+  .admin-grid--cols-2 { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 920px) {
+    .admin-grid--cols-2 { grid-template-columns: 1fr; }
   }
   
-  /* 박스 내부 레이아웃 보조 */
-  .admin-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--gap-md);
-  }
-  @media (max-width: 860px) {
-    .admin-grid { grid-template-columns: 1fr; }
-  }
-  
-  /* ===========================
-     공통 폼 크기(패널 범위 안에서만)
-     =========================== */
-  .admin-panel input[type="text"],
-  .admin-panel input[type="email"],
-  .admin-panel input[type="password"],
-  .admin-panel input[type="date"],
-  .admin-panel input[type="number"],
-  .admin-panel input[type="time"],
-  .admin-panel select,
-  .admin-panel textarea {
-    width: 100%;
-    box-sizing: border-box;
-    padding: 10px 12px !important;     /* 작게 고정된 인라인 스타일을 보정 */
+  /* ===== Card ===== */
+  .admin-card {
+    background: var(--card);
     border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: #fff;
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .admin-card__hd {
+    padding: 18px 22px;
+    background: linear-gradient(180deg, var(--hd-grad-1), var(--hd-grad-2));
+  }
+  .admin-card__title {
+    font-weight: 800;
+    font-size: var(--font-title);
+    color: var(--text-1);
+  }
+  .admin-card__sub {
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: var(--font-small);
+    font-weight: 700;
+  }
+  .admin-card__bd {
+    padding: var(--space-4) var(--space-5);
+  }
+  
+  /* ===== Global form/table normalization for legacy internals ===== */
+  /* 이 영역 덕분에 “박스만 커짐”이 아니라 내부 폼/테이블도 크기와 간격이 정돈됩니다. */
+  /* AdminDashboardTabs에서 레거시 컴포넌트를 <LegacyPanel>로 감싸면 이 규칙이 적용됩니다. */
+  
+  .legacy-panel,
+  .admin-card__bd {
+    --ctl-height: 38px;
+    --ctl-pad-x: 12px;
+    --ctl-pad-y: 8px;
+  }
+  
+  /* Inputs / Selects / Textareas */
+  .legacy-panel :where(input[type="text"], input[type="number"], input[type="date"], input[type="email"], input[type="password"], select, textarea),
+  .admin-card__bd :where(.enlarge-all input[type="text"], .enlarge-all input[type="number"], .enlarge-all input[type="date"], .enlarge-all input[type="email"], .enlarge-all input[type="password"], .enlarge-all select, .enlarge-all textarea) {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: var(--ctl-height) !important;
+    padding: var(--ctl-pad-y) var(--ctl-pad-x) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-md) !important;
     font-size: var(--font-base) !important;
-    color: #1f2430;
-    outline: none;
-  }
-  .admin-panel textarea {
-    min-height: 96px;
-    resize: vertical;
+    box-sizing: border-box !important;
+    background: #fff !important;
   }
   
-  .admin-field {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .admin-label {
-    font-size: 13px;
-    color: #4c5870;
-    font-weight: 700;
-  }
-  
-  /* 버튼(기본/프라이머리/고스트/위험/성공) */
-  .admin-panel button,
-  .btn {
-    padding: 9px 14px !important;
-    border-radius: var(--radius-sm) !important;
-    border: 1px solid var(--border);
-    background: #fff;
-    color: #2a3a58;
-    font-weight: 700;
-    font-size: 14px !important;
-    cursor: pointer;
-  }
-  .btn--primary {
-    border: none !important;
-    background: var(--brand) !important;
-    color: #fff !important;
-    box-shadow: 0 6px 16px rgba(34,106,214,.2);
-  }
-  .btn--ghost {
-    background: #f1f4fb !important;
-    border-color: #e2e8f6 !important;
-  }
-  .btn--success {
-    background: var(--success) !important;
-    color: #fff !important;
-    border: none !important;
-  }
-  .btn--danger {
-    background: var(--danger) !important;
-    color: #fff !important;
-    border: none !important;
-  }
-  
-  /* 배지 */
-  .badge {
-    display: inline-block;
-    padding: 3px 9px;
-    font-size: 12px;
-    font-weight: 700;
-    border-radius: 999px;
-    background: var(--brand-weak);
-    color: #294a88;
-    border: 1px solid #d7e5ff;
-  }
-  
-  /* 테이블 통일 */
-  .admin-panel table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-  }
-  .admin-panel th,
-  .admin-panel td {
-    border-bottom: 1px solid #eef1f8;
-    padding: 12px 10px;
-    text-align: left;
-    vertical-align: top;
-  }
-  .admin-panel thead th {
-    background: #f5f8ff;
-    color: #324055;
-    font-weight: 800;
-  }
-  
-  /* 섹션 박스 */
-  .section-box {
-    background: var(--panel-soft);
-    border: 1px solid #e5ecff;
-    border-radius: var(--radius-md);
-    padding: 14px;
-  }
-  
-  /* 카드 스타일(간단) */
-  .card-soft {
-    background: #fff;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow);
-    padding: 14px;
-  }
-  
-  /* 입력 그룹(날짜 + 버튼 등) */
-  .inline-row {
-    display: flex;
+  /* Labels */
+  .legacy-panel label {
+    display: inline-flex;
+    align-items: center;
     gap: 10px;
+    font-size: var(--font-base);
+    color: var(--text-2);
+    font-weight: 600;
+  }
+  
+  /* Buttons */
+  .legacy-panel :where(button),
+  .admin-card__bd :where(.enlarge-all button) {
+    padding: 10px 14px !important;
+    border-radius: var(--radius-md) !important;
+    border: 1px solid var(--border) !important;
+    background: #fff !important;
+    color: var(--text-1) !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+  }
+  .legacy-panel :where(button.primary),
+  .admin-card__bd :where(.enlarge-all .primary) {
+    background: var(--primary) !important;
+    color: #fff !important;
+    border-color: var(--primary) !important;
+  }
+  .legacy-panel :where(button.ghost),
+  .admin-card__bd :where(.enlarge-all .ghost) {
+    background: #f3f6fb !important;
+  }
+  
+  /* Tables */
+  .legacy-panel table,
+  .admin-card__bd .enlarge-all table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+  .legacy-panel th,
+  .legacy-panel td,
+  .admin-card__bd .enlarge-all th,
+  .admin-card__bd .enlarge-all td {
+    padding: 10px 8px !important;
+    border-bottom: 1px solid #eef2ff !important;
+    font-size: var(--font-base) !important;
+    text-align: left !important;
+  }
+  .legacy-panel thead tr { background: #f7f9ff !important; }
+  
+  /* Stacks & gaps */
+  .stack-sm > * + * { margin-top: var(--space-2); }
+  .stack-md > * + * { margin-top: var(--space-3); }
+  .stack-lg > * + * { margin-top: var(--space-4); }
+  
+  /* Toolbars (상단 버튼줄 정렬 균일화) */
+  .toolbar {
+    display: flex;
     align-items: center;
+    gap: var(--space-2);
     flex-wrap: wrap;
+    margin-bottom: var(--space-3);
   }
   
-  /* 모달(간단) */
-  .modal-backdrop {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,.45);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-  }
-  .modal-card {
-    width: 900px; max-width: 94vw; max-height: 92vh;
-    overflow: auto;
-    background: #fff;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border);
-    box-shadow: 0 14px 40px rgba(0,0,0,.25);
-    padding: 16px;
-  }
-  
-  /* 페이지네이션(기존 스타일 보완) */
-  .pager {
-    display: flex;
-    gap: 6px;
-    margin-top: 10px;
-  }
-  .pager__btn {
-    min-width: 34px;
-    padding: 6px 10px;
-    border-radius: 8px;
-    border: 1px solid #dfe5f2;
-    background: #fff;
-    font-weight: 700;
-    font-size: 13px;
-    text-align: center;
-    cursor: pointer;
-  }
-  .pager__btn.is-active {
-    background: var(--brand);
-    color: #fff;
-    border-color: var(--brand);
-  }
-  
-  /* 유틸 여백/정렬 */
-  .mt-6 { margin-top: 6px; }
-  .mt-10 { margin-top: 10px; }
-  .mt-14 { margin-top: 14px; }
-  .mt-18 { margin-top: 18px; }
-  .mb-14 { margin-bottom: 14px; }
-  .center { text-align: center; }
-  .right  { text-align: right; }
+  /* Helper - small muted text */
+  .muted { color: var(--muted); }
   
