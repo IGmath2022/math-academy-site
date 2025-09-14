@@ -28,9 +28,9 @@ import PopupBannerAdmin from "./PopupBannerAdmin";
 import NewsAdmin from "./NewsAdmin";
 
 /** 공용 카드 */
-function AdminCard({ title, subtitle, children }) {
+function AdminCard({ title, subtitle, children, className = "" }) {
   return (
-    <section className="admin-card">
+    <section className={`admin-card ${className}`}>
       <div className="admin-card__hd">
         <div className="admin-card__title">{title}</div>
         {subtitle ? <div className="admin-card__sub">{subtitle}</div> : null}
@@ -66,10 +66,7 @@ function Tabs({ items, active, onChange }) {
   );
 }
 
-/** 레거시 컴포넌트 정리 래퍼
- * 내부에 있는 input/select/textarea/button/table 크기/간격을
- * admin-skin.css가 강제 정리할 수 있도록 스코프를 부여합니다.
- */
+/** 레거시 컴포넌트 정리 래퍼 */
 function LegacyPanel({ children }) {
   return <div className="legacy-panel">{children}</div>;
 }
@@ -87,10 +84,10 @@ export default function AdminDashboardTabs() {
       { key: "report-send", label: "리포트 발송" },
       { key: "counsel-profile", label: "상담·프로필" },
       { key: "class-types", label: "수업형태" },
-      { key: "attendance", label: "출결" },
+      { key: "attendance", label: "출결관리" },
       { key: "students-schools", label: "학생/학교" },
       { key: "progress", label: "진도관리" },
-      { key: "content", label: "콘텐츠(과목/단원/배정)" },
+      { key: "content", label: "과목관리" },
       { key: "marketing", label: "블로그·배너·소식" },
     ],
     []
@@ -182,56 +179,72 @@ export default function AdminDashboardTabs() {
             </AdminCard>
           )}
 
+          {/* === 출결관리: 내부 폼/테이블 강제 확장 === */}
           {active === "attendance" && (
             <AdminCard
               title="출결 관리"
               subtitle="리스트/수정/자동하원 처리 상태를 확인하세요."
             >
-              <LegacyPanel>
-                <AttendanceManager />
-              </LegacyPanel>
+              <div className="enlarge-all">
+                <LegacyPanel>
+                  <AttendanceManager />
+                </LegacyPanel>
+              </div>
             </AdminCard>
           )}
 
+          {/* === 학생/학교 === */}
           {active === "students-schools" && (
             <AdminGrid cols={2}>
               <AdminCard title="학생 관리">
-                <LegacyPanel>
-                  <StudentManager />
-                </LegacyPanel>
+                <div className="enlarge-all">
+                  <LegacyPanel>
+                    <StudentManager />
+                  </LegacyPanel>
+                </div>
               </AdminCard>
               <AdminCard title="학교/학사일정">
-                <LegacyPanel>
-                  <SchoolManager />
-                </LegacyPanel>
+                <div className="enlarge-all">
+                  <LegacyPanel>
+                    <SchoolManager />
+                  </LegacyPanel>
+                </div>
                 <div style={{ height: 16 }} />
-                <LegacyPanel>
-                  <SchoolPeriodManager />
-                </LegacyPanel>
+                <div className="enlarge-all">
+                  <LegacyPanel>
+                    <SchoolPeriodManager />
+                  </LegacyPanel>
+                </div>
               </AdminCard>
             </AdminGrid>
           )}
 
+          {/* === 진도관리: 내부 폼/테이블 강제 확장 === */}
           {active === "progress" && (
             <AdminCard
               title="진도 관리"
               subtitle="학생 진도 현황을 확인하고 관리합니다."
             >
-              <LegacyPanel>
-                <ProgressManager />
-              </LegacyPanel>
+              <div className="enlarge-all">
+                <LegacyPanel>
+                  <ProgressManager />
+                </LegacyPanel>
+              </div>
             </AdminCard>
           )}
 
+          {/* === 과목관리: Subject/Chapter/Assign 모두 강제 확장 === */}
           {active === "content" && (
             <>
               <AdminCard title="과목 관리">
-                <LegacyPanel>
-                  <SubjectManager
-                    onSelectSubject={setSelectedSubject}
-                    selectedSubject={selectedSubject}
-                  />
-                </LegacyPanel>
+                <div className="enlarge-all">
+                  <LegacyPanel>
+                    <SubjectManager
+                      onSelectSubject={setSelectedSubject}
+                      selectedSubject={selectedSubject}
+                    />
+                  </LegacyPanel>
+                </div>
               </AdminCard>
 
               {selectedSubject && (
@@ -240,34 +253,44 @@ export default function AdminDashboardTabs() {
                     title={`단원/강의 관리 — ${selectedSubject.name}`}
                     subtitle="단원(챕터)을 관리한 뒤 학생에게 강의를 배정하세요."
                   >
-                    <LegacyPanel>
-                      <ChapterManager
-                        subject={selectedSubject}
-                        onChapterListChange={setChapterList}
-                      />
-                    </LegacyPanel>
+                    <div className="enlarge-all">
+                      <LegacyPanel>
+                        <ChapterManager
+                          subject={selectedSubject}
+                          onChapterListChange={setChapterList}
+                        />
+                      </LegacyPanel>
+                    </div>
                     <div style={{ height: 14 }} />
-                    <LegacyPanel>
-                      <StudentAssignManager chapterList={chapterList} />
-                    </LegacyPanel>
+                    <div className="enlarge-all">
+                      <LegacyPanel>
+                        <StudentAssignManager chapterList={chapterList} />
+                      </LegacyPanel>
+                    </div>
                   </AdminCard>
                 </AdminGrid>
               )}
             </>
           )}
 
+          {/* === 마케팅: 블로그 카드만 컴팩트 + 3열 그리드로 축소 === */}
           {active === "marketing" && (
-            <AdminGrid cols={2}>
-              <AdminCard title="블로그 노출 설정">
+            <AdminGrid cols={3}>
+              <AdminCard
+                title="블로그 노출 설정"
+                className="admin-card--compact"
+              >
                 <LegacyPanel>
                   <BlogSettingSwitch />
                 </LegacyPanel>
               </AdminCard>
+
               <AdminCard title="팝업/배너 관리">
                 <LegacyPanel>
                   <PopupBannerAdmin />
                 </LegacyPanel>
               </AdminCard>
+
               <AdminCard title="소식/공지 관리">
                 <LegacyPanel>
                   <NewsAdmin />
