@@ -1,183 +1,237 @@
-// client/src/pages/AdminDashboardTabs.jsx
-import React, { useMemo, useState } from "react";
-import "../styles/admin-skin.css";
+// client/src/components/Admin/AdminDashboardTabs.jsx
+import React, { useState, useMemo } from "react";
+import "../../styles/admin-skin.css";
 
-// Admin 모듈들
-import DailyReportAutoSwitch from "../components/Admin/DailyReportAutoSwitch";
-import AutoLeaveSwitch from "../components/Admin/AutoLeaveSwitch";
-import DailyReportEditor from "../components/Admin/DailyReportEditor";
-import DailyReportSender from "../components/Admin/DailyReportSender";
+// === Admin modules (같은 폴더 내) ===
+import DailyReportAutoSwitch from "./DailyReportAutoSwitch";
+import AutoLeaveSwitch from "./AutoLeaveSwitch";
+import DailyReportEditor from "./DailyReportEditor";
+import DailyReportSender from "./DailyReportSender";
 
-import CounselManager from "../components/Admin/CounselManager";
-import StudentProfilePanel from "../components/Admin/StudentProfilePanel";
-import ClassTypeManager from "../components/Admin/ClassTypeManager";
+import CounselManager from "./CounselManager";
+import StudentProfilePanel from "./StudentProfilePanel";
+import ClassTypeManager from "./ClassTypeManager";
 
-import BlogSettingSwitch from "../components/Admin/BlogSettingSwitch";
-import PopupBannerAdmin from "../components/Admin/PopupBannerAdmin";
-import NewsAdmin from "../components/Admin/NewsAdmin";
-import StudentManager from "../components/Admin/StudentManager";
-import AttendanceManager from "../components/Admin/AttendanceManager";
-import ProgressManager from "../components/Admin/ProgressManager";
-import SchoolManager from "../components/Admin/SchoolManager";
-import SchoolPeriodManager from "../components/Admin/SchoolPeriodManager";
-import SubjectManager from "../components/Admin/SubjectManager";
-import ChapterManager from "../components/Admin/ChapterManager";
-import StudentAssignManager from "../components/Admin/StudentAssignManager";
+import AttendanceManager from "./AttendanceManager";
+import StudentManager from "./StudentManager";
+import SchoolManager from "./SchoolManager";
+import SchoolPeriodManager from "./SchoolPeriodManager";
 
-// 선택 과목 상태는 과목/단원/할당에서 공유
-function useSubjectState() {
-  const [selectedSubject, setSelectedSubject] = useState(null);
-  const [chapterList, setChapterList] = useState([]);
-  return { selectedSubject, setSelectedSubject, chapterList, setChapterList };
-}
+import ProgressManager from "./ProgressManager";
 
-/** 공통 패널 래퍼 */
-function AdminPanel({ title, children }) {
+import SubjectManager from "./SubjectManager";
+import ChapterManager from "./ChapterManager";
+import StudentAssignManager from "./StudentAssignManager";
+
+import BlogSettingSwitch from "./BlogSettingSwitch";
+import PopupBannerAdmin from "./PopupBannerAdmin";
+import NewsAdmin from "./NewsAdmin";
+
+/** 공용 카드 래퍼 */
+function AdminCard({ title, subtitle, children }) {
   return (
-    <section className="admin-panel">
-      {title && <h3 className="admin-panel__title">{title}</h3>}
-      {children}
+    <section className="admin-card">
+      <div className="admin-card__hd">
+        <div className="admin-card__title">{title}</div>
+        {subtitle ? <div className="admin-card__sub">{subtitle}</div> : null}
+      </div>
+      <div className="admin-card__bd">{children}</div>
     </section>
   );
 }
 
+/** 공용 2열 그리드 */
+function AdminGrid({ children, cols = 2 }) {
+  const cls = `admin-grid admin-grid--cols-${cols}`;
+  return <div className={cls}>{children}</div>;
+}
+
+/** 탭 버튼 */
+function Tabs({ items, active, onChange }) {
+  return (
+    <div className="admin-tabs" role="tablist" aria-label="관리자 탭">
+      {items.map((t) => (
+        <button
+          key={t.key}
+          role="tab"
+          aria-selected={active === t.key}
+          className={`admin-tab ${active === t.key ? "is-active" : ""}`}
+          onClick={() => onChange(t.key)}
+          title={t.label}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function AdminDashboardTabs() {
-  const [tab, setTab] = useState("report");
-  const {
-    selectedSubject,
-    setSelectedSubject,
-    chapterList,
-    setChapterList,
-  } = useSubjectState();
+  // 과목/챕터/배정 연동 상태(콘텐츠 탭 내부에서 사용)
+  const [selectedSubject, setSelectedSubject] = useState(null);
+  const [chapterList, setChapterList] = useState([]);
+
+  const [active, setActive] = useState("report-write");
 
   const tabs = useMemo(
     () => [
-      { key: "report",   label: "리포트" },
-      { key: "consult",  label: "상담·프로필" },
-      { key: "users",    label: "학생·출결·진도" },
-      { key: "content",  label: "과목·단원·배정" },
-      { key: "notice",   label: "공지·배너·뉴스" },
-      { key: "school",   label: "학교·학사일정" },
+      { key: "automation", label: "자동화" },
+      { key: "report-write", label: "리포트 작성" },
+      { key: "report-send", label: "리포트 발송" },
+      { key: "counsel-profile", label: "상담·프로필" },
+      { key: "class-types", label: "수업형태" },
+      { key: "attendance", label: "출결" },
+      { key: "students-schools", label: "학생/학교" },
+      { key: "progress", label: "진도관리" },
+      { key: "content", label: "콘텐츠(과목/단원/배정)" },
+      { key: "marketing", label: "블로그·배너·소식" },
     ],
     []
   );
 
   return (
-    <div className="admin-shell">
-      <div className="admin-head">
-        <h2 style={{ margin: 0, fontSize: 22 }}>운영자 대시보드</h2>
-        <div className="admin-tabs">
-          {tabs.map(t => (
-            <button
-              key={t.key}
-              className={`admin-tab ${tab === t.key ? "is-active" : ""}`}
-              onClick={() => setTab(t.key)}
+    <div className="admin-wrap">
+      <h2 className="admin-page-title">
+        운영자 대시보드 <span className="muted">(관리자용)</span>
+      </h2>
+
+      <Tabs items={tabs} active={active} onChange={setActive} />
+
+      {/* === 탭 컨텐츠 === */}
+      <div className="admin-content">
+        {active === "automation" && (
+          <AdminGrid cols={2}>
+            <AdminCard
+              title="데일리 리포트 자동 발송"
+              subtitle="설정값(daily_report_auto_on)에 따라 서버 크론이 예약분을 처리합니다."
             >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </div>
+              {/* 사용자가 원치 않던 '지금 실행' 버튼은 제외 */}
+              <DailyReportAutoSwitch />
+            </AdminCard>
 
-      <div className="admin-container">
-        {/* 탭: 리포트 */}
-        {tab === "report" && (
-          <>
-            <AdminPanel title="자동화 스위치">
-              <div className="inline-row">
-                <DailyReportAutoSwitch />
-                <AutoLeaveSwitch />
-              </div>
-            </AdminPanel>
-
-            <AdminPanel title="일일 리포트 작성/수정">
-              <DailyReportEditor />
-            </AdminPanel>
-
-            <AdminPanel title="일일 리포트 발송">
-              <DailyReportSender />
-            </AdminPanel>
-          </>
+            <AdminCard
+              title="자동 하원 처리"
+              subtitle="야간 자동하원 스케줄 (auto_leave_on)"
+            >
+              <AutoLeaveSwitch />
+            </AdminCard>
+          </AdminGrid>
         )}
 
-        {/* 탭: 상담/프로필 */}
-        {tab === "consult" && (
-          <>
-            <AdminPanel title="상담 로그">
+        {active === "report-write" && (
+          <AdminCard
+            title="데일리 리포트 작성/수정"
+            subtitle="학생별로 작성하고 예약(기본 내일 10:30)으로 저장됩니다."
+          >
+            <DailyReportEditor />
+          </AdminCard>
+        )}
+
+        {active === "report-send" && (
+          <AdminCard
+            title="데일리 리포트 발송"
+            subtitle="작성된 내역을 선택 발송하거나 단건 발송할 수 있습니다."
+          >
+            <DailyReportSender />
+          </AdminCard>
+        )}
+
+        {active === "counsel-profile" && (
+          <AdminGrid cols={2}>
+            <AdminCard
+              title="상담 로그"
+              subtitle="학생 상담 메모를 기록/수정/공개 설정합니다."
+            >
               <CounselManager />
-            </AdminPanel>
-            <AdminPanel title="학생 프로필 · 로드맵">
+            </AdminCard>
+            <AdminCard
+              title="학생 프로필 · 로드맵"
+              subtitle="공개 설정 시 리포트 뷰 하단에 노출됩니다."
+            >
               <StudentProfilePanel />
-            </AdminPanel>
-            <AdminPanel title="수업형태 관리">
-              <ClassTypeManager />
-            </AdminPanel>
-          </>
+            </AdminCard>
+          </AdminGrid>
         )}
 
-        {/* 탭: 학생/출결/진도 */}
-        {tab === "users" && (
-          <>
-            <AdminPanel title="학생 관리">
+        {active === "class-types" && (
+          <AdminCard
+            title="수업형태 관리"
+            subtitle="리포트 작성 시 사용할 수업형태 옵션을 관리합니다."
+          >
+            <ClassTypeManager />
+          </AdminCard>
+        )}
+
+        {active === "attendance" && (
+          <AdminCard
+            title="출결 관리"
+            subtitle="리스트/수정/자동하원 처리 상태를 확인하세요."
+          >
+            <AttendanceManager />
+          </AdminCard>
+        )}
+
+        {active === "students-schools" && (
+          <AdminGrid cols={2}>
+            <AdminCard title="학생 관리">
               <StudentManager />
-            </AdminPanel>
-            <AdminPanel title="출결 관리">
-              <AttendanceManager />
-            </AdminPanel>
-            <AdminPanel title="진도 관리">
-              <ProgressManager />
-            </AdminPanel>
-          </>
+            </AdminCard>
+            <AdminCard title="학교/학사일정">
+              <SchoolManager />
+              <div style={{ height: 16 }} />
+              <SchoolPeriodManager />
+            </AdminCard>
+          </AdminGrid>
         )}
 
-        {/* 탭: 과목/단원/배정 */}
-        {tab === "content" && (
+        {active === "progress" && (
+          <AdminCard
+            title="진도 관리"
+            subtitle="학생 진도 현황을 확인하고 관리합니다."
+          >
+            <ProgressManager />
+          </AdminCard>
+        )}
+
+        {active === "content" && (
           <>
-            <AdminPanel title="과목 관리">
+            <AdminCard title="과목 관리">
               <SubjectManager
-                selectedSubject={selectedSubject}
                 onSelectSubject={setSelectedSubject}
+                selectedSubject={selectedSubject}
               />
-            </AdminPanel>
+            </AdminCard>
 
             {selectedSubject && (
-              <AdminPanel title={`단원/강의 관리 — ${selectedSubject.name}`}>
-                <ChapterManager
-                  subject={selectedSubject}
-                  onChapterListChange={setChapterList}
-                />
-                <div className="mt-14" />
-                <StudentAssignManager chapterList={chapterList} />
-              </AdminPanel>
+              <AdminGrid cols={1}>
+                <AdminCard
+                  title={`단원/강의 관리 — ${selectedSubject.name}`}
+                  subtitle="단원(챕터)을 관리한 뒤 학생에게 강의를 배정하세요."
+                >
+                  <ChapterManager
+                    subject={selectedSubject}
+                    onChapterListChange={setChapterList}
+                  />
+                  <div style={{ height: 14 }} />
+                  <StudentAssignManager chapterList={chapterList} />
+                </AdminCard>
+              </AdminGrid>
             )}
           </>
         )}
 
-        {/* 탭: 공지/배너/뉴스 */}
-        {tab === "notice" && (
-          <>
-            <AdminPanel title="공지/뉴스">
-              <NewsAdmin />
-            </AdminPanel>
-            <AdminPanel title="블로그 노출 설정">
+        {active === "marketing" && (
+          <AdminGrid cols={2}>
+            <AdminCard title="블로그 노출 설정">
               <BlogSettingSwitch />
-            </AdminPanel>
-            <AdminPanel title="팝업 배너">
+            </AdminCard>
+            <AdminCard title="팝업/배너 관리">
               <PopupBannerAdmin />
-            </AdminPanel>
-          </>
-        )}
-
-        {/* 탭: 학교/학사일정 */}
-        {tab === "school" && (
-          <>
-            <AdminPanel title="학교 관리">
-              <SchoolManager />
-            </AdminPanel>
-            <AdminPanel title="학사 일정(기간) 관리">
-              <SchoolPeriodManager />
-            </AdminPanel>
-          </>
+            </AdminCard>
+            <AdminCard title="소식/공지 관리">
+              <NewsAdmin />
+            </AdminCard>
+          </AdminGrid>
         )}
       </div>
     </div>
