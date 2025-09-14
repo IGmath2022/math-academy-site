@@ -1,37 +1,49 @@
-import React, { useEffect, useMemo, useState } from "react";
+// client/src/components/Admin/DailyReportAutoSwitch.jsx
+import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { API_URL } from "../../api";
+import { getToken, clearAuth } from "../../utils/auth";
+import { useNavigate } from "react-router-dom";
 
 export default function DailyReportAutoSwitch() {
-  const token = useMemo(() => localStorage.getItem("token") || "", []);
-  const auth = useMemo(() => ({ headers: { Authorization: `Bearer ${token}` } }), [token]);
-
+  const navigate = useNavigate();
   const [on, setOn] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
 
-  // 현재 값 조회 (관리자 전용 엔드포인트)
+  const withAuth = () => ({ headers: { Authorization: `Bearer ${getToken()}` } });
+  const handle401 = (err) => {
+    if (err?.response?.status === 401) {
+      clearAuth();
+      navigate("/login");
+      return true;
+    }
+    return false;
+  };
+
+  // 현재 값 조회
   useEffect(() => {
-    if (!token) return;
     (async () => {
       try {
-        const { data } = await axios.get(`${API_URL}/api/admin/settings/daily-auto`, auth);
+        const { data } = await axios.get(`${API_URL}/api/admin/settings/daily-auto`, withAuth());
         setOn(!!data?.on);
-      } catch {
+      } catch (e) {
+        if (handle401(e)) return;
         // 무시
       }
     })();
     // eslint-disable-next-line
-  }, [token]);
+  }, []);
 
   const save = async (next) => {
     try {
       setSaving(true);
-      await axios.post(`${API_URL}/api/admin/settings/daily-auto`, { on: next }, auth);
+      await axios.post(`${API_URL}/api/admin/settings/daily-auto`, { on: next }, withAuth());
       setOn(next);
       setMsg(next ? "자동 발송: 켜짐" : "자동 발송: 꺼짐");
       setTimeout(() => setMsg(""), 1500);
-    } catch {
+    } catch (e) {
+      if (handle401(e)) return;
       setMsg("저장 실패");
       setTimeout(() => setMsg(""), 1500);
     } finally {
@@ -48,7 +60,7 @@ export default function DailyReportAutoSwitch() {
             type="checkbox"
             checked={on}
             disabled={saving}
-            onChange={e => save(e.target.checked)}
+            onChange={(e) => save(e.target.checked)}
             style={{ marginRight: 8 }}
           />
           {on ? "켜짐" : "꺼짐"}
