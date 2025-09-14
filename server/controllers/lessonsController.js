@@ -295,11 +295,8 @@ exports.sendSelected = async (req, res) => {
 
 // ====== 자동 발송(예약분) ======
 exports.sendBulk = async (_req, res) => {
-  // 🔒 자동발송 토글 체크
-  const autoOn = await isDailyAutoOn();
-  if (!autoOn) {
-    return res.json({ ok: true, sent: 0, failed: 0, message: 'auto OFF' });
-  }
+  // ⛔️ 더 이상 여기서 auto ON/OFF는 확인하지 않습니다.
+  //     ON/OFF 판단은 app.js의 CRON에서 DB 키 'daily_report_auto_on'으로 합니다.
 
   const list = await LessonLog.find({
     notifyStatus: '대기',
