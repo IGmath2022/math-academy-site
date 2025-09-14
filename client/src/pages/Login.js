@@ -16,9 +16,15 @@ function Login() {
     setError("");
     try {
       const res = await axios.post(`${API_URL}/api/auth/login`, { email, password });
+
+      // 현재 브라우저 세션 시작 마커(브라우저 닫으면 사라짐)
+      sessionStorage.setItem("session-started", "1");
+
+      // 앱 내부는 기존대로 localStorage 사용 (동작 영향 없음)
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("role", res.data.role);
-      // 같은 탭에서 NavBar 즉시 반영
+
+      // NavBar 등에게 즉시 반영
       window.dispatchEvent(new Event("auth-changed"));
       navigate("/dashboard");
     } catch (err) {

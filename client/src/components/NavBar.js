@@ -2,17 +2,21 @@ import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 function NavBar() {
-  const [role, setRole] = useState(() => localStorage.getItem("role"));
+  // 새 세션 시작 전에는 무조건 '로그아웃 상태'로 초기 표시
+  const initialRole = (() => {
+    if (!sessionStorage.getItem("session-started")) return null;
+    return localStorage.getItem("role");
+  })();
+
+  const [role, setRole] = useState(initialRole);
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
     const syncRole = () => setRole(localStorage.getItem("role"));
-    // 로그인/로그아웃 시 수동으로 쏘는 이벤트(같은 탭에서도 반응)
-    window.addEventListener("auth-changed", syncRole);
-    // 다른 탭에서 변경될 때
-    window.addEventListener("storage", syncRole);
-    // 라우트 이동 시에도 동기화
+    window.addEventListener("auth-changed", syncRole); // 같은 탭 즉시 반영
+    window.addEventListener("storage", syncRole);      // 다른 탭 반영
+    // 첫 마운트 동기화
     syncRole();
     return () => {
       window.removeEventListener("auth-changed", syncRole);
@@ -77,15 +81,7 @@ function NavBar() {
           href="https://blog.naver.com/igmath2022"
           target="_blank"
           rel="noopener noreferrer"
-          style={{
-            color: "white",
-            background: "#03c75a",
-            borderRadius: 12,
-            padding: "3px 12px",
-            fontWeight: "bold",
-            textDecoration: "none",
-            marginLeft: 8
-          }}
+          style={{ color: "white", background: "#03c75a", borderRadius: 12, padding: "3px 12px", fontWeight: "bold", textDecoration: "none", marginLeft: 8 }}
         >
           네이버블로그
         </a>
@@ -93,15 +89,7 @@ function NavBar() {
           href="https://www.youtube.com/@%EC%86%A1%EC%9D%B8%EA%B7%9C-m1r"
           target="_blank"
           rel="noopener noreferrer"
-          style={{
-            color: "white",
-            background: "#ff0000",
-            borderRadius: 12,
-            padding: "3px 12px",
-            fontWeight: "bold",
-            textDecoration: "none",
-            marginLeft: 8
-          }}
+          style={{ color: "white", background: "#ff0000", borderRadius: 12, padding: "3px 12px", fontWeight: "bold", textDecoration: "none", marginLeft: 8 }}
         >
           유튜브
         </a>
@@ -109,15 +97,7 @@ function NavBar() {
           href="https://pf.kakao.com/_dSHvxj"
           target="_blank"
           rel="noopener noreferrer"
-          style={{
-            color: "white",
-            background: "#FEE500",
-            borderRadius: 12,
-            padding: "3px 12px",
-            fontWeight: "bold",
-            textDecoration: "none",
-            marginLeft: 8
-          }}
+          style={{ color: "white", background: "#FEE500", borderRadius: 12, padding: "3px 12px", fontWeight: "bold", textDecoration: "none", marginLeft: 8 }}
         >
           카카오문의
         </a>
