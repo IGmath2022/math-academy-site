@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 import { API_URL } from '../api';
-import { setAuth } from "../utils/auth";
 
 console.log("로그인 컴포넌트에서 API_URL:", API_URL);
 
@@ -17,8 +16,10 @@ function Login() {
     setError("");
     try {
       const res = await axios.post(`${API_URL}/api/auth/login`, { email, password });
-      // ✅ 세션 저장(브라우저/탭 종료 시 자동 로그아웃)
-      setAuth({ token: res.data.token, role: res.data.role || res.data.user?.role });
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("role", res.data.role);
+      // 같은 탭에서 NavBar 즉시 반영
+      window.dispatchEvent(new Event("auth-changed"));
       navigate("/dashboard");
     } catch (err) {
       setError(err.response?.data?.message || "로그인 실패");
