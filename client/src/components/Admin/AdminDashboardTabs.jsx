@@ -1,154 +1,185 @@
-// client/src/components/Admin/AdminDashboardTabs.jsx
-import React, { useState } from "react";
-import "../../styles/admin.css";
+// client/src/pages/AdminDashboardTabs.jsx
+import React, { useMemo, useState } from "react";
+import "../styles/admin-skin.css";
 
-// 기존 모듈들 임포트
-import DailyReportAutoSwitch from "./DailyReportAutoSwitch";
-import AutoLeaveSwitch from "./AutoLeaveSwitch";
-import DailyReportEditor from "./DailyReportEditor";
-import DailyReportSender from "./DailyReportSender";
+// Admin 모듈들
+import DailyReportAutoSwitch from "../components/Admin/DailyReportAutoSwitch";
+import AutoLeaveSwitch from "../components/Admin/AutoLeaveSwitch";
+import DailyReportEditor from "../components/Admin/DailyReportEditor";
+import DailyReportSender from "../components/Admin/DailyReportSender";
 
-import CounselManager from "./CounselManager";
-import StudentProfilePanel from "./StudentProfilePanel";
-import ClassTypeManager from "./ClassTypeManager";
+import CounselManager from "../components/Admin/CounselManager";
+import StudentProfilePanel from "../components/Admin/StudentProfilePanel";
+import ClassTypeManager from "../components/Admin/ClassTypeManager";
 
-import BlogSettingSwitch from "./BlogSettingSwitch";
-import PopupBannerAdmin from "./PopupBannerAdmin";
-import NewsAdmin from "./NewsAdmin";
-import StudentManager from "./StudentManager";
-import AttendanceManager from "./AttendanceManager";
-import ProgressManager from "./ProgressManager";
-import SchoolManager from "./SchoolManager";
-import SchoolPeriodManager from "./SchoolPeriodManager";
-import SubjectManager from "./SubjectManager";
-import ChapterManager from "./ChapterManager";
-import StudentAssignManager from "./StudentAssignManager";
+import BlogSettingSwitch from "../components/Admin/BlogSettingSwitch";
+import PopupBannerAdmin from "../components/Admin/PopupBannerAdmin";
+import NewsAdmin from "../components/Admin/NewsAdmin";
+import StudentManager from "../components/Admin/StudentManager";
+import AttendanceManager from "../components/Admin/AttendanceManager";
+import ProgressManager from "../components/Admin/ProgressManager";
+import SchoolManager from "../components/Admin/SchoolManager";
+import SchoolPeriodManager from "../components/Admin/SchoolPeriodManager";
+import SubjectManager from "../components/Admin/SubjectManager";
+import ChapterManager from "../components/Admin/ChapterManager";
+import StudentAssignManager from "../components/Admin/StudentAssignManager";
 
-function AdminSection({ title, children }) {
+// 선택 과목 상태는 과목/단원/할당에서 공유
+function useSubjectState() {
+  const [selectedSubject, setSelectedSubject] = useState(null);
+  const [chapterList, setChapterList] = useState([]);
+  return { selectedSubject, setSelectedSubject, chapterList, setChapterList };
+}
+
+/** 공통 패널 래퍼 */
+function AdminPanel({ title, children }) {
   return (
-    <section className="admin-card">
-      {title && <h3>{title}</h3>}
+    <section className="admin-panel">
+      {title && <h3 className="admin-panel__title">{title}</h3>}
       {children}
     </section>
   );
 }
 
 export default function AdminDashboardTabs() {
-  const [active, setActive] = useState("report");
-  const [selectedSubject, setSelectedSubject] = useState(null);
-  const [chapterList, setChapterList] = useState([]);
+  const [tab, setTab] = useState("report");
+  const {
+    selectedSubject,
+    setSelectedSubject,
+    chapterList,
+    setChapterList,
+  } = useSubjectState();
 
-  const TabButton = ({ id, children }) => (
-    <button
-      className={`admin-tab ${active === id ? "active" : ""}`}
-      onClick={() => setActive(id)}
-    >
-      {children}
-    </button>
+  const tabs = useMemo(
+    () => [
+      { key: "report",   label: "리포트" },
+      { key: "consult",  label: "상담·프로필" },
+      { key: "users",    label: "학생·출결·진도" },
+      { key: "content",  label: "과목·단원·배정" },
+      { key: "notice",   label: "공지·배너·뉴스" },
+      { key: "school",   label: "학교·학사일정" },
+    ],
+    []
   );
 
   return (
     <div className="admin-shell">
-      <div className="admin-tabs">
-        <TabButton id="report">데일리 리포트</TabButton>
-        <TabButton id="counsel">상담·프로필</TabButton>
-        <TabButton id="content">콘텐츠·배너·뉴스</TabButton>
-        <TabButton id="students">학생·출결·진도</TabButton>
-        <TabButton id="curriculum">과목·단원·배정</TabButton>
+      <div className="admin-head">
+        <h2 style={{ margin: 0, fontSize: 22 }}>운영자 대시보드</h2>
+        <div className="admin-tabs">
+          {tabs.map(t => (
+            <button
+              key={t.key}
+              className={`admin-tab ${tab === t.key ? "is-active" : ""}`}
+              onClick={() => setTab(t.key)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {active === "report" && (
-        <>
-          <AdminSection title="자동화 스위치">
-            {/* 이 두 컴포넌트 안의 폼 컨트롤/테이블도 admin.css 규칙으로 통일됨 */}
-            <DailyReportAutoSwitch />
-            <AutoLeaveSwitch />
-          </AdminSection>
-
-          <AdminSection title="리포트 작성/수정">
-            <DailyReportEditor />
-          </AdminSection>
-
-          <AdminSection title="리포트 발송">
-            <DailyReportSender />
-          </AdminSection>
-        </>
-      )}
-
-      {active === "counsel" && (
-        <>
-          <AdminSection title="상담 로그">
-            <CounselManager />
-          </AdminSection>
-          <AdminSection title="학생 프로필 · 로드맵">
-            <StudentProfilePanel />
-          </AdminSection>
-          <AdminSection title="수업형태 관리">
-            <ClassTypeManager />
-          </AdminSection>
-        </>
-      )}
-
-      {active === "content" && (
-        <>
-          <AdminSection title="블로그 노출 설정">
-            <BlogSettingSwitch />
-          </AdminSection>
-          <AdminSection title="팝업 배너 관리">
-            <PopupBannerAdmin />
-          </AdminSection>
-          <AdminSection title="뉴스 관리">
-            <NewsAdmin />
-          </AdminSection>
-        </>
-      )}
-
-      {active === "students" && (
-        <>
-          <AdminSection title="학생 관리">
-            <StudentManager />
-          </AdminSection>
-          <AdminSection title="출결 관리">
-            <AttendanceManager />
-          </AdminSection>
-          <AdminSection title="진도 관리">
-            <ProgressManager />
-          </AdminSection>
-          <AdminSection title="학교 관리">
-            <SchoolManager />
-          </AdminSection>
-          <AdminSection title="학사 일정(기간) 관리">
-            <SchoolPeriodManager />
-          </AdminSection>
-        </>
-      )}
-
-      {active === "curriculum" && (
-        <>
-          <AdminSection title="과목 관리">
-            <SubjectManager
-              onSelectSubject={setSelectedSubject}
-              selectedSubject={selectedSubject}
-            />
-          </AdminSection>
-
-          {selectedSubject && (
-            <AdminSection title={`단원/강의 · 배정 — ${selectedSubject.name}`}>
-              <div className="admin-grid-2">
-                <div>
-                  <ChapterManager
-                    subject={selectedSubject}
-                    onChapterListChange={setChapterList}
-                  />
-                </div>
-                <div>
-                  <StudentAssignManager chapterList={chapterList} />
-                </div>
+      <div className="admin-container">
+        {/* 탭: 리포트 */}
+        {tab === "report" && (
+          <>
+            <AdminPanel title="자동화 스위치">
+              <div className="inline-row">
+                <DailyReportAutoSwitch />
+                <AutoLeaveSwitch />
               </div>
-            </AdminSection>
-          )}
-        </>
-      )}
+            </AdminPanel>
+
+            <AdminPanel title="일일 리포트 작성/수정">
+              <DailyReportEditor />
+            </AdminPanel>
+
+            <AdminPanel title="일일 리포트 발송">
+              <DailyReportSender />
+            </AdminPanel>
+          </>
+        )}
+
+        {/* 탭: 상담/프로필 */}
+        {tab === "consult" && (
+          <>
+            <AdminPanel title="상담 로그">
+              <CounselManager />
+            </AdminPanel>
+            <AdminPanel title="학생 프로필 · 로드맵">
+              <StudentProfilePanel />
+            </AdminPanel>
+            <AdminPanel title="수업형태 관리">
+              <ClassTypeManager />
+            </AdminPanel>
+          </>
+        )}
+
+        {/* 탭: 학생/출결/진도 */}
+        {tab === "users" && (
+          <>
+            <AdminPanel title="학생 관리">
+              <StudentManager />
+            </AdminPanel>
+            <AdminPanel title="출결 관리">
+              <AttendanceManager />
+            </AdminPanel>
+            <AdminPanel title="진도 관리">
+              <ProgressManager />
+            </AdminPanel>
+          </>
+        )}
+
+        {/* 탭: 과목/단원/배정 */}
+        {tab === "content" && (
+          <>
+            <AdminPanel title="과목 관리">
+              <SubjectManager
+                selectedSubject={selectedSubject}
+                onSelectSubject={setSelectedSubject}
+              />
+            </AdminPanel>
+
+            {selectedSubject && (
+              <AdminPanel title={`단원/강의 관리 — ${selectedSubject.name}`}>
+                <ChapterManager
+                  subject={selectedSubject}
+                  onChapterListChange={setChapterList}
+                />
+                <div className="mt-14" />
+                <StudentAssignManager chapterList={chapterList} />
+              </AdminPanel>
+            )}
+          </>
+        )}
+
+        {/* 탭: 공지/배너/뉴스 */}
+        {tab === "notice" && (
+          <>
+            <AdminPanel title="공지/뉴스">
+              <NewsAdmin />
+            </AdminPanel>
+            <AdminPanel title="블로그 노출 설정">
+              <BlogSettingSwitch />
+            </AdminPanel>
+            <AdminPanel title="팝업 배너">
+              <PopupBannerAdmin />
+            </AdminPanel>
+          </>
+        )}
+
+        {/* 탭: 학교/학사일정 */}
+        {tab === "school" && (
+          <>
+            <AdminPanel title="학교 관리">
+              <SchoolManager />
+            </AdminPanel>
+            <AdminPanel title="학사 일정(기간) 관리">
+              <SchoolPeriodManager />
+            </AdminPanel>
+          </>
+        )}
+      </div>
     </div>
   );
 }

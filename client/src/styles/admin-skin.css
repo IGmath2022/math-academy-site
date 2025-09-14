@@ -1,0 +1,277 @@
+/* client/src/styles/admin-skin.css
+   - 관리자 대시보드 전용 일관 스킨
+   - 패널 뿐 아니라 내부 input/select/textarea/button/table 크기까지 통일
+   - 기존 컴포넌트의 인라인 스타일이 작게 고정돼 있던 부분도 적당히 덮어씀
+*/
+
+:root {
+    --admin-bg: #f6f8fc;
+    --panel-bg: #ffffff;
+    --panel-soft: #f7f9fe;
+    --text-strong: #1f2430;
+    --text-soft: #5b667a;
+    --brand: #226ad6;
+    --brand-weak: #e7efff;
+    --success: #2da44e;
+    --danger: #e5534b;
+    --border: #e6ebf4;
+    --shadow: 0 6px 20px rgba(22, 34, 61, .06);
+    --radius-lg: 16px;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+    --gap-lg: 18px;
+    --gap-md: 12px;
+    --gap-sm: 8px;
+    --font-base: 15px;
+    --font-lg: 18px;
+    --font-sm: 13px;
+  }
+  
+  /* 전체 래퍼(페이지) */
+  .admin-shell {
+    background: var(--admin-bg);
+    min-height: 100vh;
+    padding: 28px 20px 44px;
+    box-sizing: border-box;
+  }
+  
+  /* 페이지 타이틀/탭 바 */
+  .admin-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1060px;
+    margin: 0 auto 14px auto;
+  }
+  .admin-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .admin-tab {
+    padding: 9px 14px;
+    border-radius: 999px;
+    background: #eef2fb;
+    color: #2b3a53;
+    border: 1px solid #e2e8f6;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .admin-tab.is-active {
+    background: var(--brand);
+    color: #fff;
+    border-color: var(--brand);
+    box-shadow: 0 4px 14px rgba(34,106,214,.25);
+  }
+  
+  /* 컨텐츠 컨테이너 (패널들을 가운데로) */
+  .admin-container {
+    max-width: 1060px;
+    margin: 0 auto;
+  }
+  
+  /* 패널(박스) */
+  .admin-panel {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    padding: 18px;
+    margin: 18px 0;
+  }
+  .admin-panel__title {
+    font-size: 20px;
+    font-weight: 800;
+    margin: 0 0 14px 0;
+    color: var(--text-strong);
+  }
+  
+  /* 박스 내부 레이아웃 보조 */
+  .admin-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--gap-md);
+  }
+  @media (max-width: 860px) {
+    .admin-grid { grid-template-columns: 1fr; }
+  }
+  
+  /* ===========================
+     공통 폼 크기(패널 범위 안에서만)
+     =========================== */
+  .admin-panel input[type="text"],
+  .admin-panel input[type="email"],
+  .admin-panel input[type="password"],
+  .admin-panel input[type="date"],
+  .admin-panel input[type="number"],
+  .admin-panel input[type="time"],
+  .admin-panel select,
+  .admin-panel textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px !important;     /* 작게 고정된 인라인 스타일을 보정 */
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: #fff;
+    font-size: var(--font-base) !important;
+    color: #1f2430;
+    outline: none;
+  }
+  .admin-panel textarea {
+    min-height: 96px;
+    resize: vertical;
+  }
+  
+  .admin-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .admin-label {
+    font-size: 13px;
+    color: #4c5870;
+    font-weight: 700;
+  }
+  
+  /* 버튼(기본/프라이머리/고스트/위험/성공) */
+  .admin-panel button,
+  .btn {
+    padding: 9px 14px !important;
+    border-radius: var(--radius-sm) !important;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: #2a3a58;
+    font-weight: 700;
+    font-size: 14px !important;
+    cursor: pointer;
+  }
+  .btn--primary {
+    border: none !important;
+    background: var(--brand) !important;
+    color: #fff !important;
+    box-shadow: 0 6px 16px rgba(34,106,214,.2);
+  }
+  .btn--ghost {
+    background: #f1f4fb !important;
+    border-color: #e2e8f6 !important;
+  }
+  .btn--success {
+    background: var(--success) !important;
+    color: #fff !important;
+    border: none !important;
+  }
+  .btn--danger {
+    background: var(--danger) !important;
+    color: #fff !important;
+    border: none !important;
+  }
+  
+  /* 배지 */
+  .badge {
+    display: inline-block;
+    padding: 3px 9px;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 999px;
+    background: var(--brand-weak);
+    color: #294a88;
+    border: 1px solid #d7e5ff;
+  }
+  
+  /* 테이블 통일 */
+  .admin-panel table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .admin-panel th,
+  .admin-panel td {
+    border-bottom: 1px solid #eef1f8;
+    padding: 12px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  .admin-panel thead th {
+    background: #f5f8ff;
+    color: #324055;
+    font-weight: 800;
+  }
+  
+  /* 섹션 박스 */
+  .section-box {
+    background: var(--panel-soft);
+    border: 1px solid #e5ecff;
+    border-radius: var(--radius-md);
+    padding: 14px;
+  }
+  
+  /* 카드 스타일(간단) */
+  .card-soft {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow);
+    padding: 14px;
+  }
+  
+  /* 입력 그룹(날짜 + 버튼 등) */
+  .inline-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  
+  /* 모달(간단) */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+  .modal-card {
+    width: 900px; max-width: 94vw; max-height: 92vh;
+    overflow: auto;
+    background: #fff;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    box-shadow: 0 14px 40px rgba(0,0,0,.25);
+    padding: 16px;
+  }
+  
+  /* 페이지네이션(기존 스타일 보완) */
+  .pager {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .pager__btn {
+    min-width: 34px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid #dfe5f2;
+    background: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    text-align: center;
+    cursor: pointer;
+  }
+  .pager__btn.is-active {
+    background: var(--brand);
+    color: #fff;
+    border-color: var(--brand);
+  }
+  
+  /* 유틸 여백/정렬 */
+  .mt-6 { margin-top: 6px; }
+  .mt-10 { margin-top: 10px; }
+  .mt-14 { margin-top: 14px; }
+  .mt-18 { margin-top: 18px; }
+  .mb-14 { margin-bottom: 14px; }
+  .center { text-align: center; }
+  .right  { text-align: right; }
+  
