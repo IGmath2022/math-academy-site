@@ -6,14 +6,17 @@ import Blog from "./Blog";
 // Student
 import StudentProgressCalendar from "../components/Student/StudentProgressCalendar";
 
-// Admin (탭 래퍼)
+// Admin 탭 레이아웃(이미 프로젝트에 추가됨)
 import AdminDashboardTabs from "../components/Admin/AdminDashboardTabs";
+
+// 인증 유틸
+import { getToken, getRole, clearAuth } from "../utils/auth";
 
 // ★★★ 모든 챕터ID는 여기서 추출! (id/_id/문자열 커버) ★★★
 const getChapterId = (chapter) => chapter?.id || chapter?._id || chapter;
 
 /** =========================
- *  학생 대시보드 (기존 유지)
+ *  학생 대시보드 (기존 유지, 세션 토큰 사용)
  *  ========================= */
 function StudentDashboard() {
   const [assignments, setAssignments] = useState([]);
@@ -38,7 +41,7 @@ function StudentDashboard() {
 
   // 내 정보
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getToken();
     if (!token) {
       setError("로그인이 필요합니다.");
       return;
@@ -49,12 +52,9 @@ function StudentDashboard() {
       })
       .then((res) => setMyInfo(res.data))
       .catch((err) => {
-        setError(
-          "사용자 정보를 불러오지 못했습니다. (로그인이 만료됐거나 네트워크 오류)"
-        );
+        setError("사용자 정보를 불러오지 못했습니다. (로그인이 만료됐거나 네트워크 오류)");
         if (err.response?.status === 401) {
-          localStorage.removeItem("token");
-          localStorage.removeItem("role");
+          clearAuth();
           setTimeout(() => window.location.reload(), 1200);
         }
       });
@@ -69,7 +69,7 @@ function StudentDashboard() {
 
   // 할당 강의
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getToken();
     if (!token) return;
     axios
       .get(`${API_URL}/api/assignments`, {
@@ -82,7 +82,7 @@ function StudentDashboard() {
 
   // 모든 챕터
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getToken();
     if (!token) return;
     axios
       .get(`${API_URL}/api/chapters`, {
@@ -99,7 +99,7 @@ function StudentDashboard() {
 
   // 진도 현황
   const fetchProgress = useCallback(() => {
-    const token = localStorage.getItem("token");
+    const token = getToken();
     if (!token) return;
     const userId = parseJwt(token)?.id;
     axios
@@ -124,7 +124,8 @@ function StudentDashboard() {
 
   // 진도 저장
   const handleProgressSave = async (chapterId) => {
-    const token = localStorage.getItem("token");
+    const token = getToken();
+    if (!token) return;
     const userId = (() => {
       try {
         return JSON.parse(atob(token.split(".")[1]))?.id;
@@ -175,7 +176,13 @@ function StudentDashboard() {
         내 강의 대시보드
       </h2>
       {error && (
-        <p style={{ color: "#e14", textAlign: "center", margin: "8px 0" }}>
+        <p
+          style={{
+            color: "#e14",
+            textAlign: "center",
+            margin: "8px 0",
+          }}
+        >
           {error}
         </p>
       )}
@@ -282,7 +289,11 @@ function StudentDashboard() {
                   <div>
                     <b>{a.Chapter.name}</b>
                     <span
-                      style={{ color: "#888", fontSize: 14, marginLeft: 7 }}
+                      style={{
+                        color: "#888",
+                        fontSize: 14,
+                        marginLeft: 7,
+                      }}
                     >
                       {a.Chapter.description}
                     </span>
@@ -315,7 +326,7 @@ function StudentDashboard() {
                       <input
                         type="checkbox"
                         checked={
-                          chapterId && progressMap[chapterId]?.date === today
+                          chapterId && (progressMap[chapterId]?.date === today)
                         }
                         onChange={(e) => {
                           setProgressList((prev) => {
@@ -439,16 +450,40 @@ function StudentDashboard() {
 }
 
 /** =========================
- *  라우팅 진입점
+ *  운영자 대시보드 (탭 버전)
+ *  ========================= */
+function AdminDashboard() {
+  return <AdminDashboardTabs />;
+}
+
+/** =========================
+ *  라우팅 진입점(서버 검증으로 역할 결정)
  *  ========================= */
 function Dashboard() {
   const [role, setRole] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedRole = localStorage.getItem("role");
-    setRole(storedRole || "");
-    setLoading(false);
+    (async () => {
+      const token = getToken();
+      if (!token) {
+        setRole("");
+        setLoading(false);
+        return;
+      }
+      try {
+        const { data } = await axios.get(`${API_URL}/api/users/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setRole(data?.role || getRole() || "");
+      } catch {
+        // 토큰 문제면 즉시 로그아웃/초기화
+        clearAuth();
+        setRole("");
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
   if (loading)
@@ -464,8 +499,10 @@ function Dashboard() {
         로딩 중...
       </div>
     );
-  if (role === "admin") return <AdminDashboardTabs />;
+
+  if (role === "admin") return <AdminDashboard />;
   if (role === "student") return <StudentDashboard />;
+
   return (
     <div
       style={{

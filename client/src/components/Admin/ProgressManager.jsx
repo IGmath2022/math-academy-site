@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { API_URL } from "../../api";
+import { API_URL } from '../../api';
+import { getToken } from "../../utils/auth";
 
-const th = { textAlign: "left", padding: "10px 10px", borderBottom: "1px solid #eef2f7", fontSize: 14, color: "#455" };
-const td = { padding: "10px 10px", borderBottom: "1px solid #f3f5fb", fontSize: 14, color: "#223" };
-
+// 학생+강의+날짜별 진도 리스트
 function ProgressManager() {
   const [progressList, setProgressList] = useState([]);
   const [students, setStudents] = useState([]);
@@ -13,12 +12,12 @@ function ProgressManager() {
 
   // 페이지네이션
   const [page, setPage] = useState(1);
-  const pageSize = 10;
+  const pageSize = 5;
 
   useEffect(() => {
     async function fetchAll() {
       setLoading(true);
-      const token = localStorage.getItem("token");
+      const token = getToken();
       const [progressRes, userRes, chapterRes] = await Promise.all([
         axios.get(`${API_URL}/api/progress`, { headers: { Authorization: `Bearer ${token}` } }),
         axios.get(`${API_URL}/api/users?role=student`, { headers: { Authorization: `Bearer ${token}` } }),
@@ -28,73 +27,99 @@ function ProgressManager() {
       setStudents(userRes.data);
       setChapters(chapterRes.data);
       setLoading(false);
-      setPage(1);
+      setPage(1); // 데이터 새로고침 시 1페이지
     }
     fetchAll();
   }, []);
 
-  const getStudentName = (userId) => students.find((u) => (u._id || u.id) === userId)?.name || userId;
-  const getChapterName = (chapterId) => chapters.find((c) => (c._id || c.id) === chapterId)?.name || chapterId;
+  // 학생/단원 이름 매칭 (Mongoose는 ._id)
+  const getStudentName = userId =>
+    students.find(u => (u._id || u.id) === userId)?.name || userId;
+  const getChapterName = chapterId =>
+    chapters.find(c => (c._id || c.id) === chapterId)?.name || chapterId;
 
+  // 페이지네이션 계산
   const totalPages = Math.ceil(progressList.length / pageSize);
   const pagedList = progressList.slice((page - 1) * pageSize, page * pageSize);
 
-  if (loading) return <div style={{ color: "#777" }}>불러오는 중…</div>;
-
   return (
-    <div>
-      <div style={{ overflowX: "auto", background: "#fff", border: "1px solid #e8edf6", borderRadius: 12 }}>
+    <div
+      style={{
+        border: "1px solid #e5e8ec",
+        background: "#f9fafb",
+        borderRadius: 13,
+        padding: "28px 12px",
+        marginBottom: 30,
+        boxShadow: "0 2px 8px #0001",
+        maxWidth: 600,
+        margin: "0 auto 30px",
+      }}
+    >
+      <h3 style={{ marginTop: 0, marginBottom: 14, fontSize: 19 }}>학생 진도 현황</h3>
+      {loading ? (
+        <div style={{ color: "#888" }}>불러오는 중...</div>
+      ) : (
+        <>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
-            <tr style={{ background: "#f7f9ff" }}>
-              <th style={th}>학생</th>
-              <th style={th}>단원</th>
-              <th style={th}>날짜</th>
-              <th style={th}>메모</th>
+            <tr style={{ background: "#f3f4f8", fontWeight: 600 }}>
+              <td style={{ padding: 8, border: "1px solid #eee" }}>학생</td>
+              <td style={{ padding: 8, border: "1px solid #eee" }}>단원</td>
+              <td style={{ padding: 8, border: "1px solid #eee" }}>날짜</td>
+              <td style={{ padding: 8, border: "1px solid #eee" }}>메모</td>
             </tr>
           </thead>
           <tbody>
             {pagedList.length === 0 ? (
               <tr>
-                <td colSpan={4} style={{ ...td, color: "#777", textAlign: "center" }}>
+                <td colSpan={4} style={{ color: "#888", padding: 12, textAlign: "center" }}>
                   기록 없음
                 </td>
               </tr>
             ) : (
               pagedList.map((p, idx) => (
                 <tr key={p._id || p.id || idx}>
-                  <td style={td}>{getStudentName(p.userId)}</td>
-                  <td style={td}>{getChapterName(p.chapterId)}</td>
-                  <td style={td}>{p.date}</td>
-                  <td style={td}>{p.memo}</td>
+                  <td style={{ padding: 7, border: "1px solid #f1f1f1" }}>
+                    {getStudentName(p.userId)}
+                  </td>
+                  <td style={{ padding: 7, border: "1px solid #f1f1f1" }}>
+                    {getChapterName(p.chapterId)}
+                  </td>
+                  <td style={{ padding: 7, border: "1px solid #f1f1f1" }}>
+                    {p.date}
+                  </td>
+                  <td style={{ padding: 7, border: "1px solid #f1f1f1" }}>
+                    {p.memo}
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
-      </div>
-
-      {/* 페이지네이션 */}
-      {totalPages > 1 && (
-        <div style={{ marginTop: 10, display: "flex", gap: 6, justifyContent: "center", flexWrap: "wrap" }}>
-          {Array.from({ length: totalPages }).map((_, i) => (
-            <button
-              key={i + 1}
-              onClick={() => setPage(i + 1)}
-              style={{
-                padding: "6px 12px",
-                borderRadius: 999,
-                border: "1px solid " + (i + 1 === page ? "#226ad6" : "#d8dfeb"),
-                background: i + 1 === page ? "#226ad6" : "#fff",
-                color: i + 1 === page ? "#fff" : "#223",
-                fontWeight: 800,
-                cursor: "pointer",
-              }}
-            >
-              {i + 1}
-            </button>
-          ))}
-        </div>
+        {/* 페이지네이션 버튼 */}
+        {totalPages > 1 && (
+          <div style={{ margin: "13px 0 0 0", textAlign: "center" }}>
+            {Array.from({ length: totalPages }).map((_, i) => (
+              <button
+                key={i + 1}
+                onClick={() => setPage(i + 1)}
+                style={{
+                  margin: 2,
+                  padding: "5px 13px",
+                  borderRadius: 7,
+                  border: "none",
+                  background: i + 1 === page ? "#226ad6" : "#eee",
+                  color: i + 1 === page ? "#fff" : "#444",
+                  fontWeight: 700,
+                  cursor: "pointer"
+                }}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+        )}
+        </>
       )}
     </div>
   );
