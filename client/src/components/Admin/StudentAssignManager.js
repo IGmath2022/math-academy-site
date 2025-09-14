@@ -3,9 +3,9 @@ import axios from "axios";
 import { API_URL } from '../../api';
 import { useNavigate } from "react-router-dom";
 
-function StudentAssignManager({ chapterList }) {
+function StudentAssignManager({ chapterList = [] }) {
   const [students, setStudents] = useState([]);
-  the [selectedStudent, setSelectedStudent] = useState(null);
+  const [selectedStudent, setSelectedStudent] = useState(null);
   const [assigned, setAssigned] = useState([]);
   const [refresh, setRefresh] = useState(false);
 
@@ -22,41 +22,37 @@ function StudentAssignManager({ chapterList }) {
   };
 
   useEffect(() => {
-    fetchStudents();
-    // eslint-disable-next-line
+    (async () => {
+      try {
+        const res = await axios.get(`${API_URL}/api/users?role=student`, getAuth());
+        setStudents(res.data || []);
+      } catch (e) {
+        if (e?.response?.status === 401) handle401();
+        else setStudents([]);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (selectedStudent) fetchAssigned();
-    // eslint-disable-next-line
+    if (!selectedStudent) { setAssigned([]); return; }
+    (async () => {
+      try {
+        const res = await axios.get(`${API_URL}/api/assignments`, {
+          params: { userId: selectedStudent._id },
+          ...getAuth()
+        });
+        setAssigned((res.data || []).map(a => String(a.chapterId?._id || a.chapterId)));
+      } catch (e) {
+        if (e?.response?.status === 401) handle401();
+        else setAssigned([]);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedStudent, refresh]);
 
-  const fetchStudents = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/api/users?role=student`, getAuth());
-      setStudents(res.data || []);
-    } catch (e) {
-      if (e?.response?.status === 401) handle401();
-      else setStudents([]);
-    }
-  };
-
-  const fetchAssigned = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/api/assignments`, {
-        params: { userId: selectedStudent._id },
-        ...getAuth()
-      });
-      setAssigned(
-        (res.data || []).map(a => String(a.chapterId?._id || a.chapterId))
-      );
-    } catch (e) {
-      if (e?.response?.status === 401) handle401();
-      else setAssigned([]);
-    }
-  };
-
   const handleAssign = async (chapterId) => {
+    if (!selectedStudent) return;
     try {
       await axios.post(`${API_URL}/api/assignments`,
         { userId: selectedStudent._id, chapterId },
@@ -65,15 +61,13 @@ function StudentAssignManager({ chapterList }) {
       setRefresh(r => !r);
     } catch (e) {
       if (e?.response?.status === 401) return handle401();
-      if (e?.response?.status === 409) {
-        alert("이미 할당된 강의입니다.");
-      } else {
-        alert("할당 오류");
-      }
+      if (e?.response?.status === 409) alert("이미 할당된 강의입니다.");
+      else alert("할당 오류");
     }
   };
 
   const handleUnassign = async (chapterId) => {
+    if (!selectedStudent) return;
     try {
       const res = await axios.get(`${API_URL}/api/assignments`, {
         params: { userId: selectedStudent._id },
