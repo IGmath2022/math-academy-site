@@ -1,305 +1,244 @@
 // client/src/components/Admin/AdminDashboardTabs.jsx
 import React, { useState, useMemo } from "react";
-import "../../styles/admin-skin.css";
 
-// === Admin modules ===
+// --- 리포트(일일 보고) ---
 import DailyReportAutoSwitch from "./DailyReportAutoSwitch";
 import AutoLeaveSwitch from "./AutoLeaveSwitch";
 import DailyReportEditor from "./DailyReportEditor";
 import DailyReportSender from "./DailyReportSender";
 
+// --- 상담/프로필/수업형태 ---
 import CounselManager from "./CounselManager";
 import StudentProfilePanel from "./StudentProfilePanel";
 import ClassTypeManager from "./ClassTypeManager";
 
+// --- 출결/진도/과목/단원 ---
 import AttendanceManager from "./AttendanceManager";
-import StudentManager from "./StudentManager";
-import SchoolManager from "./SchoolManager";
-import SchoolPeriodManager from "./SchoolPeriodManager";
-
 import ProgressManager from "./ProgressManager";
-
 import SubjectManager from "./SubjectManager";
 import ChapterManager from "./ChapterManager";
 import StudentAssignManager from "./StudentAssignManager";
 
+// --- 공지/홍보(블로그/배너/소식) ---
 import BlogSettingSwitch from "./BlogSettingSwitch";
 import PopupBannerAdmin from "./PopupBannerAdmin";
 import NewsAdmin from "./NewsAdmin";
 
-/** 공용 카드 */
-function AdminCard({ title, subtitle, children, className = "" }) {
-  return (
-    <section className={`admin-card ${className}`}>
-      <div className="admin-card__hd">
-        <div className="admin-card__title">{title}</div>
-        {subtitle ? <div className="admin-card__sub">{subtitle}</div> : null}
-      </div>
-      <div className="admin-card__bd">{children}</div>
-    </section>
-  );
-}
-
-/** 공용 그리드 */
-function AdminGrid({ children, cols = 2 }) {
-  const cls = `admin-grid admin-grid--cols-${cols}`;
-  return <div className={cls}>{children}</div>;
-}
-
-/** 탭 헤더 */
-function Tabs({ items, active, onChange }) {
-  return (
-    <div className="admin-tabs" role="tablist" aria-label="관리자 탭">
-      {items.map((t) => (
-        <button
-          key={t.key}
-          role="tab"
-          aria-selected={active === t.key}
-          className={`admin-tab ${active === t.key ? "is-active" : ""}`}
-          onClick={() => onChange(t.key)}
-          title={t.label}
-        >
-          {t.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/** 레거시 컴포넌트 정리 래퍼 */
-function LegacyPanel({ children }) {
-  return <div className="legacy-panel">{children}</div>;
-}
-
 export default function AdminDashboardTabs() {
+  const [active, setActive] = useState("report");
+
+  // 과목/단원 탭에서 공유할 상태
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [chapterList, setChapterList] = useState([]);
 
-  const [active, setActive] = useState("report-write");
-
   const tabs = useMemo(
     () => [
-      { key: "automation", label: "자동화" },
-      { key: "report-write", label: "리포트 작성" },
-      { key: "report-send", label: "리포트 발송" },
-      { key: "counsel-profile", label: "상담·프로필" },
-      { key: "class-types", label: "수업형태" },
-      { key: "attendance", label: "출결관리" },
-      { key: "students-schools", label: "학생/학교" },
-      { key: "progress", label: "진도관리" },
-      { key: "content", label: "과목관리" },
-      { key: "marketing", label: "블로그·배너·소식" },
+      { key: "report", label: "일일 리포트" },
+      { key: "counsel", label: "상담·프로필" },
+      { key: "attendance", label: "출결 관리" },
+      { key: "progress", label: "진도 관리" },
+      { key: "subjects", label: "과목·단원" },
+      { key: "promo", label: "공지·홍보" },
     ],
     []
   );
 
   return (
-    <div className="admin-skin">
-      <div className="admin-wrap">
-        <h2 className="admin-page-title">
-          운영자 대시보드 <span className="muted">(관리자용)</span>
-        </h2>
+    <div
+      style={{
+        maxWidth: 1040,
+        margin: "42px auto",
+        padding: "0 16px 40px",
+      }}
+    >
+      {/* 탭 바 */}
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+          marginBottom: 16,
+        }}
+      >
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setActive(t.key)}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 10,
+              border: "1px solid #e2e7f2",
+              background: active === t.key ? "#226ad6" : "#fff",
+              color: active === t.key ? "#fff" : "#234",
+              fontWeight: 800,
+              boxShadow: active === t.key ? "0 2px 10px #0002" : "none",
+              cursor: "pointer",
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-        <Tabs items={tabs} active={active} onChange={setActive} />
+      {/* 탭 패널 */}
+      <div
+        style={{
+          background: "#fff",
+          border: "1px solid #e8ecf4",
+          borderRadius: 14,
+          boxShadow: "0 6px 22px #0001",
+          padding: 18,
+        }}
+      >
+        {active === "report" && (
+          <div>
+            <h3 style={h3}>일일 리포트 · 자동화</h3>
+            <div style={stack16}>
+              <DailyReportAutoSwitch />
+              <AutoLeaveSwitch />
+            </div>
 
-        <div className="admin-content">
-          {active === "automation" && (
-            <AdminGrid cols={2}>
-              <AdminCard
-                title="데일리 리포트 자동 발송"
-                subtitle="설정값(daily_report_auto_on)에 따라 서버 크론이 예약분을 처리합니다."
-              >
-                <LegacyPanel>
-                  <DailyReportAutoSwitch />
-                </LegacyPanel>
-              </AdminCard>
+            <div style={{ height: 10 }} />
 
-              <AdminCard
-                title="자동 하원 처리"
-                subtitle="야간 자동하원 스케줄 (auto_leave_on)"
-              >
-                <LegacyPanel>
-                  <AutoLeaveSwitch />
-                </LegacyPanel>
-              </AdminCard>
-            </AdminGrid>
-          )}
+            <h3 style={h3}>리포트 작성/발송</h3>
+            <div style={stack16}>
+              <DailyReportEditor />
+              <DailyReportSender />
+            </div>
+          </div>
+        )}
 
-          {active === "report-write" && (
-            <AdminCard
-              title="데일리 리포트 작성/수정"
-              subtitle="학생별로 작성하고 예약(기본 내일 10:30)으로 저장됩니다."
-            >
-              <LegacyPanel>
-                <DailyReportEditor />
-              </LegacyPanel>
-            </AdminCard>
-          )}
+        {active === "counsel" && (
+          <div style={stack16}>
+            <h3 style={h3}>상담·프로필 관리</h3>
+            <CounselManager />
+            <StudentProfilePanel />
+            <ClassTypeManager />
+          </div>
+        )}
 
-          {active === "report-send" && (
-            <AdminCard
-              title="데일리 리포트 발송"
-              subtitle="작성된 내역을 선택 발송하거나 단건 발송할 수 있습니다."
-            >
-              <LegacyPanel>
-                <DailyReportSender />
-              </LegacyPanel>
-            </AdminCard>
-          )}
+        {active === "attendance" && (
+          <div style={stack16}>
+            <h3 style={h3}>출결 관리</h3>
+            <AttendanceManager />
+          </div>
+        )}
 
-          {active === "counsel-profile" && (
-            <AdminGrid cols={2}>
-              <AdminCard
-                title="상담 로그"
-                subtitle="학생 상담 메모를 기록/수정/공개 설정합니다."
-              >
-                <LegacyPanel>
-                  <CounselManager />
-                </LegacyPanel>
-              </AdminCard>
-              <AdminCard
-                title="학생 프로필 · 로드맵"
-                subtitle="공개 설정 시 리포트 뷰 하단에 노출됩니다."
-              >
-                <LegacyPanel>
-                  <StudentProfilePanel />
-                </LegacyPanel>
-              </AdminCard>
-            </AdminGrid>
-          )}
+        {active === "progress" && (
+          <div style={stack16}>
+            <h3 style={h3}>진도 관리</h3>
+            <ProgressManager />
+          </div>
+        )}
 
-          {active === "class-types" && (
-            <AdminCard
-              title="수업형태 관리"
-              subtitle="리포트 작성 시 사용할 수업형태 옵션을 관리합니다."
-            >
-              <LegacyPanel>
-                <ClassTypeManager />
-              </LegacyPanel>
-            </AdminCard>
-          )}
-
-          {/* === 출결관리: 내부 폼/테이블 강제 확장 === */}
-          {active === "attendance" && (
-            <AdminCard
-              title="출결 관리"
-              subtitle="리스트/수정/자동하원 처리 상태를 확인하세요."
-            >
-              <div className="enlarge-all">
-                <LegacyPanel>
-                  <AttendanceManager />
-                </LegacyPanel>
-              </div>
-            </AdminCard>
-          )}
-
-          {/* === 학생/학교 === */}
-          {active === "students-schools" && (
-            <AdminGrid cols={2}>
-              <AdminCard title="학생 관리">
-                <div className="enlarge-all">
-                  <LegacyPanel>
-                    <StudentManager />
-                  </LegacyPanel>
-                </div>
-              </AdminCard>
-              <AdminCard title="학교/학사일정">
-                <div className="enlarge-all">
-                  <LegacyPanel>
-                    <SchoolManager />
-                  </LegacyPanel>
-                </div>
-                <div style={{ height: 16 }} />
-                <div className="enlarge-all">
-                  <LegacyPanel>
-                    <SchoolPeriodManager />
-                  </LegacyPanel>
-                </div>
-              </AdminCard>
-            </AdminGrid>
-          )}
-
-          {/* === 진도관리: 내부 폼/테이블 강제 확장 === */}
-          {active === "progress" && (
-            <AdminCard
-              title="진도 관리"
-              subtitle="학생 진도 현황을 확인하고 관리합니다."
-            >
-              <div className="enlarge-all">
-                <LegacyPanel>
-                  <ProgressManager />
-                </LegacyPanel>
-              </div>
-            </AdminCard>
-          )}
-
-          {/* === 과목관리: Subject/Chapter/Assign 모두 강제 확장 === */}
-          {active === "content" && (
-            <>
-              <AdminCard title="과목 관리">
-                <div className="enlarge-all">
-                  <LegacyPanel>
-                    <SubjectManager
-                      onSelectSubject={setSelectedSubject}
-                      selectedSubject={selectedSubject}
-                    />
-                  </LegacyPanel>
-                </div>
-              </AdminCard>
+        {active === "subjects" && (
+          <div>
+            <h3 style={h3}>과목·단원 관리</h3>
+            <div style={stack16}>
+              <SubjectManager
+                selectedSubject={selectedSubject}
+                onSelectSubject={setSelectedSubject}
+              />
 
               {selectedSubject && (
-                <AdminGrid cols={1}>
-                  <AdminCard
-                    title={`단원/강의 관리 — ${selectedSubject.name}`}
-                    subtitle="단원(챕터)을 관리한 뒤 학생에게 강의를 배정하세요."
+                <div
+                  style={{
+                    border: "1px solid #e8ecf4",
+                    background: "#f9fbff",
+                    borderRadius: 12,
+                    padding: 16,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontWeight: 800,
+                      marginBottom: 10,
+                      color: "#223",
+                    }}
                   >
-                    <div className="enlarge-all">
-                      <LegacyPanel>
-                        <ChapterManager
-                          subject={selectedSubject}
-                          onChapterListChange={setChapterList}
-                        />
-                      </LegacyPanel>
-                    </div>
-                    <div style={{ height: 14 }} />
-                    <div className="enlarge-all">
-                      <LegacyPanel>
-                        <StudentAssignManager chapterList={chapterList} />
-                      </LegacyPanel>
-                    </div>
-                  </AdminCard>
-                </AdminGrid>
+                    선택 과목:{" "}
+                    <span style={{ color: "#226ad6" }}>
+                      {selectedSubject.name}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
+                      gap: 16,
+                    }}
+                  >
+                    <ChapterManager
+                      subject={selectedSubject}
+                      onChapterListChange={setChapterList}
+                    />
+                    <StudentAssignManager chapterList={chapterList} />
+                  </div>
+                </div>
               )}
-            </>
-          )}
+            </div>
+          </div>
+        )}
 
-          {/* === 마케팅: 블로그 카드만 컴팩트 + 3열 그리드로 축소 === */}
-          {active === "marketing" && (
-            <AdminGrid cols={3}>
-              <AdminCard
-                title="블로그 노출 설정"
-                className="admin-card--compact"
+        {active === "promo" && (
+          <div>
+            <h3 style={h3}>공지·홍보</h3>
+
+            {/* 1) 블로그 노출 설정 — 상단 단일 행 전체폭 */}
+            <div
+              style={{
+                border: "1px solid #e8ecf4",
+                background: "#f9fbff",
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 16,
+              }}
+            >
+              <BlogSettingSwitch />
+            </div>
+
+            {/* 2) 아래 2열: 배너 / 소식 */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)",
+                gap: 16,
+                alignItems: "start",
+              }}
+            >
+              <div
+                style={{
+                  border: "1px solid #e8ecf4",
+                  background: "#fff",
+                  borderRadius: 12,
+                  padding: 12,
+                }}
               >
-                <LegacyPanel>
-                  <BlogSettingSwitch />
-                </LegacyPanel>
-              </AdminCard>
-
-              <AdminCard title="팝업/배너 관리">
-                <LegacyPanel>
-                  <PopupBannerAdmin />
-                </LegacyPanel>
-              </AdminCard>
-
-              <AdminCard title="소식/공지 관리">
-                <LegacyPanel>
-                  <NewsAdmin />
-                </LegacyPanel>
-              </AdminCard>
-            </AdminGrid>
-          )}
-        </div>
+                <PopupBannerAdmin />
+              </div>
+              <div
+                style={{
+                  border: "1px solid #e8ecf4",
+                  background: "#fff",
+                  borderRadius: 12,
+                  padding: 12,
+                }}
+              >
+                <NewsAdmin />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
+/* ---------- 공용 작은 스타일 ---------- */
+const h3 = {
+  margin: "4px 0 12px",
+  fontSize: 18,
+  fontWeight: 900,
+  color: "#1f2a3a",
+};
+const stack16 = { display: "grid", gap: 16 };
