@@ -1,120 +1,294 @@
-import React, { useState, useEffect } from "react";
+// client/src/components/Admin/AttendanceManager.jsx
+import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
-import { API_URL } from '../../api';
+import { API_URL } from "../../api";
+import useAuthHeader from "../../utils/useAuthHeader";
+import { toYmdLocal } from "../../utils/dateKST";
 
-// 로컬타임 기준 YYYY-MM-DD / YYYY-MM
-function ymdLocal(date) {
-  const t = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-  return t.toISOString().slice(0, 10);
-}
-function ymLocal(date) {
-  return ymdLocal(date).slice(0, 7);
-}
+function RowEditor({ row, date, onSaved, auth }) {
+  const [inTime, setInTime] = useState(row.checkIn || "");
+  const [outTime, setOutTime] = useState(row.checkOut || "");
+  const [saving, setSaving] = useState(false);
 
-function AttendanceManager() {
-  const [tab, setTab] = useState("date");
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [selectedStudent, setSelectedStudent] = useState("");
-  const [students, setStudents] = useState([]);
-  const [dateList, setDateList] = useState([]);
-  const [studentMonthList, setStudentMonthList] = useState([]);
-  const [month, setMonth] = useState(ymLocal(new Date()));
-  const [monthCount, setMonthCount] = useState(0);
-
-  // 페이지네이션 state (날짜별 보기)
-  const [page, setPage] = useState(1);
-  const pageSize = 5;
-
-  // 학생 전체 로딩
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    axios.get(`${API_URL}/api/users?role=student`, {
-      headers: { Authorization: `Bearer ${token}` }
-    }).then(res => setStudents(res.data.sort((a, b) => a.name.localeCompare(b.name))));
-  }, []);
+    setInTime(row.checkIn || "");
+    setOutTime(row.checkOut || "");
+  }, [row]);
 
-  // 날짜별 리스트 로딩 (← KST 기준으로 수정)
-  useEffect(() => {
-    if (tab !== "date") return;
-    const ymd = ymdLocal(selectedDate);
-    axios.get(`${API_URL}/api/attendance/by-date?date=${ymd}`)
-      .then(res => {
-        setDateList(res.data);
-        setPage(1); // 날짜가 바뀌면 1페이지로
-      });
-  }, [tab, selectedDate]);
+  const save = async () => {
+    try {
+      setSaving(true);
+      await axios.post(
+        `${API_URL}/api/admin/attendance/set-times`,
+        {
+          studentId: row.userId || row.studentId,
+          date,
+          checkIn: inTime || "",
+          checkOut: outTime || "",
+          overwrite: true,
+        },
+        auth
+      );
+      onSaved?.();
+    } catch (e) {
+      alert(e?.response?.data?.message || "출결 저장 실패");
+    } finally {
+      setSaving(false);
+    }
+  };
 
-  // 학생별 리스트 로딩 (userId로 통일)
-  useEffect(() => {
-    if (tab !== "student" || !selectedStudent) return;
-    axios.get(`${API_URL}/api/attendance/by-student?userId=${selectedStudent}&month=${month}`)
-      .then(res => {
-        setStudentMonthList(res.data.records);
-        setMonthCount(res.data.count);
-      });
-  }, [tab, selectedStudent, month]);
-
-  // 날짜별 출결 학생 페이지네이션
-  const totalPages = Math.ceil(dateList.length / pageSize);
-  const pagedDateList = dateList.slice((page - 1) * pageSize, page * pageSize);
+  const badge =
+    !row.checkIn && !row.checkOut
+      ? { bg: "#fff3f3", fg: "#c22", label: "미체크" }
+      : !row.checkOut
+      ? { bg: "#fff8e6", fg: "#b75", label: "미하원" }
+      : { bg: "#eef8ff", fg: "#246", label: "정상" };
 
   return (
-    <div style={{
-      maxWidth: 700, margin: "32px auto", background: "#fff",
-      borderRadius: 16, boxShadow: "0 2px 18px #0001", padding: 32
-    }}>
-      <h2 style={{ marginBottom: 22, textAlign: "center" }}>출결 관리</h2>
-      <div style={{ display: "flex", gap: 14, marginBottom: 22 }}>
-        <button onClick={() => setTab("date")}
-          style={{ background: tab === "date" ? "#226ad6" : "#eee", color: tab === "date" ? "#fff" : "#222", fontWeight: 600, border: "none", borderRadius: 7, padding: "9px 23px" }}>
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "1.1fr 0.9fr 0.9fr auto",
+        gap: 8,
+        alignItems: "center",
+        padding: "10px 8px",
+        borderBottom: "1px solid #eef2f8",
+      }}
+    >
+      <div style={{ fontWeight: 700 }}>{row.studentName || row.name}</div>
+
+      <input
+        type="time"
+        value={inTime}
+        onChange={(e) => setInTime(e.target.value)}
+        style={ipt}
+      />
+      <input
+        type="time"
+        value={outTime}
+        onChange={(e) => setOutTime(e.target.value)}
+        style={ipt}
+      />
+
+      <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+        <span
+          style={{
+            alignSelf: "center",
+            background: badge.bg,
+            color: badge.fg,
+            border: `1px solid ${badge.fg}30`,
+            borderRadius: 999,
+            padding: "3px 8px",
+            fontSize: 12,
+            fontWeight: 700,
+          }}
+        >
+          {badge.label}
+        </span>
+        <button onClick={save} disabled={saving} style={btnPrimary}>
+          {saving ? "저장 중…" : "적용"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function AttendanceManager() {
+  const auth = useAuthHeader();
+
+  const [tab, setTab] = useState("date"); // date | student (기존 유지)
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const ymd = useMemo(() => toYmdLocal(selectedDate), [selectedDate]);
+
+  // 좌측 달력 + 우측 당일 등원 리스트
+  const [dayList, setDayList] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // 학생별 보기(기존 유지)
+  const [students, setStudents] = useState([]);
+  const [selectedStudent, setSelectedStudent] = useState("");
+
+  useEffect(() => {
+    // 학생 목록 (학생별 보기에서 사용)
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    axios
+      .get(`${API_URL}/api/users?role=student`, auth)
+      .then((res) =>
+        setStudents(res.data.sort((a, b) => a.name.localeCompare(b.name, "ko")))
+      )
+      .catch(() => {});
+  }, [auth]);
+
+  // 날짜별 리스트
+  const loadByDate = async () => {
+    setLoading(true);
+    try {
+      const { data } = await axios.get(
+        `${API_URL}/api/attendance/by-date?date=${ymd}`,
+        auth
+      );
+      // 기대 필드: userId, studentName, checkIn, checkOut
+      setDayList(Array.isArray(data) ? data : data?.items || []);
+    } catch (e) {
+      setDayList([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab === "date") loadByDate();
+    // eslint-disable-next-line
+  }, [tab, ymd]);
+
+  // 학생별 보기 데이터(최소 변경: 기존 구현 유지)
+  const [studentMonthList, setStudentMonthList] = useState([]);
+  const [monthCount, setMonthCount] = useState(0);
+  const [month, setMonth] = useState(() => ymd.slice(0, 7));
+
+  useEffect(() => {
+    if (tab !== "student" || !selectedStudent) return;
+    axios
+      .get(
+        `${API_URL}/api/attendance/by-student?userId=${selectedStudent}&month=${month}`,
+        auth
+      )
+      .then((res) => {
+        setStudentMonthList(res.data.records || []);
+        setMonthCount(res.data.count || 0);
+      })
+      .catch(() => {
+        setStudentMonthList([]);
+        setMonthCount(0);
+      });
+  }, [tab, selectedStudent, month, auth]);
+
+  return (
+    <div
+      style={{
+        background: "#fff",
+        border: "1px solid #e6e9f2",
+        borderRadius: 14,
+        padding: 16,
+        margin: "0 auto",
+      }}
+    >
+      <h2 style={{ margin: "6px 0 16px", textAlign: "center" }}>출결 관리</h2>
+
+      <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+        <button
+          onClick={() => setTab("date")}
+          style={tabBtn(tab === "date")}
+        >
           날짜별 보기
         </button>
-        <button onClick={() => setTab("student")}
-          style={{ background: tab === "student" ? "#226ad6" : "#eee", color: tab === "student" ? "#fff" : "#222", fontWeight: 600, border: "none", borderRadius: 7, padding: "9px 23px" }}>
+        <button
+          onClick={() => setTab("student")}
+          style={tabBtn(tab === "student")}
+        >
           학생별 보기
         </button>
       </div>
 
       {tab === "date" && (
-        <div>
-          <Calendar
-            onChange={setSelectedDate}
-            value={selectedDate}
-            locale="ko"
-          />
-          <div style={{ marginTop: 26 }}>
-            <h4>{ymdLocal(selectedDate)} 출결 학생 ({dateList.length})</h4>
-            <ul style={{ margin: 0, padding: 0 }}>
-              {pagedDateList.length === 0 && <li style={{ color: "#999" }}>등/하원 학생 없음</li>}
-              {pagedDateList.map(a =>
-                <li key={a.userId} style={{ margin: "9px 0" }}>
-                  <b>{a.studentName}</b> | 등원: <span style={{ color: "#246" }}>{a.checkIn || "-"}</span> | 하원: <span style={{ color: "#824" }}>{a.checkOut || "-"}</span>
-                </li>
-              )}
-            </ul>
-            {/* 페이지네이션 버튼 */}
-            {totalPages > 1 && (
-              <div style={{ margin: "10px 0 0 0", textAlign: "center" }}>
-                {Array.from({ length: totalPages }).map((_, i) => (
-                  <button
-                    key={i + 1}
-                    onClick={() => setPage(i + 1)}
-                    style={{
-                      margin: 2,
-                      padding: "5px 13px",
-                      borderRadius: 7,
-                      border: "none",
-                      background: i + 1 === page ? "#226ad6" : "#eee",
-                      color: i + 1 === page ? "#fff" : "#444",
-                      fontWeight: 700,
-                      cursor: "pointer"
-                    }}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "420px 1fr",
+            gap: 16,
+            alignItems: "start",
+          }}
+        >
+          {/* 좌: 달력 */}
+          <div
+            style={{
+              background: "#f9fbff",
+              border: "1px solid #e6eefc",
+              borderRadius: 12,
+              padding: 12,
+            }}
+          >
+            <Calendar
+              onChange={setSelectedDate}
+              value={selectedDate}
+              locale="ko"
+            />
+            <div style={{ marginTop: 10, color: "#556" }}>
+              선택 날짜: <b>{ymd}</b>
+            </div>
+          </div>
+
+          {/* 우: 리스트 + 인라인 수정 */}
+          <div
+            style={{
+              background: "#f9fbff",
+              border: "1px solid #e6eefc",
+              borderRadius: 12,
+              padding: 12,
+              minHeight: 300,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: 10,
+              }}
+            >
+              <b>당일 등원 학생</b>
+              <button onClick={loadByDate} style={btnGhost}>
+                새로고침
+              </button>
+            </div>
+
+            {loading ? (
+              <div style={{ color: "#888" }}>불러오는 중…</div>
+            ) : dayList.length === 0 ? (
+              <div style={{ color: "#999" }}>등/하원 학생이 없습니다.</div>
+            ) : (
+              <div>
+                {/* 헤더 */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1.1fr 0.9fr 0.9fr auto",
+                    gap: 8,
+                    padding: "8px 8px",
+                    background: "#eef4ff",
+                    borderRadius: 8,
+                    fontWeight: 700,
+                    color: "#234",
+                    border: "1px solid #e1e9ff",
+                  }}
+                >
+                  <div>학생</div>
+                  <div>등원</div>
+                  <div>하원</div>
+                  <div style={{ textAlign: "right" }}>작업</div>
+                </div>
+
+                {/* 행들 */}
+                <div>
+                  {dayList
+                    .sort((a, b) =>
+                      (a.studentName || a.name || "").localeCompare(
+                        b.studentName || b.name || "",
+                        "ko"
+                      )
+                    )
+                    .map((r) => (
+                      <RowEditor
+                        key={r.userId || r.studentId}
+                        row={r}
+                        date={ymd}
+                        auth={auth}
+                        onSaved={loadByDate}
+                      />
+                    ))}
+                </div>
               </div>
             )}
           </div>
@@ -123,34 +297,48 @@ function AttendanceManager() {
 
       {tab === "student" && (
         <div>
-          <select value={selectedStudent} onChange={e => setSelectedStudent(e.target.value)} style={{ fontSize: 17, padding: "7px 13px", borderRadius: 7 }}>
-            <option value="">학생 선택</option>
-            {students.map(s =>
-              <option value={s._id} key={s._id}>{s.name}</option>
-            )}
-          </select>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <select
+              value={selectedStudent}
+              onChange={(e) => setSelectedStudent(e.target.value)}
+              style={ipt}
+            >
+              <option value="">학생 선택</option>
+              {students.map((s) => (
+                <option key={s._id} value={s._id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+            <input
+              type="month"
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+              style={ipt}
+            />
+          </div>
+
           {selectedStudent && (
-            <div style={{ marginTop: 18 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <button onClick={() => setMonth(prev => {
-                  const d = new Date(prev + "-01");
-                  d.setMonth(d.getMonth() - 1);
-                  return ymLocal(d);
-                })}>◀ 이전달</button>
-                <span style={{ fontWeight: 600, fontSize: 17 }}>{month}</span>
-                <button onClick={() => setMonth(prev => {
-                  const d = new Date(prev + "-01");
-                  d.setMonth(d.getMonth() + 1);
-                  return ymLocal(d);
-                })}>다음달 ▶</button>
-                <span style={{ marginLeft: 16, color: "#246" }}>등원횟수: <b>{monthCount}</b></span>
+            <div style={{ marginTop: 14 }}>
+              <div style={{ color: "#246", marginBottom: 6 }}>
+                등원횟수: <b>{monthCount}</b>
               </div>
-              <ul style={{ margin: "12px 0 0 0", padding: 0 }}>
-                {studentMonthList.length === 0 && <li style={{ color: "#999" }}>출결 기록 없음</li>}
-                {studentMonthList.map(a =>
-                  <li key={a.date} style={{ marginBottom: 6 }}>
-                    {a.date} | 등원: <span style={{ color: "#246" }}>{a.checkIn || "-"}</span> | 하원: <span style={{ color: "#824" }}>{a.checkOut || "-"}</span>
-                  </li>
+              <ul style={{ margin: 0, padding: 0 }}>
+                {studentMonthList.length === 0 ? (
+                  <li style={{ color: "#999" }}>출결 기록이 없습니다.</li>
+                ) : (
+                  studentMonthList.map((a) => (
+                    <li key={a.date} style={{ marginBottom: 6 }}>
+                      {a.date} | 등원:{" "}
+                      <span style={{ color: "#246" }}>
+                        {a.checkIn || "-"}
+                      </span>{" "}
+                      | 하원:{" "}
+                      <span style={{ color: "#824" }}>
+                        {a.checkOut || "-"}
+                      </span>
+                    </li>
+                  ))
                 )}
               </ul>
             </div>
@@ -161,4 +349,40 @@ function AttendanceManager() {
   );
 }
 
-export default AttendanceManager;
+const ipt = {
+  padding: "8px 10px",
+  borderRadius: 8,
+  border: "1px solid #ccd3e0",
+  fontSize: 14,
+  background: "#fff",
+};
+
+const btnPrimary = {
+  padding: "7px 12px",
+  borderRadius: 8,
+  border: "none",
+  background: "#226ad6",
+  color: "#fff",
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const btnGhost = {
+  padding: "7px 12px",
+  borderRadius: 8,
+  border: "1px solid #ccd3e0",
+  background: "#fff",
+  color: "#246",
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const tabBtn = (active) => ({
+  padding: "9px 18px",
+  borderRadius: 9,
+  border: "none",
+  background: active ? "#226ad6" : "#eef2f7",
+  color: active ? "#fff" : "#234",
+  fontWeight: 800,
+  cursor: "pointer",
+});

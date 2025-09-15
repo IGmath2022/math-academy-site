@@ -1,150 +1,262 @@
-import React, { useEffect, useState } from "react";
+// client/src/components/Admin/ProgressManager.jsx
+import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { API_URL } from '../../api';
-import { useNavigate } from "react-router-dom";
+import { API_URL } from "../../api";
+import useAuthHeader from "../../utils/useAuthHeader";
+import { toYmdLocal } from "../../utils/dateKST";
 
-// 학생+강의+날짜별 진도 리스트
-function ProgressManager() {
-  const [progressList, setProgressList] = useState([]);
-  const [students, setStudents] = useState([]);
-  const [chapters, setChapters] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [errMsg, setErrMsg] = useState("");
-
-  // 페이지네이션
-  const [page, setPage] = useState(1);
-  const pageSize = 10;
-
-  const navigate = useNavigate();
-
-  const getAuth = () => {
-    const token = localStorage.getItem("token") || "";
-    return { headers: { Authorization: `Bearer ${token}` } };
+function Badge({ type }) {
+  const map = {
+    class: { label: "현강", bg: "#e8f5ff", fg: "#1363c6" },
+    video: { label: "인강", bg: "#ecf9f1", fg: "#18794e" },
   };
-  const handle401 = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    navigate("/login");
-  };
-
-  useEffect(() => {
-    async function fetchAll() {
-      setLoading(true);
-      setErrMsg("");
-      try {
-        const auth = getAuth();
-        const [progressRes, userRes, chapterRes] = await Promise.all([
-          axios.get(`${API_URL}/api/progress`, auth),                 // 관리자: 전체 진도
-          axios.get(`${API_URL}/api/users?role=student`, auth),
-          axios.get(`${API_URL}/api/chapters`, auth),
-        ]);
-        setProgressList(progressRes.data || []);
-        setStudents(userRes.data || []);
-        setChapters(chapterRes.data || []);
-        setPage(1);
-      } catch (e) {
-        if (e?.response?.status === 401) {
-          handle401();
-          return;
-        }
-        setErrMsg("진도 데이터를 불러오지 못했습니다.");
-        console.error("ProgressManager load error:", e?.response?.data || e);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const getStudentName = (userId) =>
-    students.find((u) => (u._id || u.id) === userId)?.name || userId;
-  const getChapterName = (chapterId) =>
-    chapters.find((c) => (c._id || c.id) === chapterId)?.name || chapterId;
-
-  const totalPages = Math.ceil(progressList.length / pageSize);
-  const pagedList = progressList.slice((page - 1) * pageSize, page * pageSize);
-
+  const s = map[type] || map.class;
   return (
-    <div style={wrap}>
-      <h3 style={title}>학생 진도 현황</h3>
+    <span
+      style={{
+        display: "inline-block",
+        background: s.bg,
+        color: s.fg,
+        border: `1px solid ${s.fg}30`,
+        borderRadius: 999,
+        padding: "2px 8px",
+        fontSize: 12,
+        fontWeight: 800,
+        marginRight: 8,
+      }}
+    >
+      {s.label}
+    </span>
+  );
+}
 
-      {loading && <div style={{ color: "#888" }}>불러오는 중...</div>}
-      {!loading && errMsg && (
-        <div style={{ color: "#c33", marginBottom: 10, fontWeight: 600 }}>{errMsg}</div>
-      )}
+function FeedCard({ item }) {
+  return (
+    <div
+      style={{
+        border: "1px solid #e6e9f2",
+        background: "#fff",
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 10,
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <div>
+          <Badge type={item.type} />
+          <b style={{ fontSize: 16 }}>{item.studentName}</b>
+        </div>
+        <div style={{ color: "#567" }}>{item.date}</div>
+      </div>
 
-      {!loading && !errMsg && (
-        <>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 15 }}>
-            <thead>
-              <tr style={{ background: "#f3f4f8", fontWeight: 700 }}>
-                <td style={th}>학생</td>
-                <td style={th}>단원</td>
-                <td style={th}>날짜</td>
-                <td style={th}>메모</td>
-              </tr>
-            </thead>
-            <tbody>
-              {pagedList.length === 0 ? (
-                <tr>
-                  <td colSpan={4} style={{ color: "#888", padding: 12, textAlign: "center" }}>
-                    기록 없음
-                  </td>
-                </tr>
-              ) : (
-                pagedList.map((p, idx) => (
-                  <tr key={p._id || p.id || idx}>
-                    <td style={td}>{getStudentName(p.userId)}</td>
-                    <td style={td}>{getChapterName(p.chapterId)}</td>
-                    <td style={td}>{p.date}</td>
-                    <td style={td}>{p.memo}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-
-          {totalPages > 1 && (
-            <div style={{ margin: "13px 0 0 0", textAlign: "center" }}>
-              {Array.from({ length: totalPages }).map((_, i) => (
-                <button
-                  key={i + 1}
-                  onClick={() => setPage(i + 1)}
-                  style={{
-                    margin: 2,
-                    padding: "6px 13px",
-                    borderRadius: 8,
-                    border: "none",
-                    background: i + 1 === page ? "#226ad6" : "#edf0f6",
-                    color: i + 1 === page ? "#fff" : "#445",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                  }}
-                >
-                  {i + 1}
-                </button>
-              ))}
-            </div>
-          )}
-        </>
+      {item.type === "class" ? (
+        <div style={{ marginTop: 8 }}>
+          <div style={{ color: "#345", marginBottom: 6 }}>
+            <b>과정</b> : {item.course || "-"}
+          </div>
+          <div style={{ color: "#345", marginBottom: 6 }}>
+            <b>수업내용</b> : {item.content || "-"}
+          </div>
+          <div style={{ color: "#345", marginBottom: 6 }}>
+            <b>과제</b> : {item.homework || "-"}
+          </div>
+          <div style={{ color: "#345", marginBottom: 6 }}>
+            <b>다음 수업 계획</b> : {item.nextPlan || "-"}
+          </div>
+          <div style={{ color: "#678" }}>
+            <b>강사</b> : {item.teacher || "-"}
+          </div>
+        </div>
+      ) : (
+        <div style={{ marginTop: 8 }}>
+          <div style={{ color: "#345", marginBottom: 6 }}>
+            <b>수강 단원</b> : {item.chapterName || "-"}
+          </div>
+          <div style={{ color: "#345" }}>
+            <b>메모</b> : {item.memo || "-"}
+          </div>
+        </div>
       )}
     </div>
   );
 }
 
-const wrap = {
-  width: "100%",
-  maxWidth: 900,
-  margin: "18px auto",
-  background: "#fff",
-  border: "1px solid #e6e9f2",
-  borderRadius: 14,
-  padding: 18,
-  boxShadow: "0 2px 18px #0001",
-};
-const title = { marginTop: 0, marginBottom: 12, fontSize: 19 };
-const th = { padding: 10, border: "1px solid #eef1f6" };
-const td = { padding: 10, border: "1px solid #f3f4f8" };
+export default function ProgressManager() {
+  const auth = useAuthHeader();
 
-export default ProgressManager;
+  // 날짜별 피드
+  const [date, setDate] = useState(() => toYmdLocal(new Date()));
+  const [typeFilter, setTypeFilter] = useState("all"); // all | class | video
+  const [feed, setFeed] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // 매핑용
+  const [students, setStudents] = useState([]);
+  const [chapters, setChapters] = useState([]);
+
+  const studentName = (id) =>
+    students.find((s) => (s._id || s.id) === id)?.name || id;
+  const chapterName = (id) =>
+    chapters.find((c) => (c._id || c.id) === id)?.name || id;
+
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const [stuRes, chRes] = await Promise.all([
+          axios.get(`${API_URL}/api/users?role=student`, auth),
+          axios.get(`${API_URL}/api/chapters`, auth),
+        ]);
+        setStudents(stuRes.data || []);
+        setChapters(chRes.data || []);
+      } catch (e) {
+        // ignore
+      }
+    };
+    run();
+  }, [auth]);
+
+  const loadFeed = async () => {
+    setLoading(true);
+    try {
+      const list = [];
+
+      // 1) 현강(리포트)
+      const { data: byDate } = await axios.get(
+        `${API_URL}/api/admin/lessons?date=${date}&scope=present`,
+        auth
+      );
+      const rows = byDate?.items || [];
+      const logRows = rows.filter((r) => r.hasLog && r.logId);
+
+      // 상세 병렬 수집
+      const detailPromises = logRows.map((r) =>
+        axios
+          .get(`${API_URL}/api/admin/lessons/detail`, {
+            ...auth,
+            params: { studentId: r.studentId, date },
+          })
+          .then((res) => ({ r, detail: res.data || {} }))
+          .catch(() => ({ r, detail: {} }))
+      );
+      const details = await Promise.all(detailPromises);
+
+      details.forEach(({ r, detail }) => {
+        list.push({
+          type: "class",
+          date,
+          studentId: r.studentId,
+          studentName: r.name || studentName(r.studentId),
+          course: detail.course || "",
+          content: detail.content || "",
+          homework: detail.homework || "",
+          nextPlan: detail.planNext || detail.nextPlan || "",
+          teacher: detail.teacher || detail.teacherName || "",
+        });
+      });
+
+      // 2) 인강(진도)
+      const { data: progressAll } = await axios.get(
+        `${API_URL}/api/progress`,
+        auth
+      );
+      const prog = (progressAll || []).filter((p) => p.date === date);
+      prog.forEach((p) => {
+        list.push({
+          type: "video",
+          date: p.date,
+          studentId: p.userId,
+          studentName: studentName(p.userId),
+          chapterName: chapterName(p.chapterId),
+          memo: p.memo || "",
+        });
+      });
+
+      // 정렬(학생명 → 타입)
+      list.sort((a, b) => {
+        const n = (a.studentName || "").localeCompare(
+          b.studentName || "",
+          "ko"
+        );
+        if (n) return n;
+        // class 먼저
+        if (a.type !== b.type) return a.type === "class" ? -1 : 1;
+        return 0;
+      });
+
+      setFeed(list);
+    } catch (e) {
+      setFeed([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadFeed();
+    // eslint-disable-next-line
+  }, [date]);
+
+  const filtered = useMemo(() => {
+    if (typeFilter === "all") return feed;
+    return feed.filter((f) => f.type === typeFilter);
+  }, [feed, typeFilter]);
+
+  return (
+    <div
+      style={{
+        background: "#fff",
+        border: "1px solid #e6e9f2",
+        borderRadius: 14,
+        padding: 16,
+      }}
+    >
+      <h3 style={{ margin: "0 0 12px 0" }}>진도 관리 (현강/인강 통합 피드)</h3>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          style={ipt}
+        />
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+          style={ipt}
+        >
+          <option value="all">전체</option>
+          <option value="class">현강만</option>
+          <option value="video">인강만</option>
+        </select>
+        <button onClick={loadFeed} style={btnGhost}>
+          새로고침
+        </button>
+      </div>
+
+      {loading ? (
+        <div style={{ color: "#888" }}>불러오는 중…</div>
+      ) : filtered.length === 0 ? (
+        <div style={{ color: "#999" }}>표시할 기록이 없습니다.</div>
+      ) : (
+        filtered.map((it, idx) => <FeedCard key={idx} item={it} />)
+      )}
+    </div>
+  );
+}
+
+const ipt = {
+  padding: "8px 10px",
+  borderRadius: 8,
+  border: "1px solid #ccd3e0",
+  fontSize: 14,
+  background: "#fff",
+};
+const btnGhost = {
+  padding: "8px 12px",
+  borderRadius: 8,
+  border: "1px solid #ccd3e0",
+  background: "#fff",
+  color: "#246",
+  fontWeight: 700,
+  cursor: "pointer",
+};
