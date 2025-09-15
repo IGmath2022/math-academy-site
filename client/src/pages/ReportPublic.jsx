@@ -8,7 +8,7 @@ function fmtNewline(s) {
   return String(s || "").split(/\r?\n/).map((line, i) => (
     <span key={i}>
       {line}
-      <br/>
+      <br />
     </span>
   ));
 }
@@ -40,7 +40,9 @@ export default function ReportPublic() {
         setErr("리포트를 불러올 수 없습니다.");
       }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [code]);
 
   if (err) return <div style={{ maxWidth: 920, margin: "32px auto", padding: 16 }}>{err}</div>;
@@ -54,31 +56,71 @@ export default function ReportPublic() {
   // 최근 5회만 요약 (서버가 10회 줘도 5개 컷)
   const recent5 = recent.slice(0, 5);
 
+  // ✅ 다음 수업 계획: planNext 우선, 구버전 nextPlan 호환
+  const nextPlan = log?.planNext || log?.nextPlan || "";
+
   return (
-    <div style={{ fontFamily: "Pretendard, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans KR, sans-serif", background:"#f5f7fb", minHeight:"100vh" }}>
+    <div
+      style={{
+        fontFamily:
+          "Pretendard, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans KR, sans-serif",
+        background: "#f5f7fb",
+        minHeight: "100vh",
+      }}
+    >
       <div style={{ maxWidth: 920, margin: "24px auto", padding: 20 }}>
         {/* 헤더 */}
-        <div style={{ background:"#fff", borderRadius:18, boxShadow:"0 6px 20px #0001", overflow:"hidden", marginBottom:18 }}>
-          <div style={{ padding:"22px 26px", background:"linear-gradient(180deg,#f7fbff,#eef4ff)" }}>
-            <div style={{ color:"#5a6", fontSize:14, fontWeight:700 }}>IG수학학원 데일리 리포트</div>
-            <div style={{ fontSize:26, fontWeight:800, margin:"6px 0 2px" }}>{student?.name || "학생"} 학생</div>
-            <div style={{ color:"#6a7" }}>{(log?.course || "-")} · {dateLabel}</div>
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 18,
+            boxShadow: "0 6px 20px #0001",
+            overflow: "hidden",
+            marginBottom: 18,
+          }}
+        >
+          <div
+            style={{
+              padding: "22px 26px",
+              background: "linear-gradient(180deg,#f7fbff,#eef4ff)",
+            }}
+          >
+            <div style={{ color: "#5a6", fontSize: 14, fontWeight: 700 }}>
+              IG수학학원 데일리 리포트
+            </div>
+            <div style={{ fontSize: 26, fontWeight: 800, margin: "6px 0 2px" }}>
+              {student?.name || "학생"} 학생
+            </div>
+            <div style={{ color: "#6a7" }}>{(log?.course || "-")} · {dateLabel}</div>
           </div>
 
           {/* 본문 그리드 */}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:18, padding:"18px 26px" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 18,
+              padding: "18px 26px",
+            }}
+          >
             <div>
               <Section title="과정" body={fmtNewline(log?.course)} />
               <Section title="교재" body={fmtNewline(log?.book)} />
               <Section title="수업내용" body={fmtNewline(log?.content)} />
               <Section title="과제" body={fmtNewline(log?.homework)} />
               <Section title="개별 피드백" body={fmtNewline(log?.feedback)} />
+              {/* ✅ (원한다면 왼쪽 칼럼으로 옮길 수도 있음) */}
             </div>
 
             <div>
               <Section
                 title="출결"
-                body={<>등원 {attendance?.checkIn || log?.inTime || "-"} / 하원 {attendance?.checkOut || log?.outTime || "-"}</>}
+                body={
+                  <>
+                    등원 {attendance?.checkIn || log?.inTime || "-"} / 하원{" "}
+                    {attendance?.checkOut || log?.outTime || "-"}
+                  </>
+                }
               />
               <Section title="학습시간" body={fmtHM(durMin)} />
               <Section title="형태·강사" body={<>{log?.classType || "-"} / {teacherDisp}</>} />
@@ -86,26 +128,47 @@ export default function ReportPublic() {
               <Section
                 title="태그"
                 body={
-                  (log?.tags || []).length
-                    ? <div>{log.tags.map((t,i)=><span key={i} style={tag}>{t}</span>)}</div>
-                    : <>-</>
+                  (log?.tags || []).length ? (
+                    <div>
+                      {log.tags.map((t, i) => (
+                        <span key={i} style={tag}>
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <>-</>
+                  )
                 }
               />
-              {/* ✅ 다음 수업 계획 표시 (planNext/nextPlan 호환) */}
-              <Section title="다음 수업 계획" body={fmtNewline(log?.planNext || log?.nextPlan || "")} />
+              {/* ✅ 다음 수업 계획 (planNext/nextPlan 호환) */}
+              <Section title="다음 수업 계획" body={fmtNewline(nextPlan)} />
             </div>
           </div>
         </div>
 
         {/* 누적 5회 요약 */}
-        <div style={{ background:"#fff", borderRadius:18, boxShadow:"0 6px 20px #0001", overflow:"hidden", marginBottom:18 }}>
-          <div style={{ padding:"22px 26px", background:"linear-gradient(180deg,#f7fbff,#eef4ff)" }}>
-            <div style={{ fontSize:20, fontWeight:800 }}>누적 5회 지표</div>
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 18,
+            boxShadow: "0 6px 20px #0001",
+            overflow: "hidden",
+            marginBottom: 18,
+          }}
+        >
+          <div
+            style={{
+              padding: "22px 26px",
+              background: "linear-gradient(180deg,#f7fbff,#eef4ff)",
+            }}
+          >
+            <div style={{ fontSize: 20, fontWeight: 800 }}>누적 5회 지표</div>
           </div>
-          <div style={{ padding:"12px 18px 18px" }}>
-            <table style={{ width:"100%", borderCollapse:"collapse" }}>
+          <div style={{ padding: "12px 18px 18px" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ background:"#f7f9ff" }}>
+                <tr style={{ background: "#f7f9ff" }}>
                   <Th>날짜</Th>
                   <Th>과정</Th>
                   <Th>집중도</Th>
@@ -116,7 +179,7 @@ export default function ReportPublic() {
                 </tr>
               </thead>
               <tbody>
-                {recent5.map(r => (
+                {recent5.map((r) => (
                   <tr key={r._id}>
                     <Td>{r.date}</Td>
                     <Td>{r.course || "-"}</Td>
@@ -124,14 +187,33 @@ export default function ReportPublic() {
                     <Td>{r.progressPct ?? "-"}</Td>
                     <Td>{fmtHM(r.studyTimeMin)}</Td>
                     <Td>
-                      {(r.headline || "").split(/\r?\n/).map((ln,i)=><span key={i}>{ln}<br/></span>)}
-                      {(r.tags || []).map((t,i)=><span key={i} style={tag}>{t}</span>)}
+                      {(r.headline || "")
+                        .split(/\r?\n/)
+                        .map((ln, i) => (
+                          <span key={i}>
+                            {ln}
+                            <br />
+                          </span>
+                        ))}
+                      {(r.tags || []).map((t, i) => (
+                        <span key={i} style={tag}>
+                          {t}
+                        </span>
+                      ))}
                     </Td>
-                    <Td><a href={`/r/${r._id}`} target="_blank" rel="noreferrer">열람</a></Td>
+                    <Td>
+                      <a href={`/r/${r._id}`} target="_blank" rel="noreferrer">
+                        열람
+                      </a>
+                    </Td>
                   </tr>
                 ))}
                 {recent5.length === 0 && (
-                  <tr><Td colSpan={7} style={{ color:"#888", textAlign:"center" }}>표시할 기록이 없습니다.</Td></tr>
+                  <tr>
+                    <Td colSpan={7} style={{ color: "#888", textAlign: "center" }}>
+                      표시할 기록이 없습니다.
+                    </Td>
+                  </tr>
                 )}
               </tbody>
             </table>
@@ -141,18 +223,40 @@ export default function ReportPublic() {
         {/* (선택) 프로필·로드맵 */}
         {profile?.publicOn && (
           <div style={card}>
-            <div style={hd}><div style={tit}>프로필 & 로드맵</div></div>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:18, padding:"18px 26px" }}>
+            <div style={hd}>
+              <div style={tit}>프로필 & 로드맵</div>
+            </div>
+            <div
+              style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, padding: "18px 26px" }}
+            >
               <div>
-                <Section title="학교/학년" body={<>{profile.school || "-"} {profile.grade || ""}</>} />
-                <Section title="희망 진학" body={<>{profile.targetHigh || profile.targetUniv || "-"}</>} />
+                <Section
+                  title="학교/학년"
+                  body={
+                    <>
+                      {profile.school || "-"} {profile.grade || ""}
+                    </>
+                  }
+                />
+                <Section
+                  title="희망 진학"
+                  body={<>{profile.targetHigh || profile.targetUniv || "-"}</>}
+                />
               </div>
               <div>
-                <div style={{ marginBottom:10, fontWeight:700, color:"#223" }}>목표(3/6/12개월)</div>
+                <div style={{ marginBottom: 10, fontWeight: 700, color: "#223" }}>
+                  목표(3/6/12개월)
+                </div>
                 <div style={box}>
-                  <div><b>3개월</b> — {profile.roadmap3m || "-"}</div>
-                  <div style={{ marginTop:6 }}><b>6개월</b> — {profile.roadmap6m || "-"}</div>
-                  <div style={{ marginTop:6 }}><b>12개월</b> — {profile.roadmap12m || "-"}</div>
+                  <div>
+                    <b>3개월</b> — {profile.roadmap3m || "-"}
+                  </div>
+                  <div style={{ marginTop: 6 }}>
+                    <b>6개월</b> — {profile.roadmap6m || "-"}
+                  </div>
+                  <div style={{ marginTop: 6 }}>
+                    <b>12개월</b> — {profile.roadmap12m || "-"}
+                  </div>
                 </div>
               </div>
             </div>
@@ -160,13 +264,15 @@ export default function ReportPublic() {
         )}
 
         {/* (선택) 최근 상담 3건 */}
-        {!!(counsels||[]).length && (
+        {!!(counsels || []).length && (
           <div style={card}>
-            <div style={hd}><div style={tit}>최근 상담 메모</div></div>
-            <div style={{ padding:"18px 26px" }}>
-              <ul style={{ listStyle:"none", padding:0, margin:0 }}>
-                {counsels.map((c, i)=>(
-                  <li key={i} style={{ padding:"8px 0", borderBottom:"1px solid #f0f2f8" }}>
+            <div style={hd}>
+              <div style={tit}>최근 상담 메모</div>
+            </div>
+            <div style={{ padding: "18px 26px" }}>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                {counsels.map((c, i) => (
+                  <li key={i} style={{ padding: "8px 0", borderBottom: "1px solid #f0f2f8" }}>
                     <b>{c.date}</b> — {c.memo}
                   </li>
                 ))}
@@ -175,7 +281,16 @@ export default function ReportPublic() {
           </div>
         )}
 
-        <div style={{ background:"#fff", borderRadius:18, boxShadow:"0 6px 20px #0001", padding:"14px 26px", textAlign:"center", color:"#6a7" }}>
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 18,
+            boxShadow: "0 6px 20px #0001",
+            padding: "14px 26px",
+            textAlign: "center",
+            color: "#6a7",
+          }}
+        >
           이 링크는 리포트 열람용 공개 페이지입니다.
         </div>
       </div>
@@ -185,22 +300,57 @@ export default function ReportPublic() {
 
 function Section({ title, body }) {
   return (
-    <div style={{ marginBottom:14 }}>
-      <div style={{ margin:"4px 0 10px", fontSize:16, color:"#223", fontWeight:700 }}>{title}</div>
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ margin: "4px 0 10px", fontSize: 16, color: "#223", fontWeight: 700 }}>
+        {title}
+      </div>
       <div style={box}>{body || "-"}</div>
     </div>
   );
 }
 
 function Th({ children }) {
-  return <th style={{ borderBottom:"1px solid #eef2ff", padding:"10px 8px", textAlign:"left", fontSize:14 }}>{children}</th>;
+  return (
+    <th
+      style={{
+        borderBottom: "1px solid #eef2ff",
+        padding: "10px 8px",
+        textAlign: "left",
+        fontSize: 14,
+      }}
+    >
+      {children}
+    </th>
+  );
 }
 function Td({ children, colSpan }) {
-  return <td colSpan={colSpan} style={{ borderBottom:"1px solid #eef2ff", padding:"10px 8px", textAlign:"left", fontSize:14 }}>{children}</td>;
+  return (
+    <td
+      colSpan={colSpan}
+      style={{
+        borderBottom: "1px solid #eef2ff",
+        padding: "10px 8px",
+        textAlign: "left",
+        fontSize: 14,
+      }}
+    >
+      {children}
+    </td>
+  );
 }
 
-const card = { background:"#fff", borderRadius:18, boxShadow:"0 6px 20px #0001", overflow:"hidden", marginBottom:18 };
-const hd = { padding:"22px 26px", background:"linear-gradient(180deg,#f7fbff,#eef4ff)" };
-const tit = { fontSize:20, fontWeight:800 };
-const box = { background:"#f9fbff", border:"1px solid #e5ecff", borderRadius:12, padding:14 };
-const tag = { display:"inline-block", background:"#eef2ff", border:"1px solid #dde5ff", color:"#345", padding:"2px 8px", borderRadius:999, marginRight:6, marginBottom:6, fontSize:12 };
+const card = { background: "#fff", borderRadius: 18, boxShadow: "0 6px 20px #0001", overflow: "hidden", marginBottom: 18 };
+const hd = { padding: "22px 26px", background: "linear-gradient(180deg,#f7fbff,#eef4ff)" };
+const tit = { fontSize: 20, fontWeight: 800 };
+const box = { background: "#f9fbff", border: "1px solid #e5ecff", borderRadius: 12, padding: 14 };
+const tag = {
+  display: "inline-block",
+  background: "#eef2ff",
+  border: "1px solid #dde5ff",
+  color: "#345",
+  padding: "2px 8px",
+  borderRadius: 999,
+  marginRight: 6,
+  marginBottom: 6,
+  fontSize: 12,
+};
