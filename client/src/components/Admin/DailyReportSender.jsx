@@ -1,11 +1,12 @@
 // client/src/components/Admin/DailyReportSender.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { API_URL } from "../../api";
 import { getToken, clearAuth } from "../../utils/auth";
 import { useNavigate } from "react-router-dom";
 
 const isoDate = (d = new Date()) => d.toISOString().slice(0, 10);
+const CUSTOM_VALUE = "__custom__";
 
 export default function DailyReportSender() {
   const navigate = useNavigate();
@@ -17,6 +18,9 @@ export default function DailyReportSender() {
   const [sendingId, setSendingId] = useState("");
   const [msg, setMsg] = useState("");
 
+  // 수업형태 옵션 (모달에서 사용)
+  const [classTypes, setClassTypes] = useState([]);
+
   const withAuth = () => ({ headers: { Authorization: `Bearer ${getToken()}` } });
   const handle401 = (err) => {
     if (err?.response?.status === 401) {
@@ -27,17 +31,23 @@ export default function DailyReportSender() {
     return false;
   };
 
+  const call = async (method, url, data) => {
+    try {
+      const res = await axios({ method, url, data, ...withAuth() });
+      return res.data;
+    } catch (e) {
+      if (handle401(e)) return Promise.reject(e);
+      throw e;
+    }
+  };
+
   const refresh = async () => {
     setLoading(true);
-    setMsg("");
     try {
-      const { data } = await axios.get(`${API_URL}/api/admin/lessons`, {
-        params: { date, scope },
-        ...withAuth(),
-      });
-      setItems(data?.items || []);
+      const data = await call("get", `${API_URL}/api/admin/lessons?date=${date}&scope=${scope}`);
+      setItems(data.items || []);
+      setMsg("");
     } catch (e) {
-      if (handle401(e)) return;
       setItems([]);
       setMsg("목록 로드 실패");
     } finally {
@@ -49,71 +59,68 @@ export default function DailyReportSender() {
     // eslint-disable-next-line
   }, [date, scope]);
 
-  const openReport = (id) => window.open(`/r/${id}`, "_blank");
+  // 수업형태 목록 로드
+  useEffect(() => {
+    const loadClassTypes = async () => {
+      try {
+        const { data } = await axios.get(`${API_URL}/api/class-types`, {
+          ...withAuth(),
+          params: { active: 1 },
+        });
+        const names = (data || [])
+          .map((it) => (typeof it === "string" ? it : it?.name || ""))
+          .map((s) => s.trim())
+          .filter(Boolean);
+        const uniq = Array.from(new Set(names));
+        setClassTypes(uniq);
+      } catch (e) {
+        if (handle401(e)) return;
+        // 무시: 옵션이 없어도 모달에서 직접입력 가능
+      }
+    };
+    loadClassTypes();
+    // eslint-disable-next-line
+  }, []);
 
-  // 빠른 작성(없을 때 업서트)
-  const saveQuick = async (row, form) => {
-    try {
-      const d = new Date(date + "T10:30:00");
-      const tmr = new Date(d.getTime() + 24 * 60 * 60 * 1000);
-
-      const payload = {
-        studentId: row.studentId,
-        date,
-        course: form.course || row.course || "",
-        book: form.book || row.book || "",
-        content: form.content || row.content || "",
-        homework: form.homework || row.homework || "",
-        feedback: form.feedback || row.feedback || "",
-        tags: (form.tags || "").split(",").map((s) => s.trim()).filter(Boolean),
-        classType: form.classType || "",
-        teacher: form.teacher || "",
-        headline: form.headline || "",
-        focus: form.focus === "" ? undefined : Number(form.focus),
-        progressPct: form.progressPct === "" ? undefined : Number(form.progressPct),
-        planNext: form.planNext || "",
-        notifyStatus: "대기",
-        scheduledAt: tmr,
-      };
-      await axios.post(`${API_URL}/api/admin/lessons`, payload, withAuth());
-      await refresh();
-    } catch (e) {
-      if (handle401(e)) return;
-      alert(e?.response?.data?.message || "저장 실패");
-    }
+  const saveQuick = async (row) => {
+    const payload = {
+      studentId: row.studentId,
+      date,
+      course: row.course || "",
+      book: row.book || "",
+      content: row.content || "",
+      homework: row.homework || "",
+      feedback: row.feedback || "",
+      notifyStatus: "대기",
+      scheduledAt: row.scheduledAt || null,
+    };
+    await call("post", `${API_URL}/api/admin/lessons`, payload);
+    await refresh();
   };
 
   const sendOne = async (logId) => {
-    if (!logId) return;
     setSendingId(logId);
     try {
-      await axios.post(`${API_URL}/api/admin/lessons/send/${logId}`, {}, withAuth());
+      await call("post", `${API_URL}/api/admin/lessons/send-one/${logId}`, {});
       await refresh();
     } catch (e) {
-      if (handle401(e)) return;
-      alert("발송 실패: " + (e?.response?.data?.message || e.message || ""));
+      alert("발송 실패: " + (e.message || ""));
     } finally {
       setSendingId("");
     }
   };
 
   const sendSelected = async () => {
-    const ids = items
-      .filter((x) => x.hasLog && x.notifyStatus !== "발송")
-      .map((x) => x.logId)
-      .filter(Boolean);
+    const ids = items.filter((x) => x.hasLog && x.notifyStatus !== "발송").map((x) => x.logId).filter(Boolean);
     if (!ids.length) {
       alert("발송 대상이 없습니다.");
       return;
     }
-    try {
-      await axios.post(`${API_URL}/api/admin/lessons/send-selected`, { ids }, withAuth());
-      await refresh();
-    } catch (e) {
-      if (handle401(e)) return;
-      alert("선택 발송 실패");
-    }
+    await call("post", `${API_URL}/api/admin/lessons/send-selected`, { ids });
+    await refresh();
   };
+
+  const openReport = (id) => window.open(`/r/${id}`, "_blank");
 
   // 모달 상태
   const [modalOpen, setModalOpen] = useState(false);
@@ -164,7 +171,7 @@ export default function DailyReportSender() {
                 <td style={td}>{row.checkIn || "-"}</td>
                 <td style={td}>{row.checkOut || "-"}</td>
                 <td style={td}>{row.hasLog ? "Y" : "N"}</td>
-                <td style={td}>{row.notifyStatus || "-"}</td>
+                <td style={td}>{row.notifyStatus}</td>
                 <td style={td}>
                   {row.hasLog ? (
                     <>
@@ -204,20 +211,23 @@ export default function DailyReportSender() {
         </table>
       </div>
 
-      {/* 빠른 작성 모달 */}
+      {/* 빠른작성 모달 — 수업형태 옵션 주입 */}
       <QuickReportModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         student={targetRow}
         date={date}
-        onSave={saveQuick}
+        auth={withAuth()}
+        onSaved={refresh}
+        classTypes={classTypes}
+        on401={handle401}
       />
     </div>
   );
 }
 
 /** ===== 모달 컴포넌트 (파일 내부 정의) ===== */
-function QuickReportModal({ open, onClose, student, date, onSave }) {
+function QuickReportModal({ open, onClose, student, date, auth, onSaved, classTypes = [], on401 }) {
   const [form, setForm] = useState({
     course: "",
     book: "",
@@ -235,16 +245,19 @@ function QuickReportModal({ open, onClose, student, date, onSave }) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // 수업형태 셀렉트 값
+  const [classTypeSelect, setClassTypeSelect] = useState("");
+
   useEffect(() => {
     if (!open || !student?.studentId) return;
     (async () => {
       setLoading(true);
       try {
         const { data } = await axios.get(`${API_URL}/api/admin/lessons/detail`, {
+          ...auth,
           params: { studentId: student.studentId, date },
-          headers: { Authorization: `Bearer ${getToken()}` },
         });
-        setForm({
+        const next = {
           course: data?.course || "",
           book: data?.book || "",
           content: data?.content || "",
@@ -257,8 +270,13 @@ function QuickReportModal({ open, onClose, student, date, onSave }) {
           focus: data?.focus ?? "",
           progressPct: data?.progressPct ?? "",
           planNext: data?.planNext || data?.nextPlan || "",
-        });
-      } catch {
+        };
+        setForm(next);
+        const exists = (val) =>
+          !!val && classTypes.some((t) => t.toLowerCase() === String(val).toLowerCase());
+        setClassTypeSelect(exists(next.classType) ? next.classType : (next.classType ? CUSTOM_VALUE : ""));
+      } catch (e) {
+        if (on401?.(e)) return;
         setForm({
           course: "",
           book: "",
@@ -273,11 +291,12 @@ function QuickReportModal({ open, onClose, student, date, onSave }) {
           progressPct: "",
           planNext: "",
         });
+        setClassTypeSelect("");
       } finally {
         setLoading(false);
       }
     })();
-  }, [open, student, date]);
+  }, [open, student, date, auth, classTypes, on401]);
 
   const onChange = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -285,22 +304,47 @@ function QuickReportModal({ open, onClose, student, date, onSave }) {
     if (!student?.studentId) return;
     setSaving(true);
     try {
-      await onSave(student, form);
+      const d = new Date(date + "T10:30:00");
+      const tmr = new Date(d.getTime() + 24 * 60 * 60 * 1000);
+
+      const payload = {
+        studentId: student.studentId,
+        date,
+        course: form.course,
+        book: form.book,
+        content: form.content,
+        homework: form.homework,
+        feedback: form.feedback,
+        tags: form.tags.split(",").map((s) => s.trim()).filter(Boolean),
+        classType: form.classType, // ← 옵션/직접입력 동일
+        teacher: form.teacher,
+        headline: form.headline,
+        focus: form.focus === "" ? undefined : Number(form.focus),
+        progressPct: form.progressPct === "" ? undefined : Number(form.progressPct),
+        planNext: form.planNext,
+        notifyStatus: "대기",
+        scheduledAt: tmr,
+      };
+
+      await axios.post(`${API_URL}/api/admin/lessons`, payload, auth);
+      onSaved?.();
       onClose?.();
+    } catch (e) {
+      if (on401?.(e)) return;
+      alert(e?.response?.data?.message || "저장 실패");
     } finally {
       setSaving(false);
     }
   };
 
   if (!open) return null;
+
   return (
     <div style={backdrop}>
       <div style={modal}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
           <b style={{ fontSize: 16 }}>리포트 작성 — {student?.name} ({date})</b>
-          <button onClick={onClose} style={btnGhost}>
-            닫기
-          </button>
+          <button onClick={onClose} style={btnGhost}>닫기</button>
         </div>
 
         {loading ? (
@@ -313,7 +357,38 @@ function QuickReportModal({ open, onClose, student, date, onSave }) {
             <Area label="과제" value={form.homework} onChange={(v) => onChange("homework", v)} />
             <Area label="개별 피드백" value={form.feedback} onChange={(v) => onChange("feedback", v)} />
             <Field label="태그(쉼표 구분)" value={form.tags} onChange={(v) => onChange("tags", v)} />
-            <Field label="수업형태" value={form.classType} onChange={(v) => onChange("classType", v)} placeholder="개별맞춤수업/판서강의/방학특강 등" />
+
+            {/* ✅ 수업형태: 옵션 + 직접 입력 */}
+            <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <span style={{ fontSize: 13, color: "#556", fontWeight: 700 }}>수업형태</span>
+              <select
+                value={classTypeSelect}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setClassTypeSelect(v);
+                  if (v && v !== CUSTOM_VALUE) onChange("classType", v);
+                  else if (v !== CUSTOM_VALUE) onChange("classType", "");
+                }}
+                style={ipt}
+              >
+                <option value="">선택</option>
+                {classTypes.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+                <option value={CUSTOM_VALUE}>직접 입력…</option>
+              </select>
+            </label>
+            {classTypeSelect === CUSTOM_VALUE && (
+              <Field
+                label="수업형태(직접 입력)"
+                value={form.classType}
+                onChange={(v) => onChange("classType", v)}
+                placeholder="예: 개별맞춤수업/판서강의/방학특강 등"
+              />
+            )}
+
             <Field label="강사표기" value={form.teacher} onChange={(v) => onChange("teacher", v)} />
             <Area label="핵심 한줄 요약" value={form.headline} onChange={(v) => onChange("headline", v)} />
             <Field label="집중도(0~100)" type="number" value={form.focus} onChange={(v) => onChange("focus", v)} placeholder="예: 85" />
@@ -323,9 +398,7 @@ function QuickReportModal({ open, onClose, student, date, onSave }) {
         )}
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
-          <button onClick={onClose} style={btnGhost}>
-            취소
-          </button>
+          <button onClick={onClose} style={btnGhost}>취소</button>
           <button onClick={save} disabled={saving} style={btnPrimary}>
             {saving ? "저장 중…" : "저장(예약 대기)"}
           </button>
@@ -358,8 +431,8 @@ const ipt = { padding: "6px 10px", borderRadius: 8, border: "1px solid #ccc" };
 const th = { textAlign: "left", padding: 8, borderBottom: "1px solid #eee" };
 const td = { padding: 8, borderBottom: "1px solid #f0f0f0" };
 const btnPrimary = { padding: "6px 12px", borderRadius: 8, border: "none", background: "#226ad6", color: "#fff", fontWeight: 700 };
-const btnGhost = { padding: "6px 12px", borderRadius: 8, border: "1px solid #d6d9e4", background: "#fff", color: "#234", fontWeight: 700, cursor: "pointer" };
-const btnMini = { padding: "6px 10px", borderRadius: 8, border: "1px solid #ccc", background: "#fff", cursor: "pointer", fontWeight: 700 };
+const btnGhost = { padding: "6px 12px", borderRadius: 8, border: "none", background: "#eee" };
+const btnMini = { padding: "6px 10px", borderRadius: 8, border: "1px solid #ccc", background: "#fff", cursor: "pointer" };
 
 const backdrop = { position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 };
 const modal = { width: 880, maxWidth: "94vw", maxHeight: "92vh", overflowY: "auto", background: "#fff", borderRadius: 12, padding: 16, boxShadow: "0 10px 30px rgba(0,0,0,.2)" };

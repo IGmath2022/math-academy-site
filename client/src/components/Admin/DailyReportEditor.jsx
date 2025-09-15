@@ -5,6 +5,8 @@ import { API_URL } from "../../api";
 import { getToken, clearAuth } from "../../utils/auth";
 import { useNavigate } from "react-router-dom";
 
+const CUSTOM_VALUE = "__custom__";
+
 export default function DailyReportEditor() {
   const navigate = useNavigate();
 
@@ -12,6 +14,12 @@ export default function DailyReportEditor() {
   const [scope, setScope] = useState("present"); // present | all | missing
   const [list, setList] = useState([]);
   const [studentId, setStudentId] = useState("");
+
+  // 수업형태 옵션
+  const [classTypes, setClassTypes] = useState([]);
+  // 셀렉트 박스 값(옵션 외 값이면 "__custom__")
+  const [classTypeSelect, setClassTypeSelect] = useState("");
+
   const [form, setForm] = useState({
     course: "",
     book: "",
@@ -19,13 +27,14 @@ export default function DailyReportEditor() {
     homework: "",
     feedback: "",
     tags: "",
-    classType: "",
+    classType: "",   // ← 실제로 저장될 텍스트
     teacher: "",
     headline: "",
     focus: "",
     progressPct: "",
     planNext: "",
   });
+
   const [msg, setMsg] = useState("");
 
   // 출결 수동 수정용
@@ -41,6 +50,30 @@ export default function DailyReportEditor() {
     }
     return false;
   };
+
+  // 수업형태 목록 불러오기
+  useEffect(() => {
+    const loadClassTypes = async () => {
+      try {
+        const { data } = await axios.get(`${API_URL}/api/class-types`, {
+          ...withAuth(),
+          params: { active: 1 },
+        });
+        // 문자열/객체 혼합 안전 처리 -> 고유 name 배열
+        const names = (data || [])
+          .map((it) => (typeof it === "string" ? it : it?.name || ""))
+          .map((s) => s.trim())
+          .filter(Boolean);
+        const uniq = Array.from(new Set(names));
+        setClassTypes(uniq);
+      } catch (e) {
+        // 없거나 실패해도 폼은 동작(직접입력 사용 가능)
+        if (handle401(e)) return;
+      }
+    };
+    loadClassTypes();
+    // eslint-disable-next-line
+  }, []);
 
   const fetchList = async () => {
     try {
@@ -71,7 +104,7 @@ export default function DailyReportEditor() {
           params: { studentId, date },
           ...withAuth(),
         });
-        setForm({
+        const newForm = {
           course: data?.course || "",
           book: data?.book || "",
           content: data?.content || "",
@@ -84,7 +117,13 @@ export default function DailyReportEditor() {
           focus: data?.focus ?? "",
           progressPct: data?.progressPct ?? "",
           planNext: data?.planNext || data?.nextPlan || "",
-        });
+        };
+        setForm(newForm);
+
+        // 셀렉트 값 동기화
+        const exists = (val) =>
+          !!val && classTypes.some((t) => t.toLowerCase() === String(val).toLowerCase());
+        setClassTypeSelect(exists(newForm.classType) ? newForm.classType : (newForm.classType ? CUSTOM_VALUE : ""));
       } catch (e) {
         if (handle401(e)) return;
         setForm({
@@ -101,11 +140,12 @@ export default function DailyReportEditor() {
           progressPct: "",
           planNext: "",
         });
+        setClassTypeSelect("");
       }
     };
     load();
     // eslint-disable-next-line
-  }, [studentId, date]);
+  }, [studentId, date, classTypes]);
 
   // 학생/날짜 선택 시 출결 조회
   useEffect(() => {
@@ -154,7 +194,7 @@ export default function DailyReportEditor() {
         homework: form.homework,
         feedback: form.feedback,
         tags: form.tags.split(",").map((s) => s.trim()).filter(Boolean),
-        classType: form.classType,
+        classType: form.classType,  // ← 최종 문자열(옵션/직접입력 모두)
         teacher: form.teacher,
         headline: form.headline,
         focus: form.focus === "" ? undefined : Number(form.focus),
@@ -210,6 +250,16 @@ export default function DailyReportEditor() {
     return arr.map((it) => ({ value: it.studentId, label: `${it.name}${it.hasLog ? " (작성됨)" : ""}` }));
   }, [list]);
 
+  // 수업형태 셀렉트 변경
+  const onChangeClassTypeSelect = (val) => {
+    setClassTypeSelect(val);
+    if (val && val !== CUSTOM_VALUE) {
+      setForm((f) => ({ ...f, classType: val }));
+    } else if (val !== CUSTOM_VALUE) {
+      setForm((f) => ({ ...f, classType: "" }));
+    }
+  };
+
   return (
     <div style={{ margin: "12px 0 20px", padding: 16, background: "#fff", border: "1px solid #e6e9f2", borderRadius: 12 }}>
       <b style={{ fontSize: 16 }}>데일리 리포트 작성/수정</b>
@@ -263,8 +313,35 @@ export default function DailyReportEditor() {
         <Area label="수업내용" value={form.content} onChange={(v) => setForm((f) => ({ ...f, content: v }))} />
         <Area label="과제" value={form.homework} onChange={(v) => setForm((f) => ({ ...f, homework: v }))} />
         <Area label="개별 피드백" value={form.feedback} onChange={(v) => setForm((f) => ({ ...f, feedback: v }))} />
+
         <Field label="태그(쉼표 구분)" value={form.tags} onChange={(v) => setForm((f) => ({ ...f, tags: v }))} />
-        <Field label="수업형태" value={form.classType} onChange={(v) => setForm((f) => ({ ...f, classType: v }))} placeholder="개별맞춤수업/판서강의/방학특강 등" />
+
+        {/* ✅ 수업형태: 옵션 + 직접 입력 지원 */}
+        <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <span style={{ fontSize: 13, color: "#556", fontWeight: 700 }}>수업형태</span>
+          <select
+            value={classTypeSelect}
+            onChange={(e) => onChangeClassTypeSelect(e.target.value)}
+            style={ipt}
+          >
+            <option value="">선택</option>
+            {classTypes.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+            <option value={CUSTOM_VALUE}>직접 입력…</option>
+          </select>
+        </label>
+        {classTypeSelect === CUSTOM_VALUE && (
+          <Field
+            label="수업형태(직접 입력)"
+            value={form.classType}
+            onChange={(v) => setForm((f) => ({ ...f, classType: v }))}
+            placeholder="예: 개별맞춤수업/판서강의/방학특강 등"
+          />
+        )}
+
         <Field label="강사표기" value={form.teacher} onChange={(v) => setForm((f) => ({ ...f, teacher: v }))} />
         <Area label="핵심 한줄 요약" value={form.headline} onChange={(v) => setForm((f) => ({ ...f, headline: v }))} />
         <Field label="집중도(0~100)" type="number" value={form.focus} onChange={(v) => setForm((f) => ({ ...f, focus: v }))} placeholder="예: 85" />
