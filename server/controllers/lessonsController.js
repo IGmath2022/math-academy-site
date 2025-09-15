@@ -20,7 +20,9 @@ function getDailyTplCodeFallback() {
   return null;
 }
 
-/** 🔒 자동발송 스위치 (DB 키 통일: daily_report_auto_on) */
+/** 🔒 자동발송 스위치 (DB 키 통일: daily_report_auto_on)
+ *  - sendBulk에서는 더 이상 이 값을 직접 확인하지 않음(크론에서 확인)
+ */
 async function isDailyAutoOn() {
   const s = await Setting.findOne({ key: 'daily_report_auto_on' });
   return s?.value === 'true';
@@ -42,31 +44,33 @@ async function computeStudyTimeMinFromAttendance(studentId, date) {
   return diffMin;
 }
 
-// ====== 날짜별 목록(필터 지원) ======
+/* =========================================================
+ * 날짜별 목록(필터 지원)
+ *   GET /api/admin/lessons?date=YYYY-MM-DD&scope=present|all|missing
+ * ========================================================= */
 exports.listByDate = async (req, res) => {
   const date = (req.query.date || moment().tz(KST).format('YYYY-MM-DD'));
-  const scope = String(req.query.scope || 'present') // present | all | missing
-                 .toLowerCase();
+  const scope = String(req.query.scope || 'present').toLowerCase(); // present | all | missing
 
   // 1) 당일 출석/로그 수집
   const inRecs = await Attendance.find({ date, type: 'IN' }).lean();
   const inIds = inRecs.map(r => String(r.userId));
 
-  const dayLogs = await LessonLog.find({ date }).lean(); // 해당일 전체 로그
+  const dayLogs = await LessonLog.find({ date }).lean();
   const logIds = dayLogs.map(l => String(l.studentId));
 
-  const presentSet = new Set([...inIds, ...logIds]); // "이미 화면에 나오던" 집합
+  const presentSet = new Set([...inIds, ...logIds]);
 
   // 2) scope에 따른 대상 학생 ID 결정
   let ids = [];
   let users = [];
 
   if (scope === 'present') {
-    // 기존 동작: 출석했거나 이미 로그가 있는 학생
+    // 출석했거나 이미 로그가 있는 학생
     ids = [...presentSet];
     users = await User.find({ _id: { $in: ids } }).lean();
   } else {
-    // 활성 학생 전체 목록 (inactive === true 제외)
+    // 활성 학생 전체(비활성 제외)
     const allStudents = await User.find({
       role: 'student',
       $or: [{ active: true }, { active: { $exists: false } }]
@@ -77,10 +81,9 @@ exports.listByDate = async (req, res) => {
     if (scope === 'all') {
       ids = allIds;
     } else if (scope === 'missing') {
-      // 출석/로그 둘 다 없는 학생만
+      // 출석/로그 둘 다 없는 학생
       ids = allIds.filter(id => !presentSet.has(id));
     } else {
-      // 알 수 없는 값이면 기본 present
       ids = [...presentSet];
     }
 
@@ -88,7 +91,7 @@ exports.listByDate = async (req, res) => {
     users = allStudents.filter(u => idsSet.has(String(u._id)));
   }
 
-  // 3) 해당 학생들에 한해 당일 출결/로그 재조회(효율적으로)
+  // 3) 대상 학생들에 한해 당일 출결/로그 재조회
   const [ins, outs, logs] = await Promise.all([
     Attendance.find({ date, type: 'IN',  userId: { $in: ids } }).lean(),
     Attendance.find({ date, type: 'OUT', userId: { $in: ids } }).lean(),
@@ -105,7 +108,7 @@ exports.listByDate = async (req, res) => {
   const logByStudent = Object.fromEntries(logs.map(l => [String(l.studentId), l]));
   const byId = Object.fromEntries(users.map(u => [String(u._id), u]));
 
-  // 4) 응답 아이템 만들기
+  // 4) 응답 아이템
   const items = ids.map(id => {
     const log = logByStudent[id];
     const checkIn = byUserType[id]?.IN || '';
@@ -122,25 +125,26 @@ exports.listByDate = async (req, res) => {
       checkIn,
       checkOut,
 
-      // ✅ 기존 필드 유지(행 강조용)
-      //   - 예전엔 "로그가 있는 경우에만 IN이 없으면 경고"였지만,
-      //     '미체크 학생 보기'에서도 강조되도록 "IN이 없으면 true"로 개선
+      // 행 강조용(등원이 없으면 true)
       missingIn: !checkIn,
 
-      // ✅ 새 힌트 필드(원하면 프론트에서 활용)
+      // 힌트 필드(선택 사용)
       hasAttendance,
       missingAttendance: !hasAttendance,
       scopeApplied: scope,
     };
   });
 
-  // 이름순 정렬(선택) — 보기 편의
+  // 이름순 정렬
   items.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
 
   res.json({ date, scope, items });
 };
 
-// ====== 리포트 1건 상세(학생+날짜) ======
+/* =========================================================
+ * 리포트 1건 상세(학생+날짜)
+ *   GET /api/admin/lessons/detail?studentId=&date=
+ * ========================================================= */
 exports.getDetail = async (req, res) => {
   const { studentId, date } = req.query;
   if (!studentId || !date) return res.status(400).json({ message: 'studentId, date 필수' });
@@ -154,22 +158,28 @@ exports.getDetail = async (req, res) => {
   });
 };
 
-// ====== 작성/수정(업서트) ======
+/* =========================================================
+ * 작성/수정(업서트)
+ *   POST /api/admin/lessons
+ * ========================================================= */
 exports.createOrUpdate = async (req, res) => {
   const body = { ...(req.body || {}) };
   const { studentId, date } = body;
   if (!studentId || !date) return res.status(400).json({ message: 'studentId, date 필수' });
 
+  // 프론트 호환: studyTimeMin → durationMin
   if (body.studyTimeMin !== undefined && body.studyTimeMin !== null && body.studyTimeMin !== '') {
     const n = Number(body.studyTimeMin);
     if (Number.isFinite(n)) body.durationMin = n;
     delete body.studyTimeMin;
   }
 
+  // 긴 텍스트 가드
   if (typeof body.feedback === 'string' && body.feedback.length > 2000) {
     body.feedback = body.feedback.slice(0, 1999) + '…';
   }
 
+  // durationMin 없으면 Attendance로 자동 계산
   if (body.durationMin === undefined || body.durationMin === null || body.durationMin === '') {
     const autoMin = await computeStudyTimeMinFromAttendance(studentId, date);
     if (autoMin !== null) body.durationMin = autoMin;
@@ -184,7 +194,10 @@ exports.createOrUpdate = async (req, res) => {
   res.json({ ok: true, id: doc._id, doc });
 };
 
-// ====== 예약 대기 목록 ======
+/* =========================================================
+ * 예약 대기 목록
+ *   GET /api/admin/lessons/pending
+ * ========================================================= */
 exports.listPending = async (_req, res) => {
   const now = new Date();
   const items = await LessonLog.find({
@@ -194,7 +207,10 @@ exports.listPending = async (_req, res) => {
   res.json(items);
 };
 
-// ====== 1건 발송 ======
+/* =========================================================
+ * 1건 발송
+ *   POST /api/admin/lessons/send-one/:id
+ * ========================================================= */
 exports.sendOne = async (req, res) => {
   try {
     const { id } = req.params;
@@ -209,6 +225,7 @@ exports.sendOne = async (req, res) => {
       return res.status(400).json({ message: '학부모 연락처 없음' });
     }
 
+    // 발송 전 학습시간 자동 보정
     if (log.durationMin === undefined || log.durationMin === null) {
       const autoMin = await computeStudyTimeMinFromAttendance(log.studentId, log.date);
       if (autoMin !== null) {
@@ -224,7 +241,10 @@ exports.sendOne = async (req, res) => {
     const m = moment.tz(log.date, 'YYYY-MM-DD', KST);
     const dateLabel = m.format('YYYY.MM.DD(ddd)');
 
+    // 공개 링크용 식별자
     const code = String(log._id);
+
+    // alimtalkReport가 타이틀/본문/버튼/치환 처리
     const ok = await sendReportAlimtalk(student.parentPhone, tpl, {
       학생명: student.name,
       과정: log.course || '-',
@@ -236,6 +256,7 @@ exports.sendOne = async (req, res) => {
       code
     });
 
+    // 로깅용 payloadSize(본문 대략 길이)
     const bodyForSize = [
       `1. 과정 : ${log.course || '-'}`,
       `2. 교재 : ${log.book || '-'}`,
@@ -264,7 +285,11 @@ exports.sendOne = async (req, res) => {
   }
 };
 
-// ====== 선택 발송(여러 건) ======
+/* =========================================================
+ * 선택 발송(여러 건)
+ *   POST /api/admin/lessons/send-selected
+ *   body: { ids: [logId, ...] }
+ * ========================================================= */
 exports.sendSelected = async (req, res) => {
   const { ids } = req.body;
   if (!Array.isArray(ids) || ids.length === 0) {
@@ -293,11 +318,12 @@ exports.sendSelected = async (req, res) => {
   res.json({ ok: true, sent, skipped, failed });
 };
 
-// ====== 자동 발송(예약분) ======
+/* =========================================================
+ * 자동 발송(예약분)
+ *   POST /api/admin/lessons/send-bulk
+ *   - ON/OFF 판단은 app.js의 CRON에서 DB 키 'daily_report_auto_on'으로 수행
+ * ========================================================= */
 exports.sendBulk = async (_req, res) => {
-  // ⛔️ 더 이상 여기서 auto ON/OFF는 확인하지 않습니다.
-  //     ON/OFF 판단은 app.js의 CRON에서 DB 키 'daily_report_auto_on'으로 합니다.
-
   const list = await LessonLog.find({
     notifyStatus: '대기',
     scheduledAt: { $ne: null, $lte: new Date() }
@@ -357,6 +383,7 @@ exports.getAttendanceOne = async (req, res) => {
       if (checkIn || checkOut) source = 'log';
     }
 
+    // 학습시간 계산
     let studyMin = null;
     if (checkIn && checkOut) {
       const start = moment.tz(`${date} ${checkIn}`,  'YYYY-MM-DD HH:mm:ss', KST);
@@ -406,6 +433,7 @@ exports.setAttendanceTimes = async (req, res) => {
       }
     }
 
+    // LessonLog에도 반영(보고서 일관성)
     let durationMin = null;
     if (tIn && tOut) {
       const start = moment.tz(`${date} ${tIn}`,  'YYYY-MM-DD HH:mm:ss', KST);
