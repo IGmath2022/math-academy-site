@@ -51,24 +51,24 @@ export default function DailyReportEditor() {
     return false;
   };
 
-  // 수업형태 목록 불러오기
+  // ✅ 수업형태 목록 불러오기 — /api/admin/class-types 로 통일
   useEffect(() => {
     const loadClassTypes = async () => {
       try {
-        const { data } = await axios.get(`${API_URL}/api/class-types`, {
+        const { data } = await axios.get(`${API_URL}/api/admin/class-types`, {
           ...withAuth(),
           params: { active: 1 },
         });
-        // 문자열/객체 혼합 안전 처리 -> 고유 name 배열
+        // 서버에서 active 필터가 되더라도 클라이언트에서도 한 번 더 방어
         const names = (data || [])
-          .map((it) => (typeof it === "string" ? it : it?.name || ""))
-          .map((s) => s.trim())
+          .filter((it) => it && (it.active === true || it.active === 1))
+          .map((it) => String(it.name || "").trim())
           .filter(Boolean);
         const uniq = Array.from(new Set(names));
         setClassTypes(uniq);
       } catch (e) {
-        // 없거나 실패해도 폼은 동작(직접입력 사용 가능)
         if (handle401(e)) return;
+        // 실패해도 폼은 동작(직접입력 가능)
       }
     };
     loadClassTypes();
@@ -313,7 +313,6 @@ export default function DailyReportEditor() {
         <Area label="수업내용" value={form.content} onChange={(v) => setForm((f) => ({ ...f, content: v }))} />
         <Area label="과제" value={form.homework} onChange={(v) => setForm((f) => ({ ...f, homework: v }))} />
         <Area label="개별 피드백" value={form.feedback} onChange={(v) => setForm((f) => ({ ...f, feedback: v }))} />
-
         <Field label="태그(쉼표 구분)" value={form.tags} onChange={(v) => setForm((f) => ({ ...f, tags: v }))} />
 
         {/* ✅ 수업형태: 옵션 + 직접 입력 지원 */}

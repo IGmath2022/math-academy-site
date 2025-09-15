@@ -59,17 +59,17 @@ export default function DailyReportSender() {
     // eslint-disable-next-line
   }, [date, scope]);
 
-  // 수업형태 목록 로드
+  // ✅ 수업형태 목록 로드 — /api/admin/class-types 로 통일
   useEffect(() => {
     const loadClassTypes = async () => {
       try {
-        const { data } = await axios.get(`${API_URL}/api/class-types`, {
+        const { data } = await axios.get(`${API_URL}/api/admin/class-types`, {
           ...withAuth(),
           params: { active: 1 },
         });
         const names = (data || [])
-          .map((it) => (typeof it === "string" ? it : it?.name || ""))
-          .map((s) => s.trim())
+          .filter((it) => it && (it.active === true || it.active === 1))
+          .map((it) => String(it.name || "").trim())
           .filter(Boolean);
         const uniq = Array.from(new Set(names));
         setClassTypes(uniq);
