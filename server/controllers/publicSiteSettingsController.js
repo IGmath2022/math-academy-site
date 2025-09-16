@@ -6,55 +6,68 @@ async function getSetting(key, def = '') {
   return s?.value ?? def;
 }
 
+function toBool(v, def = false) {
+  if (v === undefined || v === null || v === '') return def;
+  return (v === true || v === 'true' || v === '1');
+}
+
+/** GET /api/site/public-settings (비로그인 공개)
+ *  - NavBar/Main에서 사용할 최소 설정을 한번에 제공
+ */
 exports.getPublic = async (_req, res) => {
   try {
-    const keys = [
-      'menu_home_on', 'menu_blog_on', 'menu_materials_on', 'menu_contact_on',
-      'site_theme_color', 'site_theme_mode',
-      'home_sections',
-      'default_class_name',
-      'hero_title', 'hero_subtitle', 'hero_logo_url',
-      'about_md', 'blog_show',
-    ];
-    const raw = {};
-    for (const k of keys) raw[k] = await getSetting(k, '');
+    // 메뉴/테마
+    const menu_home_on       = toBool(await getSetting('menu_home_on',       'true'),  true);
+    const menu_blog_on       = toBool(await getSetting('menu_blog_on',       'true'),  true);
+    const menu_materials_on  = toBool(await getSetting('menu_materials_on',  'true'),  true);
+    const menu_contact_on    = toBool(await getSetting('menu_contact_on',    'true'),  true);
+    const site_theme_color   = await getSetting('site_theme_color', '#2d4373');
+    const site_theme_mode    = await getSetting('site_theme_mode',  'light');
 
-    // 가공
-    const toBool = v => {
-      if (typeof v === 'boolean') return v;
-      return String(v) === 'true';
-    };
-
+    // 홈 섹션 배열(없으면 기본 세트)
+    let home_sections_raw = await getSetting('home_sections', '');
     let home_sections = [];
-    try { home_sections = raw.home_sections ? JSON.parse(raw.home_sections) : []; } catch {}
+    try { home_sections = home_sections_raw ? JSON.parse(home_sections_raw) : []; } catch { home_sections = []; }
+    if (!Array.isArray(home_sections) || home_sections.length === 0) {
+      home_sections = [
+        { key: 'hero', on: true },
+        { key: 'about', on: true },
+        { key: 'teachers', on: true },
+        { key: 'schedule', on: true },
+        { key: 'blog', on: true },
+      ];
+    }
 
-    const out = {
-      // 메뉴
+    // 홈 히어로/소개 콘텐츠(슈퍼가 편집)
+    const hero_title      = await getSetting('hero_title',     'IG수학학원');
+    const hero_subtitle   = await getSetting('hero_subtitle',  '학생의 꿈과 성장을 함께하는 개별맞춤 수학 전문 학원');
+    const hero_logo_url   = await getSetting('hero_logo_url',  ''); // 비워도 동작
+    const about_md        = await getSetting('about_md',       'IG수학학원은 학생 한 명, 한 명의 실력과 진로에 맞춘 맞춤형 커리큘럼으로 수학 실력은 물론 자기주도 학습 역량까지 함께 키워나갑니다.');
+
+    // 과거 호환: 블로그 노출 키
+    const blog_show       = toBool(await getSetting('blog_show', 'true'), true);
+
+    res.json({
+      ok: true,
       menu: {
-        home: raw.menu_home_on === '' ? true : toBool(raw.menu_home_on),
-        blog: toBool(raw.menu_blog_on),
-        materials: toBool(raw.menu_materials_on),
-        contact: toBool(raw.menu_contact_on),
+        home: menu_home_on,
+        blog: menu_blog_on,
+        materials: menu_materials_on,
+        contact: menu_contact_on,
       },
-      // 테마
       theme: {
-        color: raw.site_theme_color || '#2d4373',
-        mode: raw.site_theme_mode === 'dark' ? 'dark' : 'light',
+        color: site_theme_color,
+        mode: site_theme_mode,
       },
-      // 섹션/반/소개
-      home_sections,
-      default_class_name: raw.default_class_name || 'IG수학',
-      hero: {
-        title: raw.hero_title || '',
-        subtitle: raw.hero_subtitle || '',
-        logoUrl: raw.hero_logo_url || '',
+      home: {
+        sections: home_sections,  // [{key:'hero'|'about'|'teachers'|'schedule'|'blog', on:true|false}]
+        hero: { title: hero_title, subtitle: hero_subtitle, logoUrl: hero_logo_url },
+        about: { md: about_md },
+        blog_show, // 구버전 호환
       },
-      about_md: raw.about_md || '',
-      blog_show: toBool(raw.blog_show),
-    };
-
-    res.json({ ok: true, settings: out });
+    });
   } catch (e) {
+    console.error('[publicSiteSettingsController.getPublic]', e);
     res.status(500).json({ ok: false, message: '공개 설정 조회 실패', error: String(e?.message || e) });
   }
 };
