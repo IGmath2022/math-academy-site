@@ -1,158 +1,196 @@
 // client/src/components/Staff/StaffCounselTab.jsx
-import React, { useEffect, useState } from "react";
-import { listCounsel, upsertCounsel, deleteCounsel } from "../../utils/staffApi";
-
-function MonthPicker({ value, onChange }) {
-  return <input type="month" value={value} onChange={(e)=>onChange(e.target.value)} style={inp} />;
-}
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  fetchCounselByMonth,
+  upsertCounsel,
+  deleteCounsel,
+} from "../../utils/staffApi";
 
 export default function StaffCounselTab() {
-  const [month, setMonth] = useState(new Date().toISOString().slice(0,7));
-  const [rows, setRows] = useState([]);
+  const thisMonth = useMemo(() => new Date().toISOString().slice(0, 7), []);
+  const [month, setMonth] = useState(thisMonth);
+  const [list, setList] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
-  const [msg, setMsg] = useState("");
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState({ id:'', date:'', studentId:'', memo:'', publicOn:false });
+  // 입력 폼(간단)
+  const [form, setForm] = useState({
+    studentId: "",
+    date: new Date().toISOString().slice(0, 10),
+    memo: "",
+    publicOn: false,
+  });
+  const [saving, setSaving] = useState(false);
 
-  const load = async () => {
+  async function load() {
     try {
+      setLoading(true);
       setErr("");
-      const r = await listCounsel(month);
-      setRows(r);
-    } catch {
-      setErr("상담 목록 조회 실패");
+      const rows = await fetchCounselByMonth(month);
+      setList(Array.isArray(rows) ? rows : []); // 🔒 방어
+    } catch (e) {
+      setErr("상담 목록을 불러오지 못했습니다.");
+      setList([]);
+    } finally {
+      setLoading(false);
     }
-  };
+  }
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [month]);
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [month]);
 
-  const openNew = () => {
-    setForm({ id:'', date:new Date().toISOString().slice(0,10), studentId:'', memo:'', publicOn:false });
-    setModalOpen(true);
-  };
-  const openEdit = (row) => {
-    setForm({ id:row.id, date:row.date, studentId:row.studentId, memo:row.memo, publicOn:!!row.publicOn });
-    setModalOpen(true);
-  };
-
-  const save = async () => {
-    try {
-      await upsertCounsel(form);
-      setMsg("저장되었습니다.");
-      setTimeout(()=>setMsg(""), 1600);
-      setModalOpen(false);
-      await load();
-    } catch {
-      setErr("저장 실패");
-      setTimeout(()=>setErr(""), 1600);
-    }
-  };
-  const remove = async (id) => {
-    if (!window.confirm("삭제하시겠어요?")) return;
-    try {
-      await deleteCounsel(id);
-      setMsg("삭제되었습니다.");
-      setTimeout(()=>setMsg(""), 1600);
-      await load();
-    } catch {
-      setErr("삭제 실패");
-      setTimeout(()=>setErr(""), 1600);
-    }
-  };
-
-  return (
-    <div style={{ border:'1px solid #e5e5e5', borderRadius:12, background:'#fff' }}>
-      <div style={{ padding:14, borderBottom:'1px solid #eee', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-          <h3 style={{ margin:0, fontSize:18 }}>상담</h3>
-          <MonthPicker value={month} onChange={setMonth} />
-        </div>
-        <button onClick={openNew} style={btnPrimary}>새 상담</button>
-      </div>
-      {msg && <div style={{ padding:12, color:'#227a22' }}>{msg}</div>}
-      {err && <div style={{ padding:12, color:'#e14' }}>{err}</div>}
-      <div style={{ overflowX:'auto' }}>
-        <table style={{ width:'100%', borderCollapse:'collapse' }}>
-          <thead>
-            <tr>
-              <th style={th}>날짜</th>
-              <th style={th}>학생</th>
-              <th style={th}>내용</th>
-              <th style={th}>공개</th>
-              <th style={th}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {(rows || []).map(r => (
-              <tr key={r.id}>
-                <td style={td}>{r.date}</td>
-                <td style={td}>{r.student}</td>
-                <td style={td}>{r.memo}</td>
-                <td style={td}>{r.publicOn ? 'ON' : 'OFF'}</td>
-                <td style={tdRight}>
-                  <button onClick={()=>openEdit(r)} style={btn}>수정</button>
-                  <button onClick={()=>remove(r.id)} style={{...btn, marginLeft:8, color:'#e14', borderColor:'#f1caca'}}>삭제</button>
-                </td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr><td style={{...td, color:'#888'}} colSpan={5}>데이터가 없습니다.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {modalOpen && (
-        <div style={modalWrap}>
-          <div style={modal}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
-              <h3 style={{ margin:0, fontSize:18 }}>{form.id ? '상담 수정' : '상담 작성'}</h3>
-              <button onClick={()=>setModalOpen(false)} style={btn}>닫기</button>
-            </div>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-              <Field label="날짜">
-                <input type="date" value={form.date} onChange={(e)=>setForm(f=>({...f, date:e.target.value}))} style={inp} />
-              </Field>
-              <Field label="학생ID">
-                <input value={form.studentId} onChange={(e)=>setForm(f=>({...f, studentId:e.target.value}))} placeholder="ObjectId" style={inp} />
-              </Field>
-              <div style={{ gridColumn:'1 / span 2' }}>
-                <label style={lbl}>내용</label>
-                <textarea rows={5} value={form.memo} onChange={(e)=>setForm(f=>({...f, memo:e.target.value}))} style={{ ...inp, resize:'vertical' }} />
-              </div>
-              <Field label="공개">
-                <label style={{ display:'inline-flex', alignItems:'center', gap:8 }}>
-                  <input type="checkbox" checked={!!form.publicOn} onChange={(e)=>setForm(f=>({...f, publicOn:e.target.checked}))} />
-                  공개뷰 포함
-                </label>
-              </Field>
-            </div>
-            <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginTop:14 }}>
-              <button onClick={save} style={btnPrimary}>저장</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Field({ label, children }) {
   return (
     <div>
-      <label style={lbl}>{label}</label>
-      {children}
+      <Panel>
+        <h3 style={{ marginTop: 0 }}>상담 목록</h3>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+          <input
+            type="month"
+            value={month}
+            onChange={(e) => setMonth(e.target.value.slice(0, 7))}
+          />
+          <button style={btn} onClick={load}>새로고침</button>
+        </div>
+
+        {err && <ErrorLine>{err}</ErrorLine>}
+        {loading ? (
+          <Muted>불러오는 중…</Muted>
+        ) : (Array.isArray(list) && list.length > 0) ? (
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ textAlign: "left", borderBottom: "1px solid #eee" }}>
+                <th style={th}>날짜</th>
+                <th style={th}>학생</th>
+                <th style={th}>메모</th>
+                <th style={th}>공개</th>
+                <th style={th}>삭제</th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.map((r) => (
+                <tr key={r._id} style={{ borderBottom: "1px solid #f3f3f3" }}>
+                  <td style={td}>{r.date}</td>
+                  <td style={td}>{r.studentName || r.studentId}</td>
+                  <td style={td}>
+                    <span title={r.memo}>{truncate(r.memo, 80)}</span>
+                  </td>
+                  <td style={td}>{r.publicOn ? "공개" : "-"}</td>
+                  <td style={td}>
+                    <button
+                      style={btnDanger}
+                      onClick={async () => {
+                        if (!window.confirm("삭제할까요?")) return;
+                        try {
+                          await deleteCounsel(r._id);
+                          await load();
+                        } catch {
+                          alert("삭제 실패");
+                        }
+                      }}
+                    >
+                      삭제
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <Muted>데이터가 없습니다.</Muted>
+        )}
+      </Panel>
+
+      <Panel>
+        <h3 style={{ marginTop: 0 }}>상담 등록/수정 (업서트)</h3>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+          <div>
+            <div style={lbl}>학생 ID</div>
+            <input
+              value={form.studentId}
+              onChange={(e) => setForm({ ...form, studentId: e.target.value })}
+              style={inp}
+              placeholder="학생 ObjectId"
+            />
+          </div>
+          <div>
+            <div style={lbl}>날짜</div>
+            <input
+              type="date"
+              value={form.date}
+              onChange={(e) => setForm({ ...form, date: e.target.value })}
+              style={inp}
+            />
+          </div>
+          <div style={{ display: "flex", alignItems: "end", gap: 10 }}>
+            <label style={{ fontSize: 14 }}>
+              <input
+                type="checkbox"
+                checked={form.publicOn}
+                onChange={(e) => setForm({ ...form, publicOn: e.target.checked })}
+                style={{ marginRight: 6 }}
+              />
+              공개뷰 포함
+            </label>
+            <div style={{ flex: 1 }} />
+            <button
+              style={btnPrimary}
+              disabled={saving}
+              onClick={async () => {
+                if (!form.studentId || !form.date) {
+                  alert("studentId / date는 필수입니다.");
+                  return;
+                }
+                try {
+                  setSaving(true);
+                  await upsertCounsel(form);
+                  setForm((f) => ({ ...f, memo: "" }));
+                  await load();
+                } catch {
+                  alert("저장 실패");
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            >
+              {saving ? "저장 중…" : "저장"}
+            </button>
+          </div>
+          <div style={{ gridColumn: "1 / 4" }}>
+            <div style={lbl}>메모</div>
+            <textarea
+              value={form.memo}
+              onChange={(e) => setForm({ ...form, memo: e.target.value })}
+              rows={4}
+              style={{ ...inp, resize: "vertical" }}
+              placeholder="상담 내용을 입력하세요(최대 3000자)"
+            />
+          </div>
+        </div>
+      </Panel>
     </div>
   );
 }
 
-const th = { padding:'10px 8px', borderBottom:'1px solid #eee', textAlign:'left', background:'#f9fafb' };
-const td = { padding:'9px 8px', borderBottom:'1px solid #f4f4f4', verticalAlign:'top' };
-const tdRight = { ...td, textAlign:'right', whiteSpace:'nowrap' };
-const btn = { padding:'6px 12px', border:'1px solid #ddd', borderRadius:8, background:'#fff', cursor:'pointer' };
-const btnPrimary = { padding:'7px 14px', border:'none', borderRadius:8, background:'#226ad6', color:'#fff', fontWeight:700, cursor:'pointer' };
-const lbl = { display:'block', fontSize:13, color:'#666', marginBottom:6 };
-const inp = { width:'100%', padding:'8px 10px', borderRadius:8, border:'1px solid #ccc' };
-const modalWrap = { position:'fixed', inset:0, background:'rgba(0,0,0,.35)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:999 };
-const modal = { width:'min(800px, 95vw)', background:'#fff', borderRadius:14, padding:16, boxShadow:'0 10px 40px rgba(0,0,0,.25)' };
+/* ---------- helpers & styles ---------- */
+function truncate(s, limit) {
+  const t = String(s || "");
+  return t.length > limit ? t.slice(0, limit - 1) + "…" : t;
+}
+
+const Panel = ({ children }) => (
+  <div style={{ background: "#fff", border: "1px solid #e5e5e5", borderRadius: 12, padding: 14, marginBottom: 12 }}>
+    {children}
+  </div>
+);
+const Muted = ({ children }) => <div style={{ color: "#888", textAlign: "center" }}>{children}</div>;
+const ErrorLine = ({ children }) => <div style={{ color: "#c11", margin: "6px 0" }}>{children}</div>;
+
+const th = { padding: "8px 6px", fontSize: 13, color: "#666" };
+const td = { padding: "10px 6px", fontSize: 14, verticalAlign: "top" };
+const lbl = { fontSize: 13, color: "#666", marginBottom: 6 };
+const inp = { padding: "8px 10px", border: "1px solid #ccc", borderRadius: 8, width: "100%" };
+const btn = { padding: "7px 12px", border: "1px solid #ddd", borderRadius: 8, background: "#fff", cursor: "pointer", fontWeight: 600 };
+const btnPrimary = { padding: "8px 14px", border: "none", borderRadius: 10, background: "#226ad6", color: "#fff", cursor: "pointer", fontWeight: 800 };
+const btnDanger = { ...btn, borderColor: "#f2c0c0", background: "#fff0f0", color: "#b00" };
