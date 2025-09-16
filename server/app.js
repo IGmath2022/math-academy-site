@@ -76,6 +76,7 @@ mongoose.connect(process.env.MONGO_URL)
     const superSettingsRoutes   = require('./routes/superSettingsRoutes');
     const adminUserRoutes       = require('./routes/adminUserRoutes');
     const publicSiteRoutes      = require('./routes/publicSiteSettingsRoutes');
+    const staffCounselRoutes  = require('./routes/staffCounselRoutes');
 
     /* =========================
      * 정적/공용
@@ -117,6 +118,7 @@ mongoose.connect(process.env.MONGO_URL)
     app.use('/api/admin',          ensureRouter(require('./routes/adminCounselRoutes'), 'adminCounselRoutes'));
     app.use('/api/admin',          ensureRouter(require('./routes/adminClassTypeRoutes'), 'adminClassTypeRoutes'));
     app.use('/api/site',           ensureRouter(publicSiteRoutes, 'publicSiteSettingsRoutes'));// 공개 설정 조회
+    app.use('/api/staff', staffCounselRoutes);
 
     // 공개 리포트 뷰(/report, /r/:code)
     app.use('/',                   ensureRouter(reportRoutes, 'reportRoutes'));
