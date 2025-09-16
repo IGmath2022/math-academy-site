@@ -72,7 +72,13 @@ export async function getAttendanceOne({ studentId, date }) {
 }
 
 // 출결 퀵 저장
-export async function setAttendanceTimes({ studentId, date, checkIn, checkOut, overwrite = true }) {
+export async function setAttendanceTimes({
+  studentId,
+  date,
+  checkIn,
+  checkOut,
+  overwrite = true,
+}) {
   const { data } = await axios.post(
     `${API_URL}/api/staff/attendance/set-times`,
     { studentId, date, checkIn, checkOut, overwrite },
@@ -98,6 +104,11 @@ export async function fetchWorkloadMetrics() {
   return data || { classes: 0, students: 0 };
 }
 
+// ✅ 과거 코드 호환용 별칭 (기존 컴포넌트가 fetchWorkload를 import하는 경우 대비)
+export async function fetchWorkload() {
+  return fetchWorkloadMetrics();
+}
+
 /* ====== 상담 탭 ====== */
 
 // 상담 목록 (월별) → 항상 배열만 반환
@@ -106,7 +117,6 @@ export async function fetchCounselByMonth(month /* 'YYYY-MM' */) {
     params: { month },
     headers: authHeaders(),
   });
-  // 서버는 { ok, month, items:[...] } 형식 → 안전하게 배열로만 리턴
   const items = Array.isArray(data?.items) ? data.items : [];
   return items;
 }
