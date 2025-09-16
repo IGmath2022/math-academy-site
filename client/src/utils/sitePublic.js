@@ -1,12 +1,17 @@
 // client/src/utils/sitePublic.js
+import { useEffect, useRef, useState } from "react";
 import { API_URL } from "../api";
 
 export const SITE_SETTINGS_EVENT = "site-settings-updated";
 
-// 로컬 스냅샷 키(첫 페인트 테마/메뉴 깜빡임 줄이기 용)
+// 로컬 스냅샷 키(첫 페인트 깜빡임 최소화)
 const SNAPSHOT_KEY = "site_theme_snapshot_v1";
 
-/** 테마 적용: CSS 변수/데이터 속성으로 최소 반영 */
+/* =========================
+ * 테마/이벤트/공개설정 API
+ * ========================= */
+
+/** CSS 변수/데이터 속성으로 테마 적용 */
 export function applyTheme({ site_theme_color, site_theme_mode }) {
   try {
     const root = document.documentElement;
@@ -25,7 +30,7 @@ export function applyTheme({ site_theme_color, site_theme_mode }) {
   }
 }
 
-/** 저장 즉시 NavBar 등에서 다시 읽게 이벤트 발행 */
+/** 저장 직후 NavBar 등에게 설정 변경됨 알리기 */
 export function emitSiteSettingsUpdated() {
   try {
     window.dispatchEvent(new Event(SITE_SETTINGS_EVENT));
@@ -41,7 +46,7 @@ export async function fetchPublicSiteSettings() {
   return res.json(); // { ok, settings }
 }
 
-/** 최초 1회 프리페치/캐시 (선택 사용) */
+/** 최초 1회 프리페치/메모리 캐시 */
 let _cache = null;
 export async function ensurePublicSettingsLoaded() {
   if (_cache) return _cache;
@@ -50,7 +55,7 @@ export async function ensurePublicSettingsLoaded() {
   return _cache;
 }
 
-/** 변경 이벤트 구독 유틸 (선택 사용) */
+/** 변경 이벤트 구독 유틸 */
 export function subscribeSiteSettings(listener) {
   const handler = () => listener?.();
   try {
@@ -61,15 +66,12 @@ export function subscribeSiteSettings(listener) {
   }
 }
 
-/** ⬇⬇⬇ 여기부터 ‘첫 페인트’ 테마 적용 관련 ⬇⬇⬇ */
-
-/** 저장 시 스냅샷 보관(슈퍼 설정 저장 성공 이후 호출 권장) */
+/** 슈퍼 설정 저장 시 스냅샷 보관(선택) */
 export function persistThemeSnapshot(settings) {
   try {
     const snap = {
       site_theme_color: settings?.site_theme_color,
       site_theme_mode: settings?.site_theme_mode,
-      // 필요하면 메뉴 토글/홈 섹션도 함께 저장 가능
       menu_home_on: !!settings?.menu_home_on,
       menu_blog_on: !!settings?.menu_blog_on,
       menu_materials_on: !!settings?.menu_materials_on,
@@ -83,7 +85,7 @@ export function persistThemeSnapshot(settings) {
   }
 }
 
-/** 앱 부팅 직후 가능한 한 빨리 호출해서 첫 페인트에 테마만이라도 적용 */
+/** 앱 부팅 직후 가능한 빨리 호출 → 첫 페인트에 테마 즉시 적용 */
 export function ensureThemeOnFirstPaint() {
   try {
     const raw = localStorage.getItem(SNAPSHOT_KEY);
@@ -97,4 +99,70 @@ export function ensureThemeOnFirstPaint() {
   } catch {
     return false;
   }
+}
+
+/* =========================
+ * 공개 설정 훅
+ * ========================= */
+
+/**
+ * usePublicSiteSettings
+ * - 공개 사이트 설정을 가져와 state로 보관
+ * - 최초 로드 시 테마 즉시 반영
+ * - SITE_SETTINGS_EVENT 수신 시 자동 리프레시
+ */
+export function usePublicSiteSettings() {
+  const [settings, setSettings] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const firstLoadRef = useRef(true);
+
+  const refresh = async () => {
+    try {
+      setError("");
+      setLoading(true);
+      const j = await fetchPublicSiteSettings(); // { ok, settings }
+      const s = j?.settings || null;
+      setSettings(s);
+
+      // 테마 즉시 적용
+      if (s) {
+        applyTheme({
+          site_theme_color: s.site_theme_color,
+          site_theme_mode: s.site_theme_mode,
+        });
+        // 로컬 스냅샷 업데이트(다음 방문 첫 페인트용)
+        persistThemeSnapshot({
+          ...s,
+          // 서버 public-settings에는 메뉴 토글이 문자열일 수도 있으니 boolean 보정
+          menu_home_on: s.menu_home_on !== false && String(s.menu_home_on) !== "false",
+          menu_blog_on: s.menu_blog_on !== false && String(s.menu_blog_on) !== "false",
+          menu_materials_on: s.menu_materials_on !== false && String(s.menu_materials_on) !== "false",
+          menu_contact_on: s.menu_contact_on !== false && String(s.menu_contact_on) !== "false",
+        });
+      }
+    } catch (e) {
+      setError("공개 설정을 불러오지 못했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // 첫 페인트 시 로컬 스냅샷으로 테마만이라도 즉시 적용
+    if (firstLoadRef.current) {
+      ensureThemeOnFirstPaint();
+      firstLoadRef.current = false;
+    }
+    refresh();
+
+    // 설정 변경 이벤트 수신 → 재조회
+    const unsub = subscribeSiteSettings(() => {
+      refresh();
+    });
+    return unsub;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return { settings, loading, error, refresh };
 }
