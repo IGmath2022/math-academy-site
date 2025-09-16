@@ -6,8 +6,7 @@ const { requireStaff } = require('../middleware/auth'); // admin | super | teach
 
 /**
  * app.js 에서 app.use('/api/staff', staffLessonRoutes)
- * 실제 엔드포인트는 /api/staff/lessons/*, /api/staff/alerts/* 형태
- * - 서버 컨트롤러 내부에서 역할 스코프 검사 수행
+ * 실제 엔드포인트는 /api/staff/* 형태
  */
 
 // 공통 레슨 목록/상세/업서트
@@ -34,5 +33,8 @@ router.post('/settings/daily-auto',   requireStaff, lessons.setDailyAuto);
 // 강사 대시보드 위젯
 router.get('/alerts/today',           requireStaff, lessons.getTodayAlerts);
 router.get('/lessons/month-logs',     requireStaff, lessons.getMonthLogs);
+
+// 🔹 워크로드 메트릭 (신규)
+router.get('/metrics/workload',       requireStaff, lessons.getWorkloadMetrics);
 
 module.exports = router;
