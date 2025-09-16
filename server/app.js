@@ -1,5 +1,4 @@
 // server/app.js
-
 require("dotenv").config();
 const express = require('express');
 const cors = require('cors');
@@ -11,22 +10,7 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 /* =========================
- * 라우트 require
- * ========================= */
-const attendanceRoutes    = require('./routes/attendanceRoutes');
-const bannerUploadRoutes  = require('./routes/bannerUpload');
-const adminLessonRoutes   = require('./routes/adminLessonRoutes');   // /api/admin/*
-const reportRoutes        = require('./routes/reportRoutes');        // /report, /r/:code
-const classGroupRoutes    = require('./routes/classGroupRoutes');    // ✅ 수업반(관리/스태프 공유)
-const staffLessonRoutes   = require('./routes/staffLessonRoutes');   // /api/staff/lessons/*
-const superSettingsRoutes = require('./routes/superSettingsRoutes'); // /api/admin/super/*
-const adminUserRoutes     = require('./routes/adminUserRoutes');     // /api/admin/users/*
-const staffCounselRoutes  = require('./routes/staffCounselRoutes');  // /api/staff/counsel* (CounselLog)
-
-/* =========================
  * CORS 설정 (다중 오리진)
- *  - .env에 CORS_ORIGINS="http://localhost:3000,http://localhost:5173,https://ig-math-2022.onrender.com"
- *    처럼 콤마로 구분하여 넣어둡니다.
  * ========================= */
 const allowedOrigins = (process.env.CORS_ORIGINS || 'https://ig-math-2022.onrender.com')
   .split(',')
@@ -35,7 +19,7 @@ const allowedOrigins = (process.env.CORS_ORIGINS || 'https://ig-math-2022.onrend
 
 app.use(cors({
   origin(origin, callback) {
-    if (!origin) return callback(null, true); // 서버-서버 호출 허용
+    if (!origin) return callback(null, true); // 서버-서버 호출 등
     if (allowedOrigins.includes(origin)) return callback(null, true);
     return callback(new Error(`Not allowed by CORS: ${origin}`));
   },
@@ -45,7 +29,7 @@ app.use(cors({
 app.use(express.json());
 
 /* =========================
- * 운영 확인: 서버 외부 IP
+ * 운영용 외부 IP 확인
  * ========================= */
 app.get('/myip', async (_req, res) => {
   try {
@@ -60,79 +44,90 @@ axios.get('https://ipinfo.io/ip').then(r => {
 });
 
 /* =========================
- * Mongo 연결
+ * Mongo 연결 (최신 드라이버는 옵션 불필요)
  * ========================= */
-mongoose.connect(process.env.MONGO_URL, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
+mongoose.connect(process.env.MONGO_URL)
   .then(async () => {
     console.log("MongoDB Connected!");
 
+    /* -----------------------------
+     * Router 안전 가드 (문제 라우트 즉시 식별)
+     * ----------------------------- */
+    const ensureRouter = (mod, name) => {
+      if (typeof mod !== 'function') {
+        const type = typeof mod;
+        console.error(`[BOOT] ${name} 가 Router가 아닙니다. type=${type}`);
+        // 흔한 실수: module.exports = router 누락, 파일 경로/대소문자 오타, export object 등
+        throw new Error(`${name} must export express.Router()`);
+      }
+      return mod;
+    };
+
     /* =========================
-     * 정적/공용 라우트
+     * 라우트 모듈 로드
+     * ========================= */
+    // 기존/신규 라우트
+    const attendanceRoutes      = require('./routes/attendanceRoutes');
+    const bannerUploadRoutes    = require('./routes/bannerUpload');
+    const adminLessonRoutes     = require('./routes/adminLessonRoutes'); // /api/admin/*
+    const reportRoutes          = require('./routes/reportRoutes');      // /report, /r/:code
+    const classGroupRoutes      = require('./routes/classGroupRoutes');  // 수업반
+    const staffLessonRoutes     = require('./routes/staffLessonRoutes'); // 스태프(강사)
+    const superSettingsRoutes   = require('./routes/superSettingsRoutes');
+    const adminUserRoutes       = require('./routes/adminUserRoutes');
+    const publicSiteRoutes      = require('./routes/publicSiteSettingsRoutes');
+
+    /* =========================
+     * 정적/공용
      * ========================= */
     app.use('/uploads', express.static('uploads'));
 
     /* =========================
-     * 기존/일반 API
+     * 인증/기본 리소스
      * ========================= */
-    app.use('/api/auth', require('./routes/authRoutes'));
-    app.use('/api/subjects', require('./routes/subjectRoutes'));
-    app.use('/api/chapters', require('./routes/chapterRoutes'));
-    app.use('/api/assignments', require('./routes/assignmentRoutes'));
-    app.use('/api/users', require('./routes/userRoutes'));
-    app.use('/api/news', require('./routes/newsRoutes'));
-    app.use('/api/materials', require('./routes/materialRoutes'));
-    app.use('/api/contact', require("./routes/contactRoutes"));
-    app.use('/api/blog', require("./routes/blogRoutes"));
-    app.use('/api/settings', require('./routes/settingsRoutes'));
-    app.use('/api/progress', require('./routes/studentProgressRoutes'));
-    app.use('/api/progress', require('./routes/progressRoutes'));
-    app.use('/api/schools', require('./routes/schoolRoutes'));
-    app.use('/api/schoolschedules', require('./routes/schoolScheduleRoutes'));
-    app.use('/api/school-periods', require("./routes/schoolPeriodRoutes"));
-    app.use('/api/attendance', attendanceRoutes);
-    app.use('/api/files', require('./routes/upload'));
-    app.use('/api/banner', bannerUploadRoutes);
+    app.use('/api/auth',           ensureRouter(require('./routes/authRoutes'), 'authRoutes'));
+    app.use('/api/subjects',       ensureRouter(require('./routes/subjectRoutes'), 'subjectRoutes'));
+    app.use('/api/chapters',       ensureRouter(require('./routes/chapterRoutes'), 'chapterRoutes'));
+    app.use('/api/assignments',    ensureRouter(require('./routes/assignmentRoutes'), 'assignmentRoutes'));
+    app.use('/api/users',          ensureRouter(require('./routes/userRoutes'), 'userRoutes'));
+    app.use('/api/news',           ensureRouter(require('./routes/newsRoutes'), 'newsRoutes'));
+    app.use('/api/materials',      ensureRouter(require('./routes/materialRoutes'), 'materialRoutes'));
+    app.use('/api/contact',        ensureRouter(require("./routes/contactRoutes"), 'contactRoutes'));
+    app.use('/api/blog',           ensureRouter(require("./routes/blogRoutes"), 'blogRoutes'));
+    app.use('/api/settings',       ensureRouter(require('./routes/settingsRoutes'), 'settingsRoutes'));
+    // progress 라우트가 두 개면 둘 다 Router 여야 함
+    app.use('/api/progress',       ensureRouter(require('./routes/studentProgressRoutes'), 'studentProgressRoutes'));
+    app.use('/api/progress',       ensureRouter(require('./routes/progressRoutes'), 'progressRoutes'));
+    app.use('/api/schools',        ensureRouter(require('./routes/schoolRoutes'), 'schoolRoutes'));
+    app.use('/api/schoolschedules',ensureRouter(require('./routes/schoolScheduleRoutes'), 'schoolScheduleRoutes'));
+    app.use('/api/school-periods', ensureRouter(require("./routes/schoolPeriodRoutes"), 'schoolPeriodRoutes'));
+    app.use('/api/attendance',     ensureRouter(attendanceRoutes, 'attendanceRoutes'));
+    app.use('/api/files',          ensureRouter(require('./routes/upload'), 'uploadRoutes'));
+    app.use('/api/banner',         ensureRouter(bannerUploadRoutes, 'bannerUploadRoutes'));
 
     /* =========================
-     * 관리자/스태프 전용 API
+     * 신규/관리/스태프/공개 설정
      * ========================= */
-    // 관리자(레슨 발송/예약 등)
-    app.use('/api/admin', adminLessonRoutes);
-    // 관리자: 계정/권한
-    app.use('/api/admin', adminUserRoutes);
-    // 스태프(강사 전용 레슨/월로그/알림 등)
-    app.use('/api/staff', staffLessonRoutes);
-    // 슈퍼 설정
-    app.use('/api/admin', superSettingsRoutes);
-
-    // ✅ 수업반(ClassGroup) - 역할별 접두어로 마운트 (경로 일관성)
-    app.use('/api/admin', classGroupRoutes);  // /api/admin/classes, /api/admin/classes/:id/assign
-    app.use('/api/staff', classGroupRoutes);  // /api/staff/classes/mine, /api/staff/metrics/workload
-
-    // ✅ 상담(CounselLog) - 스태프 전용
-    app.use('/api/staff', staffCounselRoutes); // /api/staff/counsel*
-
-    // 기존 관리자 기타 라우트(프로필/상담/수업형태 등)
-    app.use('/api/admin', require('./routes/adminProfileRoutes'));
-    app.use('/api/admin', require('./routes/adminCounselRoutes'));
-    app.use('/api/admin', require('./routes/adminClassTypeRoutes'));
-    app.use('/api/site', require('./routes/publicSiteSettingsRoutes'));
+    app.use('/api/admin',          ensureRouter(adminLessonRoutes, 'adminLessonRoutes'));     // 오늘 수업, 예약/발송
+    app.use('/api/admin',          ensureRouter(adminUserRoutes, 'adminUserRoutes'));         // 사용자 관리(관리자/슈퍼)
+    app.use('/api/staff',          ensureRouter(staffLessonRoutes, 'staffLessonRoutes'));     // 강사용 엔드포인트
+    app.use('/api/admin',          ensureRouter(superSettingsRoutes, 'superSettingsRoutes')); // 슈퍼 사이트 설정
+    app.use('/api/class-groups',   ensureRouter(classGroupRoutes, 'classGroupRoutes'));       // 수업반 CRUD/배정
+    app.use('/api/admin',          ensureRouter(require('./routes/adminProfileRoutes'), 'adminProfileRoutes'));
+    app.use('/api/admin',          ensureRouter(require('./routes/adminCounselRoutes'), 'adminCounselRoutes'));
+    app.use('/api/admin',          ensureRouter(require('./routes/adminClassTypeRoutes'), 'adminClassTypeRoutes'));
+    app.use('/api/site',           ensureRouter(publicSiteRoutes, 'publicSiteSettingsRoutes'));// 공개 설정 조회
 
     // 공개 리포트 뷰(/report, /r/:code)
-    app.use('/', reportRoutes);
+    app.use('/',                   ensureRouter(reportRoutes, 'reportRoutes'));
 
-    /* =========================
-     * 헬스 체크
-     * ========================= */
+    // 메인
     app.get('/', (_req, res) => {
       res.send('서버가 정상적으로 동작합니다!');
     });
 
     /* =========================
-     * 최초 실행시 기본 데이터 생성
+     * 샘플 계정/Setting/기본 반 자동 생성 (최초 실행시)
      * ========================= */
     const User = require('./models/User');
     const Setting = require('./models/Setting');
@@ -151,12 +146,10 @@ mongoose.connect(process.env.MONGO_URL, {
         { key: "banner3_on", value: "false" },
         { key: "banner3_img", value: "" },
         { key: "blog_show", value: "true" },
-
-        // 자동/예약 설정
-        { key: "daily_report_auto_on", value: "false" }, // 리포트 자동발송 기본 OFF
-        { key: "auto_leave_on", value: "true" },         // 자동하원 기본 ON
-        { key: "report_jwt_exp_days", value: "7" },      // 리포트 링크 만료일(일)
-
+        // 자동/예약 스위치
+        { key: "daily_report_auto_on", value: "false" },
+        { key: "auto_leave_on", value: "true" },
+        { key: "report_jwt_exp_days", value: "7" },
         // 기본 반 이름
         { key: "default_class_name", value: "IG수학" }
       ];
@@ -166,7 +159,7 @@ mongoose.connect(process.env.MONGO_URL, {
       }
       console.log("Setting 테이블 기본값 초기화 완료!");
 
-      // 기본 계정 생성(존재 시 건너뜀)
+      // 기본 계정 (없으면 생성)
       const mk = async (name, email, role, parentPhone) => {
         const found = await User.findOne({ email });
         if (found) return found;
@@ -176,15 +169,14 @@ mongoose.connect(process.env.MONGO_URL, {
         return await User.create(doc);
       };
 
-      const superUser  = await mk("슈퍼관리자", "super@example.com",  "super");
-      const adminUser  = await mk("운영자",   "admin@example.com",  "admin");
+      const superUser  = await mk("슈퍼관리자", "super@example.com",   "super");
+      const adminUser  = await mk("운영자",   "admin@example.com",   "admin");
       const teacherA   = await mk("강사A",    "teacher1@example.com","teacher");
       const studentA   = await mk("학생A",    "student1@example.com","student","01000000001");
       const studentB   = await mk("학생B",    "student2@example.com","student","01000000002");
-
       console.log("기본 계정 준비 완료:", [superUser.email, adminUser.email, teacherA.email, studentA.email, studentB.email]);
 
-      // 기본 반 자동 생성 & 학생 배정
+      // 기본 반 자동 생성
       const defaultClassName = (await Setting.findOne({ key: 'default_class_name' }))?.value || 'IG수학';
       let baseClass = await ClassGroup.findOne({ name: defaultClassName });
       if (!baseClass) {
@@ -203,13 +195,13 @@ mongoose.connect(process.env.MONGO_URL, {
     })();
 
     /* =========================
-     * CRON 등록
+     * CRON (DB 연결 이후 등록)
      * ========================= */
     const KST = 'Asia/Seoul';
     const BASE_URL = (process.env.SELF_BASE_URL || `http://127.0.0.1:${PORT}`).replace(/\/+$/,'');
 
-    // 1) 자동 하원 처리 — DB/ENV 토글 지원
-    const AUTO_LEAVE_CRON = process.env.AUTO_LEAVE_CRON || '30 22 * * *'; // 22:30 KST
+    // 1) 자동 하원
+    const AUTO_LEAVE_CRON = process.env.AUTO_LEAVE_CRON || '30 22 * * *';
     if (!global.__AUTO_LEAVE_CRON_STARTED__) {
       global.__AUTO_LEAVE_CRON_STARTED__ = true;
       cron.schedule(AUTO_LEAVE_CRON, async () => {
@@ -219,12 +211,10 @@ mongoose.connect(process.env.MONGO_URL, {
           const s = await Setting.findOne({ key: 'auto_leave_on' });
           const DB_ON = (s?.value === 'true');
           const SHOULD_RUN = (typeof s?.value === 'string') ? DB_ON : ENV_ON;
-
           if (!SHOULD_RUN) {
             console.log(`[CRON][AUTO-LEAVE] SKIP (auto OFF) @ ${new Date().toLocaleString('ko-KR', { timeZone: KST })}`);
             return;
           }
-
           await axios.post(`${BASE_URL}/api/attendance/auto-leave`);
           console.log(`[CRON][AUTO-LEAVE] OK @ ${new Date().toLocaleString('ko-KR', { timeZone: KST })}`);
         } catch (e) {
@@ -233,8 +223,8 @@ mongoose.connect(process.env.MONGO_URL, {
       }, { timezone: KST });
     }
 
-    // 2) 일일 리포트 자동 발송 — ENV/DB 토글 지원(기본 OFF)
-    const DAILY_REPORT_CRON = process.env.DAILY_REPORT_CRON || '30 10 * * *'; // 10:30 KST
+    // 2) 일일 리포트 자동 발송
+    const DAILY_REPORT_CRON = process.env.DAILY_REPORT_CRON || '30 10 * * *';
     if (!global.__DAILY_REPORT_CRON_STARTED__) {
       global.__DAILY_REPORT_CRON_STARTED__ = true;
       cron.schedule(DAILY_REPORT_CRON, async () => {
@@ -248,7 +238,6 @@ mongoose.connect(process.env.MONGO_URL, {
             console.log(`[CRON][DAILY-REPORT] SKIP (auto OFF) @ ${new Date().toLocaleString('ko-KR', { timeZone: KST })}`);
             return;
           }
-
           await axios.post(`${BASE_URL}/api/admin/lessons/send-bulk`);
           console.log(`[CRON][DAILY-REPORT] OK @ ${new Date().toLocaleString('ko-KR', { timeZone: KST })}`);
         } catch (e) {
