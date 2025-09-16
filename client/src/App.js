@@ -14,13 +14,14 @@ import Blog from "./pages/Blog";
 import AttendancePage from "./pages/AttendancePage";
 import ReportPublic from "./pages/ReportPublic";
 
-// ⚠️ 문제가 생기면 이 import만 실패시키고 초기 렌더는 살립니다.
+// ✅ 지연 로딩: 문제가 있어도 초기에 홈은 뜸
 const SuperSiteSettings = lazy(() => import("./pages/SuperSiteSettings"));
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* NavBar/FloatingContact 있는 레이아웃 */}
         <Route element={<Layout />}>
           <Route path="/" element={<Main />} />
           <Route path="/login" element={<Login />} />
@@ -30,6 +31,8 @@ function App() {
           <Route path="/materials" element={<Materials />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/blog" element={<Blog />} />
+
+          {/* ✅ 슈퍼 설정 (지연 로딩 + 폴백) */}
           <Route
             path="/super-settings"
             element={
@@ -40,10 +43,12 @@ function App() {
           />
         </Route>
 
+        {/* NavBar/FloatingContact 없는 레이아웃 */}
         <Route path="/attendancePage" element={<Layout hideNavBar={true} />}>
           <Route index element={<AttendancePage />} />
         </Route>
 
+        {/* 공개 리포트 뷰 */}
         <Route path="/r/:code" element={<Layout hideNavBar={true} />}>
           <Route index element={<ReportPublic />} />
         </Route>
