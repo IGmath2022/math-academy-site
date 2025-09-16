@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
@@ -37,6 +37,9 @@ function App() {
         <Route path="/r/:code" element={<Layout hideNavBar={true} />}>
           <Route index element={<ReportPublic />} />
         </Route>
+
+        {/* ✅ 존재하지 않는 경로는 항상 홈으로 */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
