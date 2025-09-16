@@ -1,5 +1,5 @@
 // client/src/App.js
-import React, { Suspense, lazy } from "react";
+import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Login from "./pages/Login";
@@ -13,9 +13,7 @@ import Contact from "./pages/Contact";
 import Blog from "./pages/Blog";
 import AttendancePage from "./pages/AttendancePage";
 import ReportPublic from "./pages/ReportPublic";
-
-// ✅ 지연 로딩: 문제가 있어도 초기에 홈은 뜸
-const SuperSiteSettings = lazy(() => import("./pages/SuperSiteSettings"));
+import SuperSiteSettings from "./pages/SuperSiteSettings"; // ✅ 슈퍼 설정 페이지
 
 function App() {
   return (
@@ -32,15 +30,8 @@ function App() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/blog" element={<Blog />} />
 
-          {/* ✅ 슈퍼 설정 (지연 로딩 + 폴백) */}
-          <Route
-            path="/super-settings"
-            element={
-              <Suspense fallback={<div style={{padding:20}}>로딩 중…</div>}>
-                <SuperSiteSettings />
-              </Suspense>
-            }
-          />
+          {/* ✅ 슈퍼 설정 라우트 추가 */}
+          <Route path="/super-settings" element={<SuperSiteSettings />} />
         </Route>
 
         {/* NavBar/FloatingContact 없는 레이아웃 */}
