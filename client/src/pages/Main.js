@@ -1,15 +1,28 @@
+// client/src/pages/Main.js
 import React, { useEffect, useState } from "react";
 import Blog from "./Blog";
 import KakaoMap from "../components/KakaoMap";
 import PopupBanners from "../components/PopupBanners";
-import { API_URL } from '../api';
+import { API_URL } from "../api";
 
-function Main() {
+export default function Main() {
   const [showBlog, setShowBlog] = useState(true);
+  const [safe, setSafe] = useState({ bannersOk: true });
+
   useEffect(() => {
-    fetch(`${API_URL}/api/settings/blog_show`)
-      .then(res => res.json())
-      .then(data => setShowBlog(data.show));
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch(`${API_URL}/api/settings/blog_show`);
+        if (!cancelled && r.ok) {
+          const j = await r.json().catch(() => ({}));
+          setShowBlog(!!j.show);
+        }
+      } catch {
+        // 실패해도 그냥 기본값 유지
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   return (
@@ -25,7 +38,13 @@ function Main() {
         minHeight: 420,
       }}
     >
-      <PopupBanners />
+      {/* 배너 쪽에서 에러 나도 초기 렌더는 유지 */}
+      {safe.bannersOk ? (
+        <ErrorBoundary onError={() => setSafe(s => ({ ...s, bannersOk: false }))}>
+          <PopupBanners />
+        </ErrorBoundary>
+      ) : null}
+
       <header style={{ textAlign: "center", marginBottom: 38 }}>
         <h1 style={{ fontSize: 32, marginBottom: 10, letterSpacing: "-1px" }}>IG수학학원</h1>
         <p style={{ color: "#456", fontSize: 16, margin: 0, marginTop: 4 }}>
@@ -44,18 +63,15 @@ function Main() {
       <section style={{ marginBottom: 30 }}>
         <h2 style={{ fontSize: 20, marginBottom: 8 }}>위치 안내</h2>
         <p style={{ color: "#444" }}>
-          서울특별시 강남구 삼성로64길-5 2층 204호 IG수학<br />
+          서울특별시 강남구 삼성로64길-5 2층 204호 IG수학
         </p>
-        <div>
-          <KakaoMap />
-        </div>
+        <div><KakaoMap /></div>
       </section>
 
       <section style={{ marginBottom: 30 }}>
         <h2 style={{ fontSize: 20, marginBottom: 8 }}>강사진 소개</h2>
         <ul style={{ paddingLeft: 18, color: "#333", margin: 0 }}>
           <li style={{ marginBottom: 7 }}>송인규 원장: 성균관대 수학과, 10년 경력</li>
-          {/* 추가 강사진 원하면 여기에 */}
         </ul>
       </section>
 
@@ -64,10 +80,11 @@ function Main() {
         <ul style={{ paddingLeft: 18, color: "#333", margin: 0 }}>
           <li style={{ marginBottom: 6 }}>초등부: 평일 15:00~22:00, 토 10:00~17:00</li>
           <li style={{ marginBottom: 6 }}>중고등부: 평일 16:00~22:00, 토 10:00~17:00</li>
-          <li style={{ marginBottom: 6 }}>여름,겨울방학: 평일 11:00~20:00, 토 10:00~17:00</li>
+          <li style={{ marginBottom: 6 }}>여름·겨울방학: 평일 11:00~20:00, 토 10:00~17:00</li>
         </ul>
       </section>
-      {showBlog && <Blog limit={3}/>}
+
+      {showBlog && <Blog limit={3} />}
 
       <footer style={{ textAlign: "center", marginTop: 42, color: "#666" }}>
         <p style={{ fontSize: 15, marginBottom: 10 }}>문의: 02-563-2925</p>
@@ -87,7 +104,7 @@ function Main() {
             marginTop: 8,
             boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
             fontSize: 17,
-            letterSpacing: "-0.5px"
+            letterSpacing: "-0.5px",
           }}
         >
           카카오톡 1:1 문의 바로가기
@@ -97,4 +114,10 @@ function Main() {
   );
 }
 
-export default Main;
+/* ---- 아주 얇은 에러 바운더리 ---- */
+class ErrorBoundary extends React.Component {
+  constructor(props){ super(props); this.state = { hasError:false }; }
+  static getDerivedStateFromError(){ return { hasError:true }; }
+  componentDidCatch(){ this.props.onError && this.props.onError(); }
+  render(){ return this.state.hasError ? null : this.props.children; }
+}
