@@ -1,62 +1,73 @@
 // server/controllers/publicSiteSettingsController.js
 const Setting = require('../models/Setting');
 
-const BOOL_KEYS = ['menu_home_on', 'menu_blog_on', 'menu_materials_on', 'menu_contact_on'];
-const ALL_KEYS = [
-  ...BOOL_KEYS,
-  'site_theme_color',
-  'site_theme_mode',     // 'light' | 'dark'
-  'default_class_name',
-  'home_sections',       // JSON string
-];
-
-const defaults = {
-  menu_home_on: true,
-  menu_blog_on: true,
-  menu_materials_on: true,
-  menu_contact_on: true,
-  site_theme_color: '#2d4373',
-  site_theme_mode: 'light',
-  default_class_name: 'IG수학',
-  home_sections: [],
-};
-
-function asBool(v, def = true) {
-  if (v === true) return true;
-  if (v === false) return false;
-  const s = String(v ?? '');
-  if (s === 'true') return true;
-  if (s === 'false') return false;
-  return def;
+async function getSetting(key, def = '') {
+  const s = await Setting.findOne({ key });
+  return s?.value ?? def;
 }
 
+function toBool(v, def = false) {
+  if (v === undefined || v === null || v === '') return def;
+  return (v === true || v === 'true' || v === '1');
+}
+
+/** GET /api/site/public-settings (비로그인 공개)
+ *  - NavBar/Main에서 사용할 최소 설정을 한번에 제공
+ */
 exports.getPublic = async (_req, res) => {
   try {
-    const rows = await Setting.find({ key: { $in: ALL_KEYS } }).lean();
-    const map = {};
-    for (const k of ALL_KEYS) map[k] = null;
-    for (const r of rows) map[r.key] = r.value;
+    // 메뉴/테마
+    const menu_home_on       = toBool(await getSetting('menu_home_on',       'true'),  true);
+    const menu_blog_on       = toBool(await getSetting('menu_blog_on',       'true'),  true);
+    const menu_materials_on  = toBool(await getSetting('menu_materials_on',  'true'),  true);
+    const menu_contact_on    = toBool(await getSetting('menu_contact_on',    'true'),  true);
+    const site_theme_color   = await getSetting('site_theme_color', '#2d4373');
+    const site_theme_mode    = await getSetting('site_theme_mode',  'light');
 
-    const out = {
-      menu_home_on: asBool(map.menu_home_on, defaults.menu_home_on),
-      menu_blog_on: asBool(map.menu_blog_on, defaults.menu_blog_on),
-      menu_materials_on: asBool(map.menu_materials_on, defaults.menu_materials_on),
-      menu_contact_on: asBool(map.menu_contact_on, defaults.menu_contact_on),
-      site_theme_color: map.site_theme_color || defaults.site_theme_color,
-      site_theme_mode: (map.site_theme_mode === 'dark') ? 'dark' : defaults.site_theme_mode,
-      default_class_name: map.default_class_name || defaults.default_class_name,
-      home_sections: [],
-    };
-
-    try {
-      out.home_sections = map.home_sections ? JSON.parse(map.home_sections) : defaults.home_sections;
-      if (!Array.isArray(out.home_sections)) out.home_sections = defaults.home_sections;
-    } catch {
-      out.home_sections = defaults.home_sections;
+    // 홈 섹션 배열(없으면 기본 세트)
+    let home_sections_raw = await getSetting('home_sections', '');
+    let home_sections = [];
+    try { home_sections = home_sections_raw ? JSON.parse(home_sections_raw) : []; } catch { home_sections = []; }
+    if (!Array.isArray(home_sections) || home_sections.length === 0) {
+      home_sections = [
+        { key: 'hero', on: true },
+        { key: 'about', on: true },
+        { key: 'teachers', on: true },
+        { key: 'schedule', on: true },
+        { key: 'blog', on: true },
+      ];
     }
 
-    res.json({ ok: true, settings: out });
+    // 홈 히어로/소개 콘텐츠(슈퍼가 편집)
+    const hero_title      = await getSetting('hero_title',     'IG수학학원');
+    const hero_subtitle   = await getSetting('hero_subtitle',  '학생의 꿈과 성장을 함께하는 개별맞춤 수학 전문 학원');
+    const hero_logo_url   = await getSetting('hero_logo_url',  ''); // 비워도 동작
+    const about_md        = await getSetting('about_md',       'IG수학학원은 학생 한 명, 한 명의 실력과 진로에 맞춘 맞춤형 커리큘럼으로 수학 실력은 물론 자기주도 학습 역량까지 함께 키워나갑니다.');
+
+    // 과거 호환: 블로그 노출 키
+    const blog_show       = toBool(await getSetting('blog_show', 'true'), true);
+
+    res.json({
+      ok: true,
+      menu: {
+        home: menu_home_on,
+        blog: menu_blog_on,
+        materials: menu_materials_on,
+        contact: menu_contact_on,
+      },
+      theme: {
+        color: site_theme_color,
+        mode: site_theme_mode,
+      },
+      home: {
+        sections: home_sections,  // [{key:'hero'|'about'|'teachers'|'schedule'|'blog', on:true|false}]
+        hero: { title: hero_title, subtitle: hero_subtitle, logoUrl: hero_logo_url },
+        about: { md: about_md },
+        blog_show, // 구버전 호환
+      },
+    });
   } catch (e) {
+    console.error('[publicSiteSettingsController.getPublic]', e);
     res.status(500).json({ ok: false, message: '공개 설정 조회 실패', error: String(e?.message || e) });
   }
 };
