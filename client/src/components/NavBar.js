@@ -1,19 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useSiteSettings } from "../context/SiteSettingsContext";
 
 function NavBar() {
-  // 새 세션 시작 전에는 무조건 '로그아웃 상태'로 초기 표시
-  const initialRole = (() => {
+  const { ready, menu, theme } = useSiteSettings();
+  const [role, setRole] = useState(() => {
     if (!sessionStorage.getItem("session-started")) return null;
-    return sessionStorage.getItem("role") || localStorage.getItem("role");
-  })();
-
-  const [role, setRole] = useState(initialRole);
+    return localStorage.getItem("role") || sessionStorage.getItem("role");
+  });
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const syncRole = () => setRole(sessionStorage.getItem("role") || localStorage.getItem("role"));
+    const syncRole = () => setRole(localStorage.getItem("role") || sessionStorage.getItem("role"));
     window.addEventListener("auth-changed", syncRole);
     window.addEventListener("storage", syncRole);
     syncRole();
@@ -24,40 +23,57 @@ function NavBar() {
   }, []);
 
   useEffect(() => {
-    setRole(sessionStorage.getItem("role") || localStorage.getItem("role"));
+    setRole(localStorage.getItem("role") || sessionStorage.getItem("role"));
   }, [location]);
 
   const handleLogout = () => {
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("role");
     localStorage.removeItem("token");
     localStorage.removeItem("role");
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("role");
     window.dispatchEvent(new Event("auth-changed"));
     setRole(null);
     navigate("/login");
   };
 
+  if (!ready) {
+    return (
+      <nav style={{
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        background: "#2d4373", padding: "12px 4vw", marginBottom: 24
+      }}>
+        <div style={{ height: 20, width: 140, background: "#ffffff33", borderRadius: 6 }} />
+        <div style={{ height: 20, width: 260, background: "#ffffff33", borderRadius: 6 }} />
+      </nav>
+    );
+  }
+
+  const brandColor = theme?.color || "#2d4373";
+
   return (
     <nav style={{
       display: "flex", flexWrap: "wrap", justifyContent: "space-between",
-      alignItems: "center", background: "#2d4373", padding: "10px 4vw", marginBottom: 24,
+      alignItems: "center", background: brandColor, padding: "10px 4vw", marginBottom: 24,
       position: "sticky", top: 0, zIndex: 100
     }}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-        <Link style={{ color: "white", fontWeight: "bold", fontSize: 20, textDecoration: "none" }} to="/">IG수학학원</Link>
-        <Link style={{ color: "white", textDecoration: "none" }} to="/news">공지사항</Link>
-        <Link to="/contact" style={{ color: "#fff", textDecoration: "none" }}>상담문의</Link>
-        <Link to="/blog" style={{ color: "#fff", textDecoration: "none" }}>블로그최신글</Link>
-        <Link style={{ color: "white", textDecoration: "none" }} to="/materials">자료실</Link>
+        {menu?.home !== false && (
+          <Link style={{ color: "white", fontWeight: "bold", fontSize: 20, textDecoration: "none" }} to="/">IG수학학원</Link>
+        )}
+        {menu?.blog && <Link style={{ color: "white", textDecoration: "none" }} to="/news">공지사항</Link>}
+        {menu?.contact && <Link to="/contact" style={{ color: "#fff", textDecoration: "none" }}>상담문의</Link>}
+        {menu?.blog && <Link to="/blog" style={{ color: "#fff", textDecoration: "none" }}>블로그최신글</Link>}
+        {menu?.materials && <Link style={{ color: "white", textDecoration: "none" }} to="/materials">자료실</Link>}
       </div>
+
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
-        {/* ✅ 슈퍼/운영자 공통으로 대시보드 노출 */}
         {(role === "admin" || role === "super") && (
           <Link style={{ color: "white", textDecoration: "none" }} to="/dashboard">관리자 대시보드</Link>
         )}
-        {/* ✅ 슈퍼 전용: 슈퍼 설정 */}
         {role === "super" && (
-          <Link style={{ color: "white", textDecoration: "none" }} to="/super-settings">슈퍼 설정</Link>
+          <Link style={{ color: "white", textDecoration: "none", fontWeight: 800 }} to="/super-settings">
+            슈퍼 설정
+          </Link>
         )}
         {role === "teacher" && (
           <Link style={{ color: "white", textDecoration: "none" }} to="/dashboard">강사 대시보드</Link>
@@ -70,7 +86,7 @@ function NavBar() {
             onClick={handleLogout}
             style={{
               background: "#fff",
-              color: "#2d4373",
+              color: brandColor,
               border: "none",
               borderRadius: 8,
               padding: "6px 18px",
