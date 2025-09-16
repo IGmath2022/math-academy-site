@@ -15,6 +15,10 @@ import Blog from "./pages/Blog";
 import AttendancePage from "./pages/AttendancePage";
 import ReportPublic from "./pages/ReportPublic";
 
+// 슈퍼 설정 페이지 (통합본) + 레거시 경로 호환용 래퍼
+import SuperSettings from "./pages/SuperSettings";
+import SuperSiteSettings from "./pages/SuperSiteSettings";
+
 function App() {
   return (
     <SiteSettingsProvider>
@@ -30,6 +34,11 @@ function App() {
             <Route path="/materials" element={<Materials />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/blog" element={<Blog />} />
+
+            {/* 슈퍼 관리자 설정 (신규 표준 경로) */}
+            <Route path="/super-settings" element={<SuperSettings />} />
+            {/* 레거시 호환 경로: 기존 링크가 있을 수 있어 유지 */}
+            <Route path="/super-site-settings" element={<SuperSiteSettings />} />
           </Route>
 
           {/* NavBar/FloatingContact 없는 Layout */}
