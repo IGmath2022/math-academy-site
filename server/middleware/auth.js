@@ -2,68 +2,69 @@
 const jwt = require('jsonwebtoken');
 const SECRET = process.env.JWT_SECRET || 'mathacademy_secret_key';
 
-function verifyToken(req) {
-  const authHeader = req.headers.authorization || '';
-  const token = authHeader.split(' ')[1];
-  if (!token) return null;
-  try {
-    return jwt.verify(token, SECRET);
-  } catch {
-    return null;
-  }
-}
-
+/**
+ * 공통 인증: Authorization: Bearer <token>
+ * payload: { id, email, role }
+ */
 exports.isAuthenticated = (req, res, next) => {
-  const decoded = verifyToken(req);
-  if (!decoded) return res.status(401).json({ message: '토큰 없음 또는 유효하지 않음' });
-  req.user = decoded;
-  next();
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ message: '토큰 없음' });
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    res.status(401).json({ message: '유효하지 않은 토큰' });
+  }
 };
 
-// 🔒 기존 라우트 호환: admin 또는 super 허용
+/** (레거시) 관리자만 — super는 제외 */
 exports.isAdmin = (req, res, next) => {
   exports.isAuthenticated(req, res, () => {
-    const role = req.user?.role;
-    if (role !== 'admin' && role !== 'super') {
-      return res.status(403).json({ message: '관리자 전용' });
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: '관리자만 접근 가능' });
     }
     next();
   });
 };
 
-/* =========================
- * RBAC 유틸리티
- * ========================= */
-function allowRoles(roles = []) {
-  return (req, res, next) => {
-    exports.isAuthenticated(req, res, () => {
-      const role = req.user?.role;
-      if (!roles.includes(role)) {
-        return res.status(403).json({ message: '권한이 없습니다.' });
-      }
-      next();
-    });
-  };
-}
-
-exports.requireSuper = allowRoles(['super']);
-exports.requireAdminOrSuper = allowRoles(['admin', 'super']);
-exports.requireTeacher = allowRoles(['teacher']);
-exports.requireStaff = allowRoles(['teacher', 'admin', 'super']); // 강사/운영/슈퍼
-exports.requireStudent = allowRoles(['student']);
-
-/**
- * 자신(학생 본인) 혹은 스태프만 접근 허용
- * - getUserId: 요청에서 사용자 id를 추출하는 함수(req -> userId)
- */
-exports.requireSelfOrStaff = (getUserId) => (req, res, next) => {
+/** 슈퍼 전용 */
+exports.requireSuper = (req, res, next) => {
   exports.isAuthenticated(req, res, () => {
-    const me = String(req.user?.id || '');
-    const role = req.user?.role;
-    const target = String(getUserId(req) || '');
-    if (['teacher', 'admin', 'super'].includes(role) || (me && target && me === target)) {
-      return next();
+    if (req.user.role !== 'super') {
+      return res.status(403).json({ message: '슈퍼관리자만 접근 가능' });
     }
-    return res.status(403).json({ message: '권한이 없습니다.' });
+    next();
+  });
+};
+
+/** 운영자 또는 슈퍼 */
+exports.requireAdminOrSuper = (req, res, next) => {
+  exports.isAuthenticated(req, res, () => {
+    if (!['admin', 'super'].includes(req.user.role)) {
+      return res.status(403).json({ message: '운영자/슈퍼만 접근 가능' });
+    }
+    next();
+  });
+};
+
+/** 강사 전용 */
+exports.requireTeacher = (req, res, next) => {
+  exports.isAuthenticated(req, res, () => {
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({ message: '강사만 접근 가능' });
+    }
+    next();
+  });
+};
+
+/** 스태프 공통(admin | super | teacher) */
+exports.requireStaff = (req, res, next) => {
+  exports.isAuthenticated(req, res, () => {
+    if (!['admin', 'super', 'teacher'].includes(req.user.role)) {
+      return res.status(403).json({ message: '스태프만 접근 가능' });
+    }
+    next();
   });
 };
