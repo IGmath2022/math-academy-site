@@ -36,7 +36,6 @@ function NavBar() {
     navigate("/login");
   };
 
-  // 초기 로드 시 깜빡임 방지: 캐시 없으면 스켈레톤 바
   if (!ready) {
     return (
       <nav style={{
@@ -70,6 +69,11 @@ function NavBar() {
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
         {(role === "admin" || role === "super") && (
           <Link style={{ color: "white", textDecoration: "none" }} to="/dashboard">관리자 대시보드</Link>
+        )}
+        {role === "super" && (
+          <Link style={{ color: "white", textDecoration: "none", fontWeight: 800 }} to="/super-settings">
+            슈퍼 설정
+          </Link>
         )}
         {role === "teacher" && (
           <Link style={{ color: "white", textDecoration: "none" }} to="/dashboard">강사 대시보드</Link>
