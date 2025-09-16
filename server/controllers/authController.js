@@ -5,18 +5,23 @@ const SECRET = process.env.JWT_SECRET || 'mathacademy_secret_key';
 
 // 회원가입
 exports.register = async (req, res) => {
-  const { name, email, password, schoolId, parentPhone } = req.body; // ★ parentPhone 받음
+  const { name, email, password, schoolId, parentPhone, role } = req.body;
   try {
     const exists = await User.findOne({ email });
     if (exists) return res.status(409).json({ message: '이미 가입된 이메일입니다.' });
+
     const hashed = await bcrypt.hash(password, 10);
+
+    // self-signup은 무조건 student로 고정 (운영자/강사/슈퍼는 관리자 화면에서만 부여)
+    const safeRole = ['student'].includes(role) ? role : 'student';
+
     const user = await User.create({
       name,
       email,
       password: hashed,
-      role: 'student',
+      role: safeRole,
       schoolId: schoolId || null,
-      parentPhone: parentPhone || "" // ★ parentPhone 저장
+      parentPhone: safeRole === 'student' ? (parentPhone || '') : undefined
     });
     res.status(201).json({ message: '회원가입 성공', userId: user._id });
   } catch (err) {

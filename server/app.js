@@ -10,11 +10,18 @@ const cron = require('node-cron');
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// 기존/신규 라우트
-const attendanceRoutes     = require('./routes/attendanceRoutes');
-const bannerUploadRoutes   = require('./routes/bannerUpload');
-const adminLessonRoutes    = require('./routes/adminLessonRoutes'); // /api/admin/*
-const reportRoutes         = require('./routes/reportRoutes');      // /report, /r/:code
+/* =========================
+ * 라우트 require
+ * ========================= */
+const attendanceRoutes    = require('./routes/attendanceRoutes');
+const bannerUploadRoutes  = require('./routes/bannerUpload');
+const adminLessonRoutes   = require('./routes/adminLessonRoutes');   // /api/admin/*
+const reportRoutes        = require('./routes/reportRoutes');        // /report, /r/:code
+const classGroupRoutes    = require('./routes/classGroupRoutes');    // ✅ 수업반(관리/스태프 공유)
+const staffLessonRoutes   = require('./routes/staffLessonRoutes');   // /api/staff/lessons/*
+const superSettingsRoutes = require('./routes/superSettingsRoutes'); // /api/admin/super/*
+const adminUserRoutes     = require('./routes/adminUserRoutes');     // /api/admin/users/*
+const staffCounselRoutes  = require('./routes/staffCounselRoutes');  // /api/staff/counsel* (CounselLog)
 
 /* =========================
  * CORS 설정 (다중 오리진)
@@ -28,9 +35,7 @@ const allowedOrigins = (process.env.CORS_ORIGINS || 'https://ig-math-2022.onrend
 
 app.use(cors({
   origin(origin, callback) {
-    // 서버-서버 호출, 헬스체크 등 'Origin' 헤더가 없는 경우 허용
-    if (!origin) return callback(null, true);
-    // 화이트리스트에 포함된 오리진만 허용
+    if (!origin) return callback(null, true); // 서버-서버 호출 허용
     if (allowedOrigins.includes(origin)) return callback(null, true);
     return callback(new Error(`Not allowed by CORS: ${origin}`));
   },
@@ -39,8 +44,10 @@ app.use(cors({
 
 app.use(express.json());
 
-// === 서버 외부 IP 조회 라우터(운영용) ===
-app.get('/myip', async (req, res) => {
+/* =========================
+ * 운영 확인: 서버 외부 IP
+ * ========================= */
+app.get('/myip', async (_req, res) => {
   try {
     const { data } = await axios.get('https://ipinfo.io/ip');
     res.send(data);
@@ -52,7 +59,9 @@ axios.get('https://ipinfo.io/ip').then(r => {
   console.log("서버의 외부IP:", r.data.trim());
 });
 
-// === 몽구스 연결 ===
+/* =========================
+ * Mongo 연결
+ * ========================= */
 mongoose.connect(process.env.MONGO_URL, {
   useNewUrlParser: true,
   useUnifiedTopology: true
@@ -60,8 +69,14 @@ mongoose.connect(process.env.MONGO_URL, {
   .then(async () => {
     console.log("MongoDB Connected!");
 
-    // ==== 라우트 연결 (기존 유지) ====
+    /* =========================
+     * 정적/공용 라우트
+     * ========================= */
     app.use('/uploads', express.static('uploads'));
+
+    /* =========================
+     * 기존/일반 API
+     * ========================= */
     app.use('/api/auth', require('./routes/authRoutes'));
     app.use('/api/subjects', require('./routes/subjectRoutes'));
     app.use('/api/chapters', require('./routes/chapterRoutes'));
@@ -77,26 +92,51 @@ mongoose.connect(process.env.MONGO_URL, {
     app.use('/api/schools', require('./routes/schoolRoutes'));
     app.use('/api/schoolschedules', require('./routes/schoolScheduleRoutes'));
     app.use('/api/school-periods', require("./routes/schoolPeriodRoutes"));
-    // ✅ 출결 라우트는 "한 번만" 마운트하세요(중복 제거)
     app.use('/api/attendance', attendanceRoutes);
     app.use('/api/files', require('./routes/upload'));
     app.use('/api/banner', bannerUploadRoutes);
 
-    // ==== 신규 라우트 추가 ====
-    app.use('/api/admin', adminLessonRoutes); // 오늘 수업 입력/예약/발송(관리자)
+    /* =========================
+     * 관리자/스태프 전용 API
+     * ========================= */
+    // 관리자(레슨 발송/예약 등)
+    app.use('/api/admin', adminLessonRoutes);
+    // 관리자: 계정/권한
+    app.use('/api/admin', adminUserRoutes);
+    // 스태프(강사 전용 레슨/월로그/알림 등)
+    app.use('/api/staff', staffLessonRoutes);
+    // 슈퍼 설정
+    app.use('/api/admin', superSettingsRoutes);
+
+    // ✅ 수업반(ClassGroup) - 역할별 접두어로 마운트 (경로 일관성)
+    app.use('/api/admin', classGroupRoutes);  // /api/admin/classes, /api/admin/classes/:id/assign
+    app.use('/api/staff', classGroupRoutes);  // /api/staff/classes/mine, /api/staff/metrics/workload
+
+    // ✅ 상담(CounselLog) - 스태프 전용
+    app.use('/api/staff', staffCounselRoutes); // /api/staff/counsel*
+
+    // 기존 관리자 기타 라우트(프로필/상담/수업형태 등)
     app.use('/api/admin', require('./routes/adminProfileRoutes'));
     app.use('/api/admin', require('./routes/adminCounselRoutes'));
     app.use('/api/admin', require('./routes/adminClassTypeRoutes'));
-    app.use('/', reportRoutes);            // 공개 리포트 뷰(/report, /r/:code)
+    app.use('/api/site', require('./routes/publicSiteSettingsRoutes'));
 
-    // 메인
-    app.get('/', (req, res) => {
+    // 공개 리포트 뷰(/report, /r/:code)
+    app.use('/', reportRoutes);
+
+    /* =========================
+     * 헬스 체크
+     * ========================= */
+    app.get('/', (_req, res) => {
       res.send('서버가 정상적으로 동작합니다!');
     });
 
-    // ==== 샘플 계정/Setting 자동 생성 (최초 실행시) ====
+    /* =========================
+     * 최초 실행시 기본 데이터 생성
+     * ========================= */
     const User = require('./models/User');
     const Setting = require('./models/Setting');
+    const ClassGroup = require('./models/ClassGroup');
     const bcrypt = require("bcryptjs");
 
     (async () => {
@@ -112,10 +152,13 @@ mongoose.connect(process.env.MONGO_URL, {
         { key: "banner3_img", value: "" },
         { key: "blog_show", value: "true" },
 
-        // 신규: 자동/예약용 설정
+        // 자동/예약 설정
         { key: "daily_report_auto_on", value: "false" }, // 리포트 자동발송 기본 OFF
         { key: "auto_leave_on", value: "true" },         // 자동하원 기본 ON
-        { key: "report_jwt_exp_days", value: "7" }       // 리포트 링크 만료일(일)
+        { key: "report_jwt_exp_days", value: "7" },      // 리포트 링크 만료일(일)
+
+        // 기본 반 이름
+        { key: "default_class_name", value: "IG수학" }
       ];
       for (const s of defaultSettings) {
         const found = await Setting.findOne({ key: s.key });
@@ -123,39 +166,55 @@ mongoose.connect(process.env.MONGO_URL, {
       }
       console.log("Setting 테이블 기본값 초기화 완료!");
 
-      // 샘플 계정 (admin, student)
-      const adminPass    = await bcrypt.hash("admin1234", 10);
-      const student1Pass = await bcrypt.hash("student1234", 10);
-      const student2Pass = await bcrypt.hash("student1234", 10);
+      // 기본 계정 생성(존재 시 건너뜀)
+      const mk = async (name, email, role, parentPhone) => {
+        const found = await User.findOne({ email });
+        if (found) return found;
+        const pass = await bcrypt.hash(`${role}1234`, 10);
+        const doc = { name, email, password: pass, role };
+        if (role === 'student') doc.parentPhone = parentPhone || '01000000000';
+        return await User.create(doc);
+      };
 
-      const defaultUsers = [
-        { name: "운영자", email: "admin@example.com",  password: adminPass,    role: "admin"   },
-        { name: "학생A",  email: "student1@example.com", password: student1Pass, role: "student" },
-        { name: "학생B",  email: "student2@example.com", password: student2Pass, role: "student" }
-      ];
-      for (const user of defaultUsers) {
-        const found = await User.findOne({ email: user.email });
-        if (!found) await User.create(user);
+      const superUser  = await mk("슈퍼관리자", "super@example.com",  "super");
+      const adminUser  = await mk("운영자",   "admin@example.com",  "admin");
+      const teacherA   = await mk("강사A",    "teacher1@example.com","teacher");
+      const studentA   = await mk("학생A",    "student1@example.com","student","01000000001");
+      const studentB   = await mk("학생B",    "student2@example.com","student","01000000002");
+
+      console.log("기본 계정 준비 완료:", [superUser.email, adminUser.email, teacherA.email, studentA.email, studentB.email]);
+
+      // 기본 반 자동 생성 & 학생 배정
+      const defaultClassName = (await Setting.findOne({ key: 'default_class_name' }))?.value || 'IG수학';
+      let baseClass = await ClassGroup.findOne({ name: defaultClassName });
+      if (!baseClass) {
+        baseClass = await ClassGroup.create({
+          name: defaultClassName,
+          academy: 'IG수학',
+          days: [],
+          timeStart: null,
+          timeEnd: null,
+          teachers: [adminUser._id, teacherA._id].filter(Boolean),
+          students: [studentA._id, studentB._id].filter(Boolean),
+          active: true
+        });
+        console.log(`기본 반 생성: ${baseClass.name}`);
       }
-      console.log("운영자/샘플 학생 계정 자동 생성 완료!");
-
-      const allUsers = await User.find();
-      console.log("DB User 전체 목록:", allUsers.map(u => u.email));
     })();
 
-    // ==== 크론 등록 (DB 연결 이후) ====
+    /* =========================
+     * CRON 등록
+     * ========================= */
     const KST = 'Asia/Seoul';
     const BASE_URL = (process.env.SELF_BASE_URL || `http://127.0.0.1:${PORT}`).replace(/\/+$/,'');
 
     // 1) 자동 하원 처리 — DB/ENV 토글 지원
-    const AUTO_LEAVE_CRON = process.env.AUTO_LEAVE_CRON || '30 22 * * *'; // 기본 22:30 KST
+    const AUTO_LEAVE_CRON = process.env.AUTO_LEAVE_CRON || '30 22 * * *'; // 22:30 KST
     if (!global.__AUTO_LEAVE_CRON_STARTED__) {
       global.__AUTO_LEAVE_CRON_STARTED__ = true;
       cron.schedule(AUTO_LEAVE_CRON, async () => {
         try {
           const Setting = require('./models/Setting');
-
-          // ENV 기본값(없으면 ON), DB값 있으면 DB 우선
           const ENV_ON = (process.env.CRON_ENABLED_AUTO_LEAVE ?? '1') !== '0';
           const s = await Setting.findOne({ key: 'auto_leave_on' });
           const DB_ON = (s?.value === 'true');
@@ -175,19 +234,15 @@ mongoose.connect(process.env.MONGO_URL, {
     }
 
     // 2) 일일 리포트 자동 발송 — ENV/DB 토글 지원(기본 OFF)
-    const DAILY_REPORT_CRON = process.env.DAILY_REPORT_CRON || '30 10 * * *'; // 기본 10:30 KST
+    const DAILY_REPORT_CRON = process.env.DAILY_REPORT_CRON || '30 10 * * *'; // 10:30 KST
     if (!global.__DAILY_REPORT_CRON_STARTED__) {
       global.__DAILY_REPORT_CRON_STARTED__ = true;
       cron.schedule(DAILY_REPORT_CRON, async () => {
         try {
-          // ENV 스위치 (기본 OFF)
           const ENV_ON = (process.env.DAILY_REPORT_AUTO === '1');
-
-          // DB 스위치 (없으면 ENV 기준)
           const Setting = require('./models/Setting');
           const s = await Setting.findOne({ key: 'daily_report_auto_on' });
           const DB_ON = (s?.value === 'true');
-
           const SHOULD_RUN = (typeof s?.value === 'string') ? DB_ON : ENV_ON;
           if (!SHOULD_RUN) {
             console.log(`[CRON][DAILY-REPORT] SKIP (auto OFF) @ ${new Date().toLocaleString('ko-KR', { timeZone: KST })}`);
@@ -202,7 +257,9 @@ mongoose.connect(process.env.MONGO_URL, {
       }, { timezone: KST });
     }
 
-    // ==== 서버 시작 ====
+    /* =========================
+     * 서버 시작
+     * ========================= */
     app.listen(PORT, () => {
       console.log(`서버가 http://localhost:${PORT} 에서 실행중`);
       console.log(`[CORS] allowed origins:`, allowedOrigins);

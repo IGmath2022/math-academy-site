@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Setting = require('../models/Setting');
 const LessonLog = require('../models/LessonLog');
 const NotificationLog = require('../models/NotificationLog');
+const ClassGroup = require('../models/ClassGroup'); // ✅ 강사 스코프 계산에 사용
 // ⛔️ formatDailyReport 사용 안 함 (alimtalkReport가 타이틀/본문을 생성)
 const { sendReportAlimtalk } = require('../utils/alimtalkReport');
 
@@ -47,16 +48,30 @@ async function computeStudyTimeMinFromAttendance(studentId, date) {
 /* =========================================================
  * 날짜별 목록(필터 지원)
  *   GET /api/admin/lessons?date=YYYY-MM-DD&scope=present|all|missing
+ *   GET /api/staff/lessons?date=YYYY-MM-DD&scope=present|all|missing
+ *   (스태프 라우트에서는 requireStaff가 감싸고, 컨트롤러 내부에서도 스코프 제한)
  * ========================================================= */
 exports.listByDate = async (req, res) => {
   const date = (req.query.date || moment().tz(KST).format('YYYY-MM-DD'));
   const scope = String(req.query.scope || 'present').toLowerCase(); // present | all | missing
 
-  // 1) 당일 출석/로그 수집
-  const inRecs = await Attendance.find({ date, type: 'IN' }).lean();
+  // === 스태프 스코프 결정(강사는 자신 반/학생만)
+  const scopedIds = await getScopedStudentIds(req); // null이면 제한 없음
+  const studentFilter = (scopedIds === null)
+    ? { role: 'student', $or: [{ active: true }, { active: { $exists: false } }] }
+    : { _id: { $in: scopedIds } };
+
+  // 1) 당일 출석/로그 수집 (필요 시 스코프 적용)
+  const baseQueryAttendance = { date, type: 'IN' };
+  const inRecs = await Attendance.find(
+    (scopedIds === null) ? baseQueryAttendance : { ...baseQueryAttendance, userId: { $in: scopedIds } }
+  ).lean();
   const inIds = inRecs.map(r => String(r.userId));
 
-  const dayLogs = await LessonLog.find({ date }).lean();
+  const baseQueryLogs = { date };
+  const dayLogs = await LessonLog.find(
+    (scopedIds === null) ? baseQueryLogs : { ...baseQueryLogs, studentId: { $in: scopedIds } }
+  ).lean();
   const logIds = dayLogs.map(l => String(l.studentId));
 
   const presentSet = new Set([...inIds, ...logIds]);
@@ -66,23 +81,19 @@ exports.listByDate = async (req, res) => {
   let users = [];
 
   if (scope === 'present') {
-    // 출석했거나 이미 로그가 있는 학생
     ids = [...presentSet];
     users = await User.find({ _id: { $in: ids } }).lean();
   } else {
-    // 활성 학생 전체(비활성 제외)
-    const allStudents = await User.find({
-      role: 'student',
-      $or: [{ active: true }, { active: { $exists: false } }]
-    }).select('_id name').lean();
-
+    // 활성 학생 전체(또는 강사 스코프 학생)
+    const allStudents = await User.find(studentFilter).select('_id name').lean();
     const allIds = allStudents.map(u => String(u._id));
 
     if (scope === 'all') {
       ids = allIds;
     } else if (scope === 'missing') {
       // 출석/로그 둘 다 없는 학생
-      ids = allIds.filter(id => !presentSet.has(id));
+      const present = presentSet;
+      ids = allIds.filter(id => !present.has(id));
     } else {
       ids = [...presentSet];
     }
@@ -144,10 +155,16 @@ exports.listByDate = async (req, res) => {
 /* =========================================================
  * 리포트 1건 상세(학생+날짜)
  *   GET /api/admin/lessons/detail?studentId=&date=
+ *   GET /api/staff/lessons/detail?studentId=&date=
  * ========================================================= */
 exports.getDetail = async (req, res) => {
   const { studentId, date } = req.query;
   if (!studentId || !date) return res.status(400).json({ message: 'studentId, date 필수' });
+
+  // 강사 스코프 가드
+  if (!(await allowStudentId(req, studentId))) {
+    return res.status(403).json({ message: '권한이 없습니다.' });
+  }
 
   const log = await LessonLog.findOne({ studentId, date }).lean();
   if (!log) return res.json({});
@@ -161,11 +178,17 @@ exports.getDetail = async (req, res) => {
 /* =========================================================
  * 작성/수정(업서트)
  *   POST /api/admin/lessons
+ *   POST /api/staff/lessons
  * ========================================================= */
 exports.createOrUpdate = async (req, res) => {
   const body = { ...(req.body || {}) };
   const { studentId, date } = body;
   if (!studentId || !date) return res.status(400).json({ message: 'studentId, date 필수' });
+
+  // 강사 스코프 가드
+  if (!(await allowStudentId(req, studentId))) {
+    return res.status(403).json({ message: '권한이 없습니다.' });
+  }
 
   // 프론트 호환: studyTimeMin → durationMin
   if (body.studyTimeMin !== undefined && body.studyTimeMin !== null && body.studyTimeMin !== '') {
@@ -197,25 +220,37 @@ exports.createOrUpdate = async (req, res) => {
 /* =========================================================
  * 예약 대기 목록
  *   GET /api/admin/lessons/pending
+ *   GET /api/staff/lessons/pending
  * ========================================================= */
-exports.listPending = async (_req, res) => {
-  const now = new Date();
-  const items = await LessonLog.find({
+exports.listPending = async (req, res) => {
+  // 강사 스코프 적용
+  const scopedIds = await getScopedStudentIds(req);
+  const q = {
     notifyStatus: '대기',
-    scheduledAt: { $ne: null, $lte: now }
-  }).limit(200).lean();
+    scheduledAt: { $ne: null, $lte: new Date() }
+  };
+  const items = await LessonLog.find(
+    scopedIds === null ? q : { ...q, studentId: { $in: scopedIds } }
+  ).limit(200).lean();
   res.json(items);
 };
 
 /* =========================================================
  * 1건 발송
  *   POST /api/admin/lessons/send-one/:id
+ *   POST /api/staff/lessons/send-one/:id
  * ========================================================= */
 exports.sendOne = async (req, res) => {
   try {
     const { id } = req.params;
     const log = await LessonLog.findById(id);
     if (!log) return res.status(404).json({ message: 'LessonLog 없음' });
+
+    // 강사 스코프 가드
+    if (!(await allowStudentId(req, String(log.studentId)))) {
+      return res.status(403).json({ message: '권한이 없습니다.' });
+    }
+
     if (log.notifyStatus === '발송') {
       return res.status(409).json({ ok: false, message: '이미 발송됨' });
     }
@@ -288,6 +323,7 @@ exports.sendOne = async (req, res) => {
 /* =========================================================
  * 선택 발송(여러 건)
  *   POST /api/admin/lessons/send-selected
+ *   POST /api/staff/lessons/send-selected
  *   body: { ids: [logId, ...] }
  * ========================================================= */
 exports.sendSelected = async (req, res) => {
@@ -301,9 +337,13 @@ exports.sendSelected = async (req, res) => {
     try {
       const log = await LessonLog.findById(_id);
       if (!log) { failed++; continue; }
+
+      // 강사 스코프 가드
+      if (!(await allowStudentId(req, String(log.studentId)))) { failed++; continue; }
+
       if (log.notifyStatus === '발송') { skipped++; continue; }
 
-      const fakeReq = { params: { id: String(_id) } };
+      const fakeReq = { ...req, params: { id: String(_id) } };
       const fakeRes = { json: () => {}, status: () => ({ json: () => {} }) };
       await exports.sendOne(fakeReq, fakeRes);
 
@@ -321,22 +361,25 @@ exports.sendSelected = async (req, res) => {
 /* =========================================================
  * 자동 발송(예약분)
  *   POST /api/admin/lessons/send-bulk
+ *   POST /api/staff/lessons/send-bulk
  *   - ON/OFF 판단은 app.js의 CRON에서 DB 키 'daily_report_auto_on'으로 수행
  * ========================================================= */
-exports.sendBulk = async (_req, res) => {
+exports.sendBulk = async (req, res) => {
+  const scopedIds = await getScopedStudentIds(req);
+
   const list = await LessonLog.find({
     notifyStatus: '대기',
-    scheduledAt: { $ne: null, $lte: new Date() }
-  }).select('_id').lean();
+    scheduledAt: { $ne: null, $lte: new Date() },
+    ...(scopedIds === null ? {} : { studentId: { $in: scopedIds } })
+  }).select('_id studentId').lean();
 
   let sent = 0, failed = 0;
   for (const item of list) {
     try {
-      const r = await LessonLog.findById(item._id);
-      if (!r) { failed++; continue; }
-      if (r.notifyStatus === '발송') { continue; }
+      // 강사 스코프 가드
+      if (!(await allowStudentId(req, String(item.studentId)))) { failed++; continue; }
 
-      const fakeReq = { params: { id: String(item._id) } };
+      const fakeReq = { ...req, params: { id: String(item._id) } };
       const fakeRes = { json: () => {}, status: () => ({ json: () => {} }) };
       await exports.sendOne(fakeReq, fakeRes);
 
@@ -366,6 +409,11 @@ exports.getAttendanceOne = async (req, res) => {
   try {
     const { studentId, date } = req.query;
     if (!studentId || !date) return res.status(400).json({ message: 'studentId, date 필수' });
+
+    // 강사 스코프 가드
+    if (!(await allowStudentId(req, studentId))) {
+      return res.status(403).json({ message: '권한이 없습니다.' });
+    }
 
     const rows = await Attendance.find({ userId: studentId, date }).lean();
     const ins  = rows.filter(r => r.type === 'IN').map(r => r.time).sort();
@@ -404,11 +452,17 @@ exports.getAttendanceOne = async (req, res) => {
   }
 };
 
-// 등/하원 수동 설정(관리자)
+// 등/하원 수동 설정(관리자/강사)
 exports.setAttendanceTimes = async (req, res) => {
   try {
     const { studentId, date, checkIn, checkOut, overwrite = true } = req.body || {};
     if (!studentId || !date) return res.status(400).json({ message: 'studentId, date 필수' });
+
+    // 강사 스코프 가드
+    if (!(await allowStudentId(req, studentId))) {
+      return res.status(403).json({ message: '권한이 없습니다.' });
+    }
+
     const tIn  = toHHMMSS(checkIn);
     const tOut = toHHMMSS(checkOut);
 
@@ -470,6 +524,7 @@ exports.setAttendanceTimes = async (req, res) => {
  * =========================== */
 
 // GET /api/admin/settings/daily-auto -> { on: true|false }
+// GET /api/staff/settings/daily-auto -> { on: true|false }
 exports.getDailyAuto = async (_req, res) => {
   try {
     const s = await Setting.findOne({ key: 'daily_report_auto_on' });
@@ -481,6 +536,7 @@ exports.getDailyAuto = async (_req, res) => {
 };
 
 // POST /api/admin/settings/daily-auto { on: boolean } -> { ok, on }
+// POST /api/staff/settings/daily-auto { on: boolean } -> { ok, on }
 exports.setDailyAuto = async (req, res) => {
   try {
     const on = !!req.body?.on;
@@ -494,3 +550,161 @@ exports.setDailyAuto = async (req, res) => {
     res.status(500).json({ message: 'daily-auto 저장 실패', error: String(e?.message || e) });
   }
 };
+
+/* =========================================================
+ * ✅ 강사 대시보드 위젯: 오늘 알림
+ *   GET /api/staff/alerts/today
+ *   응답:
+ *   {
+ *     missingAttendance: { count, names: [] },
+ *     missingReportPrev: { date: 'YYYY-MM-DD', count, names: [] }
+ *   }
+ * ========================================================= */
+exports.getTodayAlerts = async (req, res) => {
+  try {
+    const today = moment().tz(KST).format('YYYY-MM-DD');
+
+    // 스코프 대상 학생 목록
+    const scopedIds = await getScopedStudentIds(req);
+    const studentQ = (scopedIds === null)
+      ? { role: 'student', $or: [{ active: true }, { active: { $exists: false } }] }
+      : { _id: { $in: scopedIds } };
+
+    const students = await User.find(studentQ).select('_id name').lean();
+    const idSetAll = new Set(students.map(s => String(s._id)));
+    const nameById = Object.fromEntries(students.map(s => [String(s._id), s.name]));
+
+    // 오늘 등원 목록(IN)
+    const inRowsToday = await Attendance.find({
+      date: today, type: 'IN',
+      ...(scopedIds === null ? {} : { userId: { $in: scopedIds } })
+    }).select('userId').lean();
+    const inSetToday = new Set(inRowsToday.map(r => String(r.userId)));
+
+    // 오늘 "미출결" = 스코프 학생 중 IN이 없는 사람
+    const missingAttendanceIds = [...idSetAll].filter(id => !inSetToday.has(id));
+    const missingAttendanceNames = missingAttendanceIds.map(id => nameById[id]).filter(Boolean);
+
+    // 이전 수업일(단순: 어제)
+    const prevDate = moment(today).subtract(1, 'day').format('YYYY-MM-DD');
+
+    // 어제 등원했고 보고서 없는 학생
+    const inRowsPrev = await Attendance.find({
+      date: prevDate, type: 'IN',
+      ...(scopedIds === null ? {} : { userId: { $in: scopedIds } })
+    }).select('userId').lean();
+    const inSetPrev = new Set(inRowsPrev.map(r => String(r.userId)));
+
+    const logsPrev = await LessonLog.find({
+      date: prevDate,
+      ...(scopedIds === null ? {} : { studentId: { $in: scopedIds } })
+    }).select('studentId').lean();
+    const logSetPrev = new Set(logsPrev.map(l => String(l.studentId)));
+
+    const missingReportPrevIds = [...inSetPrev].filter(id => !logSetPrev.has(id) && idSetAll.has(id));
+    const missingReportPrevNames = missingReportPrevIds.map(id => nameById[id]).filter(Boolean);
+
+    res.json({
+      missingAttendance: { count: missingAttendanceIds.length, names: missingAttendanceNames.slice(0, 10) },
+      missingReportPrev: { date: prevDate, count: missingReportPrevIds.length, names: missingReportPrevNames.slice(0, 10) }
+    });
+  } catch (e) {
+    console.error('[lessonsController.getTodayAlerts]', e);
+    res.status(500).json({ message: '오늘 알림 계산 실패', error: String(e?.message || e) });
+  }
+};
+
+/* =========================================================
+ * ✅ 강사 대시보드 월 뷰
+ *   GET /api/staff/lessons/month-logs?month=YYYY-MM
+ *   응답:
+ *   { month:'YYYY-MM', days: [{ date:'YYYY-MM-DD', attendance: number, logs: number }] }
+ * ========================================================= */
+exports.getMonthLogs = async (req, res) => {
+  try {
+    const monthStr = (req.query.month || moment().tz(KST).format('YYYY-MM')).slice(0, 7);
+    const start = moment.tz(`${monthStr}-01`, 'YYYY-MM-DD', KST);
+    const end = start.clone().endOf('month');
+
+    const startStr = start.format('YYYY-MM-DD');
+    const endStr = end.format('YYYY-MM-DD');
+
+    const scopedIds = await getScopedStudentIds(req);
+
+    // 해당 월의 출석 IN/로그 수집 (스코프 적용)
+    const [attRows, logRows] = await Promise.all([
+      Attendance.find({
+        type: 'IN',
+        date: { $gte: startStr, $lte: endStr },
+        ...(scopedIds === null ? {} : { userId: { $in: scopedIds } })
+      }).select('date userId').lean(),
+      LessonLog.find({
+        date: { $gte: startStr, $lte: endStr },
+        ...(scopedIds === null ? {} : { studentId: { $in: scopedIds } })
+      }).select('date studentId').lean(),
+    ]);
+
+    // 일자별 unique count
+    const attMap = new Map(); // date -> Set(userId)
+    attRows.forEach(r => {
+      const d = r.date;
+      if (!attMap.has(d)) attMap.set(d, new Set());
+      attMap.get(d).add(String(r.userId));
+    });
+
+    const logMap = new Map(); // date -> Set(studentId)
+    logRows.forEach(r => {
+      const d = r.date;
+      if (!logMap.has(d)) logMap.set(d, new Set());
+      logMap.get(d).add(String(r.studentId));
+    });
+
+    const days = [];
+    for (let d = start.clone(); d.isSameOrBefore(end, 'day'); d.add(1, 'day')) {
+      const key = d.format('YYYY-MM-DD');
+      const attendance = attMap.has(key) ? attMap.get(key).size : 0;
+      const logs = logMap.has(key) ? logMap.get(key).size : 0;
+      days.push({ date: key, attendance, logs });
+    }
+
+    res.json({ month: monthStr, days });
+  } catch (e) {
+    console.error('[lessonsController.getMonthLogs]', e);
+    res.status(500).json({ message: '월 로그 조회 실패', error: String(e?.message || e) });
+  }
+};
+
+/* =========================================================
+ * 내부 유틸: 강사 스코프
+ *  - super/admin: null(제한 없음)
+ *  - teacher: 본인이 포함된 활성 반의 학생들
+ *  - 그 외(예: student): 빈 배열
+ * ========================================================= */
+async function getScopedStudentIds(req) {
+  const role = req.user?.role;
+  const userId = req.user?.id;
+
+  if (!role) return null; // 토큰 없으면 어차피 라우트에서 막힘
+  if (role === 'super' || role === 'admin') return null;
+  if (role === 'teacher') {
+    const groups = await ClassGroup.find({ active: true, teachers: userId }).select('students').lean();
+    const set = new Set();
+    for (const g of groups) {
+      (g.students || []).forEach(sid => set.add(String(sid)));
+    }
+    return [...set];
+  }
+  // student 등은 스태프 라우트 접근 불가지만 안전차원
+  return [];
+}
+
+/** 특정 학생에 대해 현재 사용자(강사)가 권한 있는지 체크 */
+async function allowStudentId(req, studentId) {
+  const role = req.user?.role;
+  if (role === 'super' || role === 'admin') return true;
+  if (role === 'teacher') {
+    const ids = await getScopedStudentIds(req);
+    return ids.includes(String(studentId));
+  }
+  return false;
+}

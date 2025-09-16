@@ -2,8 +2,9 @@ import React, { useEffect } from "react";
 import NavBar from "./NavBar";
 import FloatingContact from "./FloatingContact";
 import { Outlet } from "react-router-dom";
+import "../theme.css"; // ✅ 전역 테마 CSS 로딩
 
-function Layout({ hideNavBar }) {
+function Layout({ hideNavBar = false }) {
   // 새 브라우저 세션이면(localStorage 잔존) 강제 로그아웃
   useEffect(() => {
     // sessionStorage는 브라우저/앱을 완전히 닫으면 초기화됨

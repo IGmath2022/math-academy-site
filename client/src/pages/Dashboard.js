@@ -1,3 +1,4 @@
+// client/src/pages/Dashboard.js
 import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { API_URL } from "../api";
@@ -8,6 +9,9 @@ import StudentProgressCalendar from "../components/Student/StudentProgressCalend
 
 // Admin 탭 레이아웃(이미 프로젝트에 추가됨)
 import AdminDashboardTabs from "../components/Admin/AdminDashboardTabs";
+
+// Staff(강사) 탭 레이아웃
+import StaffTabs from "../components/Staff/StaffTabs";
 
 // 인증 유틸
 import { getToken, getRole, clearAuth } from "../utils/auth";
@@ -30,7 +34,6 @@ function StudentDashboard() {
   const [viewMode, setViewMode] = useState("list");
   const [chaptersMap, setChaptersMap] = useState({});
 
-  // JWT 파싱
   function parseJwt(token) {
     try {
       return JSON.parse(atob(token.split(".")[1]));
@@ -39,7 +42,6 @@ function StudentDashboard() {
     }
   }
 
-  // 내 정보
   useEffect(() => {
     const token = getToken();
     if (!token) {
@@ -60,14 +62,12 @@ function StudentDashboard() {
       });
   }, []);
 
-  // 블로그 노출 여부
   useEffect(() => {
     fetch(`${API_URL}/api/settings/blog_show`)
       .then((res) => res.json())
       .then((data) => setShowBlog(data.show));
   }, []);
 
-  // 할당 강의
   useEffect(() => {
     const token = getToken();
     if (!token) return;
@@ -80,7 +80,6 @@ function StudentDashboard() {
       .catch(() => setError("강의 정보를 불러오지 못했습니다."));
   }, []);
 
-  // 모든 챕터
   useEffect(() => {
     const token = getToken();
     if (!token) return;
@@ -97,11 +96,16 @@ function StudentDashboard() {
       });
   }, []);
 
-  // 진도 현황
   const fetchProgress = useCallback(() => {
     const token = getToken();
     if (!token) return;
-    const userId = parseJwt(token)?.id;
+    const userId = (() => {
+      try {
+        return JSON.parse(atob(token.split(".")[1]))?.id;
+      } catch {
+        return "";
+      }
+    })();
     axios
       .get(`${API_URL}/api/progress?userId=${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -115,14 +119,12 @@ function StudentDashboard() {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  // chapterId 기준 진도 map
   const progressMap = {};
   progressList.forEach((p) => {
     const id = getChapterId(p.chapterId);
     progressMap[String(id)] = p;
   });
 
-  // 진도 저장
   const handleProgressSave = async (chapterId) => {
     const token = getToken();
     if (!token) return;
@@ -138,15 +140,8 @@ function StudentDashboard() {
     try {
       await axios.post(
         `${API_URL}/api/progress`,
-        {
-          userId,
-          chapterId,
-          memo,
-          checked,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { userId, chapterId, memo, checked },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       setSaveResult("저장되었습니다!");
       fetchProgress();
@@ -158,7 +153,6 @@ function StudentDashboard() {
     }
   };
 
-  // ------------------- UI ------------------
   return (
     <div
       className="container"
@@ -176,13 +170,7 @@ function StudentDashboard() {
         내 강의 대시보드
       </h2>
       {error && (
-        <p
-          style={{
-            color: "#e14",
-            textAlign: "center",
-            margin: "8px 0",
-          }}
-        >
+        <p style={{ color: "#e14", textAlign: "center", margin: "8px 0" }}>
           {error}
         </p>
       )}
@@ -269,11 +257,11 @@ function StudentDashboard() {
             margin: 0,
           }}
         >
-          {/* 삭제된 강의/단원은 절대 안보임! */}
           {assignments
             .filter((a) => a.Chapter && a.Chapter.name)
             .map((a) => {
               const chapterId = getChapterId(a.Chapter);
+              const today = new Date().toISOString().slice(0, 10);
               return (
                 <li
                   key={a.id}
@@ -289,11 +277,7 @@ function StudentDashboard() {
                   <div>
                     <b>{a.Chapter.name}</b>
                     <span
-                      style={{
-                        color: "#888",
-                        fontSize: 14,
-                        marginLeft: 7,
-                      }}
+                      style={{ color: "#888", fontSize: 14, marginLeft: 7 }}
                     >
                       {a.Chapter.description}
                     </span>
@@ -326,7 +310,8 @@ function StudentDashboard() {
                       <input
                         type="checkbox"
                         checked={
-                          chapterId && (progressMap[chapterId]?.date === today)
+                          chapterId &&
+                          progressMap[chapterId]?.date === today
                         }
                         onChange={(e) => {
                           setProgressList((prev) => {
@@ -400,7 +385,6 @@ function StudentDashboard() {
             })}
         </ul>
       )}
-      {/* "삭제된 강의까지 모두 제외" */}
       {assignments.filter((a) => a.Chapter && a.Chapter.name).length === 0 && (
         <div style={{ color: "#888", textAlign: "center", marginTop: 32 }}>
           할당된 강의가 없습니다.
@@ -450,16 +434,17 @@ function StudentDashboard() {
 }
 
 /** =========================
- *  운영자 대시보드 (탭 버전)
+ *  운영자/강사/학생 라우팅 진입점
  *  ========================= */
 function AdminDashboard() {
   return <AdminDashboardTabs />;
 }
 
-/** =========================
- *  라우팅 진입점(서버 검증으로 역할 결정)
- *  ========================= */
-function Dashboard() {
+function TeacherDashboard() {
+  return <StaffTabs />;
+}
+
+export default function Dashboard() {
   const [role, setRole] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -477,7 +462,6 @@ function Dashboard() {
         });
         setRole(data?.role || getRole() || "");
       } catch {
-        // 토큰 문제면 즉시 로그아웃/초기화
         clearAuth();
         setRole("");
       } finally {
@@ -488,33 +472,18 @@ function Dashboard() {
 
   if (loading)
     return (
-      <div
-        style={{
-          textAlign: "center",
-          marginTop: 80,
-          color: "#888",
-          fontSize: 18,
-        }}
-      >
+      <div style={{ textAlign: "center", marginTop: 80, color: "#888", fontSize: 18 }}>
         로딩 중...
       </div>
     );
 
-  if (role === "admin") return <AdminDashboard />;
+  if (role === "admin" || role === "super") return <AdminDashboard />;
+  if (role === "teacher") return <TeacherDashboard />;
   if (role === "student") return <StudentDashboard />;
 
   return (
-    <div
-      style={{
-        textAlign: "center",
-        marginTop: 80,
-        color: "#888",
-        fontSize: 18,
-      }}
-    >
+    <div style={{ textAlign: "center", marginTop: 80, color: "#888", fontSize: 18 }}>
       로그인이 필요합니다.
     </div>
   );
 }
-
-export default Dashboard;
