@@ -1,75 +1,164 @@
-const News = require('../models/News');
-const path = require('path');
-const fs = require('fs');
+const News = require("../models/News");
+const path = require("path");
+const fs = require("fs");
 
-// 전체 공지 조회
+/**
+ * [GET] /api/news
+ * 공지 목록 (최신순)
+ */
 exports.getAll = async (req, res) => {
-  const news = await News.find().sort({ createdAt: -1 });
-  res.json(news);
+  try {
+    const list = await News.find({}).sort({ createdAt: -1 }).lean();
+    res.json(list);
+  } catch (e) {
+    console.error("[news] getAll error:", e);
+    res.status(500).json({ message: "Failed to load news list" });
+  }
 };
 
-// 공지 등록 (여러 파일 첨부)
+/**
+ * [GET] /api/news/:id
+ * 공지 단건
+ */
+exports.getOne = async (req, res) => {
+  try {
+    const row = await News.findById(req.params.id).lean();
+    if (!row) return res.status(404).json({ message: "Not found" });
+    res.json(row);
+  } catch (e) {
+    console.error("[news] getOne error:", e);
+    res.status(500).json({ message: "Failed to load news" });
+  }
+};
+
+/**
+ * [POST] /api/news
+ * 공지 생성 (관리자 권한 필요)
+ * - multipart/form-data (files 필드로 첨부)
+ * - author는 req.user에서 자동 채움(없으면 'admin')
+ */
 exports.create = async (req, res) => {
-  const { title, content, author } = req.body;
-  let files = [];
-  if (req.files && req.files.length) {
-    files = req.files.map(f => ({
+  try {
+    const { title = "", content = "", author } = req.body;
+    if (!title.trim()) return res.status(400).json({ message: "Title is required" });
+    if (!content.trim()) return res.status(400).json({ message: "Content is required" });
+
+    let authorStr = (typeof author === "string" && author.trim()) ? author.trim() : null;
+    if (!authorStr) {
+      authorStr =
+        (req.user && (req.user.name || req.user.email || (req.user._id && String(req.user._id)))) ||
+        "admin";
+    }
+
+    const files = (req.files || []).map((f) => ({
       name: f.filename,
-      originalName: f.originalname
+      originalName: f.originalname || "",
     }));
+
+    const doc = await News.create({
+      title: title.trim(),
+      content,
+      author: authorStr,
+      files,
+    });
+
+    res.json(doc);
+  } catch (e) {
+    console.error("[news] create error:", e);
+    res.status(500).json({ message: "Failed to create news" });
   }
-  const newNews = await News.create({ title, content, author, files });
-  res.status(201).json(newNews);
 };
 
-// 공지 수정 (파일 교체/추가)
+/**
+ * [PUT] /api/news/:id
+ * 공지 수정 (관리자 권한 필요)
+ * - 새 파일이 오면 files 뒤에 추가(기존 보존)
+ */
 exports.update = async (req, res) => {
-  const { title, content } = req.body;
-  const news = await News.findById(req.params.id);
-  if (!news) return res.status(404).json({ message: '공지 없음' });
+  try {
+    const { id } = req.params;
+    const row = await News.findById(id);
+    if (!row) return res.status(404).json({ message: "Not found" });
 
-  news.title = title;
-  news.content = content;
+    const { title, content, author } = req.body;
 
-  if (req.files && req.files.length) {
-    const newFiles = req.files.map(f => ({
+    if (typeof title === "string" && title.trim()) row.title = title.trim();
+    if (typeof content === "string") row.content = content;
+    if (typeof author === "string" && author.trim()) row.author = author.trim();
+
+    const files = (req.files || []).map((f) => ({
       name: f.filename,
-      originalName: f.originalname
+      originalName: f.originalname || "",
     }));
-    news.files = [...(news.files || []), ...newFiles];
+    if (files.length) {
+      row.files = [...(row.files || []), ...files];
+    }
+
+    await row.save();
+    res.json(row);
+  } catch (e) {
+    console.error("[news] update error:", e);
+    res.status(500).json({ message: "Failed to update news" });
   }
-  await news.save();
-  res.json(news);
 };
 
-// 공지 삭제
+/**
+ * [DELETE] /api/news/:id
+ * 공지 삭제 (관리자 권한 필요)
+ * - 업로드 폴더의 실제 파일도 best-effort 삭제
+ */
 exports.remove = async (req, res) => {
-  const news = await News.findById(req.params.id);
-  if (!news) return res.status(404).json({ message: '공지 없음' });
-  await News.deleteOne({ _id: req.params.id });
-  res.json({ message: '삭제 완료' });
+  try {
+    const { id } = req.params;
+    const row = await News.findById(id);
+    if (!row) return res.status(404).json({ message: "Not found" });
+
+    const uploadDir = path.join(process.cwd(), "uploads", "news");
+    for (const f of row.files || []) {
+      const full = path.join(uploadDir, f.name);
+      try {
+        if (fs.existsSync(full)) fs.unlinkSync(full);
+      } catch (e) {
+        console.warn("[news] unlink warn:", e?.message || e);
+      }
+    }
+
+    await News.deleteOne({ _id: id });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("[news] remove error:", e);
+    res.status(500).json({ message: "Failed to delete news" });
+  }
 };
 
-// 첨부파일 다운로드 (한글/특수문자 파일명)
-exports.download = async (req, res) => {
-  const filename = req.params.file;
-  const filePath = path.join(__dirname, "..", "uploads", "news", filename);
+/**
+ * [GET] /api/news/download/:filename
+ * 첨부 다운로드
+ */
+exports.downloadByFilename = async (req, res) => {
+  try {
+    const { filename } = req.params;
 
-  if (!fs.existsSync(filePath)) return res.status(404).send("파일 없음");
+    // 해당 파일을 가진 공지 존재 확인(보안/정합 체크)
+    const news = await News.findOne({ "files.name": filename }).lean();
+    if (!news) return res.status(404).send("공지 또는 파일 없음");
 
-  const news = await News.findOne({ "files.name": filename });
-  if (!news) return res.status(404).send("공지 또는 파일 없음");
+    const fileObj = (news.files || []).find((f) => f.name === filename);
+    if (!fileObj) return res.status(404).send("파일 정보 없음");
 
-  const fileObj = (news.files || []).find(f => f.name === filename);
-  if (!fileObj) return res.status(404).send("파일 정보 없음");
+    const uploadDir = path.join(process.cwd(), "uploads", "news");
+    const filePath = path.join(uploadDir, filename);
+    if (!fs.existsSync(filePath)) return res.status(404).send("파일이 존재하지 않습니다.");
 
-  const originName = fileObj.originalName;
-
-  res.setHeader(
-    "Content-Disposition",
-    "attachment; filename=\"" + encodeURIComponent(originName).replace(/%/g, "\\x") + "\"; filename*=UTF-8''" + encodeURIComponent(originName)
-  );
-  res.setHeader('Content-Type', 'application/octet-stream');
-
-  res.download(filePath, originName);
+    const origin = fileObj.originalName || filename;
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${encodeURIComponent(origin)}"; filename*=UTF-8''${encodeURIComponent(origin)}`
+    );
+    res.setHeader("Content-Type", "application/octet-stream");
+    res.download(filePath, origin);
+  } catch (e) {
+    console.error("[news] download error:", e);
+    res.status(500).send("Failed to download");
+  }
 };
