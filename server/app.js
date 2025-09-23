@@ -1,9 +1,4 @@
 // server/app.js
-// ───────────────────────────────────────────────────────────
-// A안(DB Settings 기반) 크론 + Services 어댑터 참조
-// - DB 연결 환경변수: MONGO_URL(우선) → MONGODB_URI → MONGO_URI → 기본값
-// ───────────────────────────────────────────────────────────
-
 require('dotenv').config();
 
 const path = require('path');
@@ -36,22 +31,31 @@ const envAllowed = (process.env.CORS_ORIGIN || '')
   .map(s => s.trim())
   .filter(Boolean);
 
-app.use(cors({
-  origin(origin, cb) {
-    if (!origin) return cb(null, true);
-    if (envAllowed.includes(origin) || isDevOrigin(origin)) return cb(null, true);
-    return cb(null, false);
-  },
-  credentials: true,
-}));
+const corsOptionsDelegate = (req, cb) => {
+  const origin = req.header('Origin');
+  if (!origin) return cb(null, { origin: true, credentials: true }); // same-origin
+  if (envAllowed.includes(origin) || isDevOrigin(origin)) {
+    return cb(null, {
+      origin: true,
+      credentials: true,
+      methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+      allowedHeaders: ['Content-Type','Authorization'],
+      optionsSuccessStatus: 204,
+    });
+  }
+  return cb(null, { origin: false });
+};
+
+app.use(cors(corsOptionsDelegate));
+// 프리플라이트 보장
+app.options('*', cors(corsOptionsDelegate));
 
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 /* =========================
  * DB 연결
- *  - 우선순위: MONGO_URL → MONGODB_URI → MONGO_URI → 기본값
- *  - 기본값은 IPv4 강제 + directConnection로 로컬 연결 안정화
+ * 우선순위: MONGO_URL → MONGODB_URI → MONGO_URI → 기본값
  * ========================= */
 const MONGO_URI =
   process.env.MONGO_URL ||
@@ -99,7 +103,7 @@ const publicSiteSettingsRoutes   = require('./routes/publicSiteSettingsRoutes');
 const bannerUpload               = require('./routes/bannerUpload');
 
 /* =========================
- * 라우트 마운트 (기존 유지)
+ * 라우트 마운트
  * ========================= */
 app.use('/api/auth', authRoutes);
 app.use('/api/subjects', subjectRoutes);
@@ -120,13 +124,17 @@ app.use('/api/class-groups', classGroupRoutes);
 app.use('/api/admin/counsel', staffCounselRoutes);
 app.use('/api/report', reportRoutes);
 app.use('/api/progress', progressRoutes);
-app.use('/api/site/public-settings', publicSiteSettingsRoutes);
 
 // 학교/학사일정 (신식+별칭 모두 유지)
 app.use('/api/schools', schoolRoutes);
-app.use('/api/school', schoolRoutes); // 구식 별칭도 계속 허용
+app.use('/api/school', schoolRoutes); // 구식 별칭도 허용
 app.use('/api/school-periods', schoolPeriodRoutes);
 app.use('/api/schools/periods', schoolPeriodRoutes);
+
+// 퍼블릭 사이트 설정
+app.use('/api/public-site-settings', publicSiteSettingsRoutes);
+// ⬇️ 프론트가 쓰는 구 경로를 별칭으로 추가 (이번 404의 원인 해결)
+app.use('/api/site/public-settings', publicSiteSettingsRoutes);
 
 // (신규) 관리자/슈퍼용: 크론 설정/수동 실행
 app.use('/api/super', superCronRoutes);
@@ -156,33 +164,23 @@ mongoose.connect(MONGO_URI, { autoIndex: true })
   .then(async () => {
     console.log('[MongoDB] connected:', MONGO_URI.replace(/:\/\/.*@/, '://****@'));
 
-    // 1) 최초 1회 시드: Settings 없으면 .env에서 읽어 생성
     await seedFromEnvIfEmpty(Setting, process.env);
 
-    // 2) 부팅 시점 DB Settings 로 스케줄 등록
     const s = await getSettings(Setting, { useCache: false });
-
-    // 자동하원 스케줄
     cron.schedule(s.autoLeaveCron, async () => {
       try {
-        // 실행 직전 최신 Settings 재확인(A안)
         const current = await getSettings(Setting);
         if (!current.autoLeaveEnabled) return;
         await runAutoLeave({ Setting, Services });
-      } catch (e) {
-        console.error('[cron:autoLeave]', e);
-      }
+      } catch (e) { console.error('[cron:autoLeave]', e); }
     }, { timezone: s.timezone || 'Asia/Seoul' });
 
-    // 일일 리포트 스케줄
     cron.schedule(s.autoReportCron, async () => {
       try {
         const current = await getSettings(Setting);
         if (!current.autoReportEnabled) return;
         await runDailyReport({ Setting, Services });
-      } catch (e) {
-        console.error('[cron:dailyReport]', e);
-      }
+      } catch (e) { console.error('[cron:dailyReport]', e); }
     }, { timezone: s.timezone || 'Asia/Seoul' });
 
     console.log('[cron] scheduled from DB settings');
@@ -193,6 +191,7 @@ mongoose.connect(MONGO_URI, { autoIndex: true })
       console.log(`[CORS] dev origins: localhost:3000, 127.0.0.1:3000, 192.168.*:3000`);
       console.log(`[Mount] schools: /api/school + /api/schools`);
       console.log(`[Mount] school-periods: /api/school-periods + /api/schools/periods`);
+      console.log(`[Alias] public settings: /api/public-site-settings + /api/site/public-settings`);
     });
   })
   .catch(err => {
