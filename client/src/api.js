@@ -1,6 +1,9 @@
 // client/src/api.js
 // CRA(Create React App) 기준: REACT_APP_ 접두어만 클라이언트 번들에 주입됩니다.
 
+import axios from "axios";
+import { logApiError } from "./utils/errorLogger";
+
 // 1) .env에서 우선 읽기
 const fromEnv = (process.env.REACT_APP_API_URL || "").trim();
 
@@ -29,9 +32,6 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 // API 에러 로깅을 위한 axios 인스턴스
-import axios from "axios";
-import { logApiError } from "./utils/errorLogger";
-
 export const api = axios.create({ baseURL: API_URL });
 
 // 응답 인터셉터: API 에러 자동 로깅
