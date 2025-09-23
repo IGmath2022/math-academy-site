@@ -8,6 +8,8 @@ const { requireAdminOrSuper } = require('../middleware/auth');
 router.get('/lessons', requireAdminOrSuper, lessons.listByDate);
 router.get('/lessons/by-date', requireAdminOrSuper, lessons.listByDate);
 
+router.get('/lessons/detail', requireAdminOrSuper, lessons.getDetail);
+
 // 출결 단건/업데이트 (기존)
 router.get('/attendance/one', requireAdminOrSuper, lessons.getAttendanceOne);
 router.post('/attendance/set-times', requireAdminOrSuper, lessons.setAttendanceTimes);

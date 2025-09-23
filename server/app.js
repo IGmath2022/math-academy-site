@@ -101,6 +101,8 @@ const schoolRoutes               = require('./routes/schoolRoutes');
 const schoolPeriodRoutes         = require('./routes/schoolPeriodRoutes');
 const publicSiteSettingsRoutes   = require('./routes/publicSiteSettingsRoutes');
 const bannerUpload               = require('./routes/bannerUpload');
+const adminCounselRoutes = require('./routes/adminCounselRoutes');
+const superSettingsRoutes = require('./routes/superSettingsRoutes');
 
 /* =========================
  * 라우트 마운트
@@ -124,6 +126,8 @@ app.use('/api/class-groups', classGroupRoutes);
 app.use('/api/admin/counsel', staffCounselRoutes);
 app.use('/api/report', reportRoutes);
 app.use('/api/progress', progressRoutes);
+app.use('/api/admin', adminCounselRoutes);
+app.use('/api/super', superSettingsRoutes); // GET/POST /api/super/site-settings
 
 // 학교/학사일정 (신식+별칭 모두 유지)
 app.use('/api/schools', schoolRoutes);
@@ -135,6 +139,7 @@ app.use('/api/schools/periods', schoolPeriodRoutes);
 app.use('/api/public-site-settings', publicSiteSettingsRoutes);
 // ⬇️ 프론트가 쓰는 구 경로를 별칭으로 추가 (이번 404의 원인 해결)
 app.use('/api/site/public-settings', publicSiteSettingsRoutes);
+app.use('/api/site', publicSiteSettingsRoutes); // GET /api/site/public
 
 // (신규) 관리자/슈퍼용: 크론 설정/수동 실행
 app.use('/api/super', superCronRoutes);
