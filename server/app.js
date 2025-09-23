@@ -6,6 +6,7 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const cron = require('node-cron');
+const helmet = require('helmet');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -45,6 +46,12 @@ const corsOptionsDelegate = (req, cb) => {
   }
   return cb(null, { origin: false });
 };
+
+// 보안 헤더 설정
+app.use(helmet({
+  crossOriginEmbedderPolicy: false, // 임베드된 리소스 허용
+  contentSecurityPolicy: false, // CSP 비활성화 (필요에 따라 설정)
+}));
 
 app.use(cors(corsOptionsDelegate));
 // 프리플라이트 보장
@@ -189,6 +196,29 @@ mongoose.connect(MONGO_URI, { autoIndex: true })
     }, { timezone: s.timezone || 'Asia/Seoul' });
 
     console.log('[cron] scheduled from DB settings');
+
+    // 전역 에러 핸들러
+    app.use((err, req, res, next) => {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[Global Error Handler]', err);
+      }
+
+      // 클라이언트에게 상세한 에러 정보를 보내지 않음
+      res.status(err.status || 500).json({
+        error: process.env.NODE_ENV === 'production'
+          ? '서버 내부 오류가 발생했습니다.'
+          : err.message,
+        ...(process.env.NODE_ENV !== 'production' && { stack: err.stack })
+      });
+    });
+
+    // 404 핸들러
+    app.use((req, res) => {
+      res.status(404).json({
+        error: '요청하신 리소스를 찾을 수 없습니다.',
+        path: req.originalUrl
+      });
+    });
 
     app.listen(PORT, () => {
       console.log(`서버가 http://localhost:${PORT} 에서 실행중`);

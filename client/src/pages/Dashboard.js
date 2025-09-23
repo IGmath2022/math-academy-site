@@ -149,7 +149,10 @@ function StudentDashboard() {
     } catch (e) {
       setSaveResult("저장에 실패했습니다.");
       setTimeout(() => setSaveResult(""), 1800);
-      console.error("진도 저장 오류", e?.response?.data || e);
+      if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        console.error("진도 저장 오류", e?.response?.data || e);
+      }
     }
   };
 

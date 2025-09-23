@@ -56,7 +56,10 @@ export default function PopupBannerAdmin() {
         const arr = Array.isArray(data?.popupBanners) ? data.popupBanners : [];
         setBanners([0, 1, 2].map((i) => ({ ...EMPTY, ...(arr[i] || {}) })));
       } catch (e2) {
-        console.warn("[PopupBannerAdmin] load failed:", e1?.message || e1, e2?.message || e2);
+        if (process.env.NODE_ENV !== "production") {
+          // eslint-disable-next-line no-console
+          console.warn("[PopupBannerAdmin] load failed:", e1?.message || e1, e2?.message || e2);
+        }
       }
     } finally {
       setLoading(false);
@@ -104,7 +107,10 @@ export default function PopupBannerAdmin() {
       });
       alert("이미지 업로드 완료");
     } catch (e) {
-      console.error(e);
+      if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        console.error("팝업 배너 이미지 업로드 실패:", e);
+      }
       alert(`업로드 실패: ${e?.message || e}`);
     } finally {
       setUploading((old) => {
@@ -134,7 +140,10 @@ export default function PopupBannerAdmin() {
       await loadSettings();
       alert("팝업 배너 설정이 저장되었습니다.");
     } catch (e) {
-      console.error(e);
+      if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        console.error("팝업 배너 설정 저장 실패:", e);
+      }
       alert("설정 저장 실패(권한 또는 서버 라우트 확인 필요)");
     } finally {
       setSaving(false);

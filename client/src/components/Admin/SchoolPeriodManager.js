@@ -37,7 +37,10 @@ function SchoolPeriodManager() {
       const res = await axios.get(`${API_URL}/api/schools`, getAuthConfig());
       setSchools(res.data || []);
     } catch (err) {
-      console.error(err);
+      if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        console.error("학원 관리 에러:", err);
+      }
       setMsg("학교 목록을 불러오지 못했습니다.");
     }
   };
@@ -50,7 +53,10 @@ function SchoolPeriodManager() {
       const res = await axios.get(url, getAuthConfig());
       setPeriods(res.data || []);
     } catch (err) {
-      console.error(err);
+      if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        console.error("학원 관리 에러:", err);
+      }
       setMsg("학교 기간 목록을 불러오지 못했습니다.");
     }
   };
@@ -104,7 +110,10 @@ function SchoolPeriodManager() {
       resetForm();
       setMsg("기간이 추가되었습니다.");
     } catch (err) {
-      console.error(err);
+      if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        console.error("학원 관리 에러:", err);
+      }
       setMsg(err?.response?.data?.message || "기간 추가에 실패했습니다.");
     } finally {
       setLoading(false);
@@ -144,7 +153,10 @@ function SchoolPeriodManager() {
       resetForm();
       setMsg("기간이 수정되었습니다.");
     } catch (err) {
-      console.error(err);
+      if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        console.error("학원 관리 에러:", err);
+      }
       setMsg(err?.response?.data?.message || "기간 수정에 실패했습니다.");
     } finally {
       setLoading(false);
@@ -159,7 +171,10 @@ function SchoolPeriodManager() {
       await fetchPeriods(selectedSchoolId);
       setMsg("삭제되었습니다.");
     } catch (err) {
-      console.error(err);
+      if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        console.error("학원 관리 에러:", err);
+      }
       setMsg(err?.response?.data?.message || "삭제에 실패했습니다.");
     } finally {
       setLoading(false);

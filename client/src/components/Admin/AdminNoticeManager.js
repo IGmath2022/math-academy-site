@@ -41,7 +41,10 @@ export default function AdminNoticeManager() {
       });
       setList(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.error(e);
+      if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        console.error("공지 목록 불러오기 실패:", e);
+      }
       alert("공지 목록 불러오기 실패");
     } finally {
       setLoading(false);
@@ -92,7 +95,10 @@ export default function AdminNoticeManager() {
       await load();
       alert("공지 저장 완료");
     } catch (e) {
-      console.error(e);
+      if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        console.error("공지 저장 실패:", e);
+      }
       // 401/403 구분 안내
       const status = e?.response?.status;
       if (status === 401) {
@@ -115,7 +121,10 @@ export default function AdminNoticeManager() {
       });
       load();
     } catch (e) {
-      console.error(e);
+      if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        console.error("공지 삭제 실패:", e);
+      }
       const status = e?.response?.status;
       if (status === 401) {
         alert("인증이 필요합니다. 다시 로그인해주세요. (401)");

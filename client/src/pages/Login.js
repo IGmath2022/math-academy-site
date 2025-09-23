@@ -3,8 +3,6 @@ import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 import { API_URL } from '../api';
 
-console.log("로그인 컴포넌트에서 API_URL:", API_URL);
-
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

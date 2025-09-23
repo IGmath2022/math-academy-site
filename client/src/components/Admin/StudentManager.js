@@ -23,7 +23,10 @@ function StudentProgressHistory({ userId, onClose }) {
       });
       setProgress(res.data || []);
     } catch (e) {
-      console.error(e);
+      if (process.env.NODE_ENV !== "production") {
+        // eslint-disable-next-line no-console
+        console.error("학생 진도 조회 실패:", e);
+      }
     } finally {
       setLoading(false);
     }

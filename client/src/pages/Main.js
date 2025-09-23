@@ -1,29 +1,45 @@
-import React from "react";
+import React, { memo, useMemo } from "react";
 import Blog from "./Blog";
 import KakaoMap from "../components/KakaoMap";
 import PopupBanners from "../components/PopupBanners";
 import { useSiteSettings } from "../context/SiteSettingsContext";
 
-function Section({ title, children }) {
+const Section = memo(function Section({ title, children }) {
+  const sectionStyle = useMemo(() => ({
+    marginBottom: 30
+  }), []);
+
+  const titleStyle = useMemo(() => ({
+    fontSize: 20,
+    marginBottom: 8
+  }), []);
+
   return (
-    <section style={{ marginBottom: 30 }}>
-      <h2 style={{ fontSize: 20, marginBottom: 8 }}>{title}</h2>
+    <section style={sectionStyle}>
+      <h2 style={titleStyle}>{title}</h2>
       {children}
     </section>
   );
-}
+});
 
 export default function Main() {
   const { ready, home } = useSiteSettings();
+
+  const skeletonStyles = useMemo(() => ({
+    spacer: { height: 18 },
+    title: { height: 24, width: 180, background:"#00000010", borderRadius:8, margin:"0 auto 10px" },
+    subtitle: { height: 14, width: 260, background:"#00000008", borderRadius:6, margin:"0 auto 24px" },
+    content: { height: 120, background:"#00000006", borderRadius:12 }
+  }), []);
 
   if (!ready) {
     // 첫 로드 스켈레톤 → 깜빡임/광고성 노출 방지
     return (
       <div className="container" style={wrapStyle}>
-        <div style={{ height: 18 }} />
-        <div style={{ height: 24, width: 180, background:"#00000010", borderRadius:8, margin:"0 auto 10px" }} />
-        <div style={{ height: 14, width: 260, background:"#00000008", borderRadius:6, margin:"0 auto 24px" }} />
-        <div style={{ height: 120, background:"#00000006", borderRadius:12 }} />
+        <div style={skeletonStyles.spacer} />
+        <div style={skeletonStyles.title} />
+        <div style={skeletonStyles.subtitle} />
+        <div style={skeletonStyles.content} />
       </div>
     );
   }

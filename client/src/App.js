@@ -2,6 +2,7 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SiteSettingsProvider } from "./context/SiteSettingsContext";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -21,8 +22,9 @@ import SuperSiteSettings from "./pages/SuperSiteSettings";
 
 function App() {
   return (
-    <SiteSettingsProvider>
-      <BrowserRouter>
+    <ErrorBoundary>
+      <SiteSettingsProvider>
+        <BrowserRouter>
         <Routes>
           {/* NavBar/FloatingContact 있는 Layout */}
           <Route element={<Layout />}>
@@ -51,8 +53,9 @@ function App() {
             <Route index element={<ReportPublic />} />
           </Route>
         </Routes>
-      </BrowserRouter>
-    </SiteSettingsProvider>
+        </BrowserRouter>
+      </SiteSettingsProvider>
+    </ErrorBoundary>
   );
 }
 
