@@ -1,6 +1,6 @@
 // server/routes/adminLessonRoutes.js
-// 기존 기능 유지 + (신규) /lessons/detail 연결
-// ※ 모델 직접 import(fallback)는 제거하여 MODULE_NOT_FOUND 방지
+// 기존 기능 유지 + (신규) /lessons(detail/create) 라우트 연결
+// ※ 모델 직접 import(fallback) 없음. 컨트롤러에 있는 함수만 연결.
 
 const express = require('express');
 const router = express.Router();
@@ -21,12 +21,48 @@ router.get('/lessons', requireAdminOrSuper, lessons.listByDate);
 router.get('/lessons/by-date', requireAdminOrSuper, lessons.listByDate);
 
 /* =========================================================
- * (신규) 레슨 상세 - 프런트 ProgressManager가 호출
+ * (신규) 레슨 상세 - ProgressManager가 호출
  * GET /api/admin/lessons/detail?studentId=...&date=YYYY-MM-DD(옵션)
- * 컨트롤러에 구현된 getDetail을 그대로 연결
+ * 컨트롤러의 getDetail이 있으면 연결
  * ========================================================= */
 if (typeof lessons.getDetail === 'function') {
   router.get('/lessons/detail', requireAdminOrSuper, lessons.getDetail);
+}
+
+/* =========================================================
+ * (신규) 레슨 생성/저장 - DailyReportEditor/Sender가 호출
+ * POST /api/admin/lessons
+ * 컨트롤러에 create / createLesson / upsert / saveDailyReport 등
+ * 실제 구현된 함수명에 맞춰 우선순위로 연결
+ * ========================================================= */
+const createCandidates = [
+  'create',            // 가장 일반적인 이름
+  'createLesson',
+  'upsertLesson',
+  'saveDailyReport',
+  'save',              // 프로젝트에 따라 다를 수 있어 후보로 포함
+];
+
+const createFnName = createCandidates.find((k) => typeof lessons[k] === 'function');
+
+if (createFnName) {
+  router.post('/lessons', requireAdminOrSuper, async (req, res, next) => {
+    try {
+      // 컨트롤러 함수가 res를 직접 쓰는 패턴도 고려
+      const out = await lessons[createFnName](req, res, next);
+      if (!res.headersSent) res.json(out);
+    } catch (e) {
+      if (!res.headersSent) res.status(500).json({ message: 'lessons create failed', error: String(e?.message || e) });
+    }
+  });
+} else {
+  // 컨트롤러에 생성 함수가 전혀 없을 때만 안내 (서버는 죽지 않도록)
+  router.post('/lessons', requireAdminOrSuper, (req, res) => {
+    res.status(404).json({
+      message: 'lessonsController: create handler not found',
+      need: 'Implement one of: create / createLesson / upsertLesson / saveDailyReport',
+    });
+  });
 }
 
 /* =========================================================
