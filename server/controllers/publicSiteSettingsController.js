@@ -1,13 +1,12 @@
 // server/controllers/publicSiteSettingsController.js
 const Setting = require('../models/Setting');
 
-// 안전 기본값
 const DEFAULT_PUBLIC = {
   siteName: 'Math Academy',
   logoUrl: '',
   loginMessage: '',
   blogEnabled: true,
-  banners: [],
+  banners: [], // [{imageUrl, href, title, enabled}]
 };
 
 function parseMaybe(str) {
