@@ -32,6 +32,14 @@ router.get('/lessons/detail', requireAdminOrSuper, lessons.getDetail);
 router.post('/lessons', requireAdminOrSuper, lessons.createOrUpdate);
 
 /* ===========================
+ * 예약/발송 (관리자)
+ * =========================== */
+router.get('/lessons/pending', requireAdminOrSuper, lessons.listPending);
+router.post('/lessons/send-one/:id', requireAdminOrSuper, lessons.sendOne);
+router.post('/lessons/send-selected', requireAdminOrSuper, lessons.sendSelected);
+router.post('/lessons/send-bulk', requireAdminOrSuper, lessons.sendBulk);
+
+/* ===========================
  * 출결 수동 수정(관리자/슈퍼)
  * =========================== */
 router.get('/attendance/one', requireAdminOrSuper, lessons.getAttendanceOne);
@@ -44,3 +52,4 @@ router.get('/settings/daily-auto', requireAdminOrSuper, lessons.getDailyAuto);
 router.post('/settings/daily-auto', requireAdminOrSuper, lessons.setDailyAuto);
 
 module.exports = router;
+
