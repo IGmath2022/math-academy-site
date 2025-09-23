@@ -121,8 +121,12 @@ export function usePublicSiteSettings() {
     try {
       setError("");
       setLoading(true);
+      console.log('Fetching public settings...');
       const j = await fetchPublicSiteSettings(); // { ok, settings }
-      const s = j?.settings || null;
+      console.log('API response:', j);
+      // API가 직접 설정 객체를 반환하는 경우와 {ok, settings} 구조 모두 지원
+      const s = j?.settings || (j?.siteName ? j : null);
+      console.log('Extracted settings:', s);
       setSettings(s);
 
       // 테마 즉시 적용
@@ -142,6 +146,7 @@ export function usePublicSiteSettings() {
         });
       }
     } catch (e) {
+      console.error('API fetch error:', e);
       setError("공개 설정을 불러오지 못했습니다.");
     } finally {
       setLoading(false);

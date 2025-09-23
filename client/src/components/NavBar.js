@@ -39,12 +39,18 @@ function NavBar() {
     navigate("/login");
   };
 
+  // 디버깅: 설정값 확인
+  console.log('NavBar settings:', settings);
+  console.log('NavBar loading:', loading);
+
   // 공개설정이 아직 로드 전이라면 "잠깐 숨김" -> 깜빡임 방지
   // 단, 캐시가 있으면 이미 settings가 있으므로 로딩 중에도 올바른 메뉴가 보입니다.
   const showHome      = settings?.menu_home_on ?? false;
   const showBlog      = settings?.menu_blog_on ?? false;
   const showMaterials = settings?.menu_materials_on ?? false;
   const showContact   = settings?.menu_contact_on ?? false;
+
+  console.log('Menu visibility:', {showHome, showBlog, showMaterials, showContact});
 
   return (
     <nav style={{

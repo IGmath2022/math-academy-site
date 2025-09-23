@@ -7,6 +7,12 @@ const DEFAULT_PUBLIC = {
   loginMessage: '',
   blogEnabled: true,
   banners: [], // [{imageUrl, href, title, enabled}]
+  // NavBar 메뉴 설정
+  menu_home_on: true,
+  menu_blog_on: true,
+  menu_materials_on: true,
+  menu_contact_on: true,
+  menu_news_on: true
 };
 
 function parseMaybe(str) {
@@ -17,12 +23,27 @@ function parseMaybe(str) {
 async function readPublicSettings() {
   let doc = await Setting.findOne({ key: 'publicSite' }).lean();
   if (!doc) doc = await Setting.findOne({ name: 'publicSite' }).lean();
-  if (!doc) return null;
 
-  const fromValue = parseMaybe(doc.value);
-  if (fromValue && typeof fromValue === 'object') return fromValue;
-  if (doc.data && typeof doc.data === 'object') return doc.data;
-  return null;
+  let publicSettings = null;
+  if (doc) {
+    const fromValue = parseMaybe(doc.value);
+    if (fromValue && typeof fromValue === 'object') publicSettings = fromValue;
+    else if (doc.data && typeof doc.data === 'object') publicSettings = doc.data;
+  }
+
+  // 슈퍼설정에서 메뉴 설정 가져오기
+  const menuSettings = {};
+  const menuKeys = ['menu_home_on', 'menu_blog_on', 'menu_materials_on', 'menu_contact_on', 'menu_news_on'];
+
+  for (const key of menuKeys) {
+    const setting = await Setting.findOne({ key }).lean();
+    if (setting && setting.value) {
+      menuSettings[key] = setting.value === 'true';
+    }
+  }
+
+  // 기본값, 공개설정, 슈퍼설정 순으로 병합
+  return { ...DEFAULT_PUBLIC, ...publicSettings, ...menuSettings };
 }
 
 async function writePublicSettings(valueObj, updatedBy = 'system') {
@@ -37,10 +58,10 @@ async function writePublicSettings(valueObj, updatedBy = 'system') {
 // GET /
 exports.getPublic = async (req, res) => {
   try {
-    const v = await readPublicSettings();
-    res.json(v || DEFAULT_PUBLIC);
+    const settings = await readPublicSettings();
+    res.json({ ok: true, settings: settings || DEFAULT_PUBLIC });
   } catch (e) {
-    res.status(500).json({ message: 'failed to load public settings' });
+    res.status(500).json({ ok: false, message: 'failed to load public settings' });
   }
 };
 

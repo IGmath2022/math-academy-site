@@ -37,7 +37,7 @@ export function SiteSettingsProvider({ children }) {
       try {
         const res = await fetch(`${API_URL}/api/site/public-settings`);
         const data = await res.json();
-        if (!alive || !data?.ok) return;
+        if (!alive || !res.ok) return;
         setState({ ...data, ready:true });
         localStorage.setItem(KEY, JSON.stringify(data));
         // 테마 색 즉시 반영(선택)
