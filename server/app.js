@@ -48,7 +48,7 @@ const corsOptionsDelegate = (req, cb) => {
 
 app.use(cors(corsOptionsDelegate));
 // 프리플라이트 보장
-app.options('*', cors(corsOptionsDelegate));
+app.options(/.*/, cors(corsOptionsDelegate));
 
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
