@@ -283,9 +283,10 @@ mongoose.connect(MONGO_URI, { autoIndex: true })
 
         // 일일 리포트 미리보기
         previewDailyReport: async ({ limit = 500 }) => {
-          const today = moment().tz('Asia/Seoul').format('YYYY-MM-DD');
+          // 전날 작성된 리포트를 다음날 아침에 발송
+          const yesterday = moment().tz('Asia/Seoul').subtract(1, 'day').format('YYYY-MM-DD');
           const reports = await LessonLog.find({
-            date: today,
+            date: yesterday,
             notifyStatus: '대기'
           })
           .populate('studentId', 'name parentPhone')

@@ -100,11 +100,12 @@ const buildServicesAdapter = () => ({
     const moment = require('moment-timezone');
     const LessonLog = require('../models/LessonLog');
 
-    const today = moment().tz('Asia/Seoul').format('YYYY-MM-DD');
+    // 전날 작성된 리포트를 다음날 아침에 발송
+    const yesterday = moment().tz('Asia/Seoul').subtract(1, 'day').format('YYYY-MM-DD');
 
-    // 오늘 작성된 리포트 중 발송 대기 상태인 것들 조회
+    // 어제 작성된 리포트 중 발송 대기 상태인 것들 조회
     const reports = await LessonLog.find({
-      date: today,
+      date: yesterday,
       notifyStatus: '대기'
     })
     .populate('studentId', 'name parentPhone')
