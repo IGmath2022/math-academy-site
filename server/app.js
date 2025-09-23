@@ -130,7 +130,7 @@ app.use('/api/admin/class-types', adminClassTypeRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/class-groups', classGroupRoutes);
 app.use('/api/admin/counsel', staffCounselRoutes);
-app.use('/api/report', reportRoutes);
+app.use(reportRoutes); // includes /api/reports/public, /r/:code
 app.use('/api/progress', progressRoutes);
 app.use('/api/admin', adminCounselRoutes);
 app.use('/api/super', superSettingsRoutes); // GET/POST /api/super/site-settings
