@@ -28,6 +28,7 @@ import PopupBannerAdmin from "./PopupBannerAdmin";
 import SchoolManager from "./SchoolManager";
 import SchoolPeriodManager from "./SchoolPeriodManager";
 import StudentManager from "./StudentManager";
+import AdminUserManager from "./AdminUserManager";
 
 // ── (신규) 크론 설정 탭
 import CronSettings from "./CronSettings";
@@ -190,6 +191,7 @@ export default function AdminDashboardTabs() {
     () => [
       { key: "report", label: "일일 리포트" },
       { key: "counsel", label: "상담·프로필·수업형태" },
+      { key: "users", label: "계정 관리" },
       { key: "attendance", label: "출결 관리" },
       { key: "progress", label: "진도 관리" },
       { key: "subjects", label: "과목·단원" },
@@ -287,6 +289,16 @@ export default function AdminDashboardTabs() {
         )}
 
         {/* 출결 관리 */}
+        {/* 계정 관리 */}
+        {tab === "users" && (
+          <SectionCard
+            title="계정 관리"
+            subtitle="관리자·강사 계정 생성 및 활성화 상태 변경"
+            actions={<span className="adm-pill">계정</span>}
+          >
+            <AdminUserManager />
+          </SectionCard>
+        )}
         {tab === "attendance" && (
           <SectionCard title="출결 관리" subtitle="출석/지각/조퇴 등 출결 상태 관리">
             <AttendanceManager />
