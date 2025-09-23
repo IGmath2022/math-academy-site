@@ -120,6 +120,7 @@ app.use('/api/class-groups', classGroupRoutes);
 app.use('/api/admin/counsel', staffCounselRoutes);
 app.use('/api/report', reportRoutes);
 app.use('/api/progress', progressRoutes);
+app.use('/api/site/public-settings', publicSiteSettingsRoutes);
 
 // 학교/학사일정 (신식+별칭 모두 유지)
 app.use('/api/schools', schoolRoutes);
