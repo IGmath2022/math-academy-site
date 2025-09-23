@@ -1,4 +1,5 @@
 import React from 'react';
+import { logError } from '../utils/errorLogger';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -18,10 +19,8 @@ class ErrorBoundary extends React.Component {
       errorInfo: errorInfo
     });
 
-    if (process.env.NODE_ENV !== "production") {
-      // eslint-disable-next-line no-console
-      console.error('Error Boundary caught an error:', error, errorInfo);
-    }
+    // 상세한 에러 로깅
+    logError(error, `ErrorBoundary: ${errorInfo.componentStack}`);
   }
 
   render() {

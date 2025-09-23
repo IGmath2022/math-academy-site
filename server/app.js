@@ -172,6 +172,26 @@ app.use((err, req, res, next) => {
 /* =========================
  * 서버 시작: DB 연결 후 크론 스케줄 등록
  * ========================= */
+
+// SQLite/PostgreSQL 연결 테스트 (있는 경우)
+const sequelize = require('./db');
+if (sequelize) {
+  sequelize.authenticate()
+    .then(() => {
+      console.log('[Sequelize] Database connection established successfully');
+      return sequelize.sync();
+    })
+    .then(() => {
+      console.log('[Sequelize] Database synchronized');
+    })
+    .catch(err => {
+      console.error('[Sequelize] Unable to connect to database:', err.message);
+      if (process.env.NODE_ENV === 'production') {
+        console.warn('[Sequelize] Continuing without SQL database (MongoDB only)');
+      }
+    });
+}
+
 mongoose.connect(MONGO_URI, { autoIndex: true })
   .then(async () => {
     console.log('[MongoDB] connected:', MONGO_URI.replace(/:\/\/.*@/, '://****@'));

@@ -28,6 +28,18 @@ if (process.env.NODE_ENV !== "production") {
   console.log("[API_URL]", API_URL);
 }
 
-// (선택) axios 인스턴스를 쓰고 싶다면 아래 주석 해제해서 사용:
-// import axios from "axios";
-// export const api = axios.create({ baseURL: API_URL });
+// API 에러 로깅을 위한 axios 인스턴스
+import axios from "axios";
+import { logApiError } from "./utils/errorLogger";
+
+export const api = axios.create({ baseURL: API_URL });
+
+// 응답 인터셉터: API 에러 자동 로깅
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const endpoint = error.config?.url || 'unknown';
+    logApiError(error, endpoint);
+    return Promise.reject(error);
+  }
+);
