@@ -29,6 +29,9 @@ import SchoolManager from "./SchoolManager";
 import SchoolPeriodManager from "./SchoolPeriodManager";
 import StudentManager from "./StudentManager";
 
+// ── (신규) 크론 설정 탭
+import CronSettings from "./CronSettings";
+
 /**
  * 스타일 가이드(이 파일 내부에서만 적용):
  * - 배경: 은은한 그라데이션 + 중앙 컨테이너 카드 느낌
@@ -182,7 +185,7 @@ function TabButton({ active, onClick, children }) {
 export default function AdminDashboardTabs() {
   useInjectOnceStyle();
 
-  // 탭 구성: 모두 기존 파일 재사용
+  // 탭 구성: 모두 기존 파일 재사용 + (신규) 자동 작업(크론)
   const tabs = useMemo(
     () => [
       { key: "report", label: "일일 리포트" },
@@ -194,6 +197,8 @@ export default function AdminDashboardTabs() {
       { key: "schools", label: "학교 관리" },
       { key: "periods", label: "학교 일정/학기" },
       { key: "promo", label: "공지 · 팝업 배너" },
+      // ⬇️ (신규) 크론 설정 탭 추가
+      { key: "cron", label: "자동 작업(크론)" },
     ],
     []
   );
@@ -299,7 +304,11 @@ export default function AdminDashboardTabs() {
         {tab === "subjects" && (
           <div className="adm-section-gap">
             <SectionCard title="과목 · 단원" subtitle="과목 선택 후 단원 관리">
-              <SubjectManager onSelect={setSelectedSubject} />
+              {/* ⬇️ onSelect → onSelectSubject, 그리고 selectedSubject 전달 (기존 합의 유지) */}
+              <SubjectManager
+                onSelectSubject={setSelectedSubject}
+                selectedSubject={selectedSubject}
+              />
             </SectionCard>
 
             {selectedSubject && (
@@ -373,6 +382,17 @@ export default function AdminDashboardTabs() {
               <BlogSettingSwitch />
             </SectionCard>
           </div>
+        )}
+
+        {/* (신규) 자동 작업(크론) */}
+        {tab === "cron" && (
+          <SectionCard
+            title="자동 작업(크론) 설정"
+            subtitle="DB 기반 설정으로 서버 재시작 없이 즉시 반영됩니다. 먼저 드라이런으로 검증 후 운영 전환을 권장합니다."
+            actions={<span className="adm-pill">크론</span>}
+          >
+            <CronSettings />
+          </SectionCard>
         )}
       </div>
     </div>

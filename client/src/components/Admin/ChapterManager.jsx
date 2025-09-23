@@ -1,3 +1,4 @@
+// client/src/components/Admin/ChapterManager.jsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { API_URL } from '../../api';
@@ -76,7 +77,7 @@ function ChapterManager({ subject, onChapterListChange }) {
     setEditingId(chapter._id);
     setName(chapter.name);
     setDescription(chapter.description);
-    setVideoUrl(chapter.video_url);
+    setVideoUrl(chapter.video_url || "");
   };
 
   const handleDelete = async (id) => {
