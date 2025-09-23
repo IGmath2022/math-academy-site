@@ -80,7 +80,6 @@ const { seedFromEnvIfEmpty, getSettings } = require('./services/cron/settingsSer
 const { runAutoLeave } = require('./services/cron/jobs/autoLeaveJob');
 const { runDailyReport } = require('./services/cron/jobs/dailyReportJob');
 const superCronRoutes = require('./routes/superCronRoutes');
-const Services = require('./services/cron/servicesAdapter');
 
 /* =========================
  * 라우트 import (기존 유지)
@@ -199,11 +198,167 @@ mongoose.connect(MONGO_URI, { autoIndex: true })
     await seedFromEnvIfEmpty(Setting, process.env);
 
     const s = await getSettings(Setting, { useCache: false });
+    // 실제 비즈니스 로직 어댑터 생성 - superCronRoutes와 동일한 로직 사용
+    const buildServicesAdapter = () => {
+      const superCronModule = require('./routes/superCronRoutes');
+      // superCronRoutes에서 buildServicesAdapter 함수를 추출
+      // 임시로 require한 모듈에서 함수를 가져오기 위해 코드를 직접 실행
+      const moment = require('moment-timezone');
+      const Attendance = require('./models/Attendance');
+      const User = require('./models/User');
+      const LessonLog = require('./models/LessonLog');
+      const { sendAlimtalk } = require('./utils/alimtalk');
+      const { sendReportAlimtalk } = require('./utils/alimtalkReport');
+
+      return {
+        // 자동하원 미리보기 - 등원했지만 하원하지 않은 학생들 조회
+        previewAutoLeave: async ({ limit = 500 }) => {
+          const today = moment().tz('Asia/Seoul').format('YYYY-MM-DD');
+          const checkIns = await Attendance.find({
+            date: today,
+            type: 'IN'
+          }).populate('userId', 'name parentPhone').lean();
+
+          const list = [];
+          for (const checkIn of checkIns.slice(0, limit)) {
+            const checkOut = await Attendance.findOne({
+              userId: checkIn.userId._id,
+              date: today,
+              type: 'OUT'
+            }).lean();
+
+            if (!checkOut) {
+              list.push({
+                studentId: checkIn.userId._id,
+                studentName: checkIn.userId.name,
+                parentPhone: checkIn.userId.parentPhone,
+                checkInTime: checkIn.time,
+                date: today
+              });
+            }
+          }
+          return { list, count: list.length };
+        },
+
+        // 자동하원 실행 - 실제로 하원 처리
+        performAutoLeave: async ({ limit = 500 }) => {
+          const now = moment().tz('Asia/Seoul');
+          const today = now.format('YYYY-MM-DD');
+          const currentTime = now.format('HH:mm:ss');
+
+          // 먼저 미리보기로 대상자 확인
+          const services = buildServicesAdapter();
+          const { list } = await services.previewAutoLeave({ limit });
+
+          const processed = [];
+          for (const student of list) {
+            try {
+              await Attendance.create({
+                userId: student.studentId,
+                date: today,
+                type: 'OUT',
+                time: currentTime,
+                auto: true,
+                notified: false
+              });
+
+              await sendAlimtalk(student.parentPhone, 'UB_0082', {
+                name: student.studentName,
+                type: '하원',
+                time: now.format('HH:mm'),
+                automsg: '(자동 하원 처리)'
+              });
+
+              processed.push({
+                studentName: student.studentName,
+                checkInTime: student.checkInTime,
+                autoCheckOutTime: currentTime
+              });
+            } catch (error) {
+              console.error(`자동 하원 처리 실패 - ${student.studentName}:`, error);
+            }
+          }
+          return { processed: processed.length, preview: processed };
+        },
+
+        // 일일 리포트 미리보기
+        previewDailyReport: async ({ limit = 500 }) => {
+          const today = moment().tz('Asia/Seoul').format('YYYY-MM-DD');
+          const reports = await LessonLog.find({
+            date: today,
+            notifyStatus: '대기'
+          })
+          .populate('studentId', 'name parentPhone')
+          .limit(limit)
+          .lean();
+
+          const list = reports.map(report => ({
+            logId: report._id,
+            studentId: report.studentId._id,
+            studentName: report.studentId.name,
+            parentPhone: report.studentId.parentPhone,
+            course: report.course,
+            content: report.content,
+            homework: report.homework,
+            date: report.date,
+            scheduledAt: report.scheduledAt
+          }));
+
+          return { list, count: list.length };
+        },
+
+        // 일일 리포트 실행
+        performDailyReport: async ({ limit = 500 }) => {
+          const REPORT_BASE = process.env.REPORT_BASE_URL || 'https://ig-math-2022.onrender.com';
+          const services = buildServicesAdapter();
+          const { list } = await services.previewDailyReport({ limit });
+
+          const processed = [];
+          for (const report of list) {
+            try {
+              const reportUrl = `${REPORT_BASE}/r/${report.logId}`;
+
+              await sendReportAlimtalk(report.parentPhone, {
+                studentName: report.studentName,
+                course: report.course,
+                content: report.content,
+                homework: report.homework,
+                reportUrl: reportUrl,
+                date: report.date
+              });
+
+              await LessonLog.findByIdAndUpdate(report.logId, {
+                notifyStatus: '발송',
+                notifyLog: `자동발송 완료 - ${moment().tz('Asia/Seoul').format('YYYY-MM-DD HH:mm:ss')}`
+              });
+
+              processed.push({
+                studentName: report.studentName,
+                course: report.course,
+                reportUrl: reportUrl
+              });
+            } catch (error) {
+              console.error(`리포트 발송 실패 - ${report.studentName}:`, error);
+              await LessonLog.findByIdAndUpdate(report.logId, {
+                notifyStatus: '실패',
+                notifyLog: `자동발송 실패 - ${error.message}`
+              });
+            }
+          }
+          return { processed: processed.length, preview: processed };
+        }
+      };
+    };
+
+    const Services = buildServicesAdapter();
+
     cron.schedule(s.autoLeaveCron, async () => {
       try {
         const current = await getSettings(Setting);
         if (!current.autoLeaveEnabled) return;
-        await runAutoLeave({ Setting, Services });
+        console.log('[cron:autoLeave] 자동하원 작업 시작');
+        const result = await runAutoLeave({ Setting, Services });
+        console.log('[cron:autoLeave] 완료:', result);
       } catch (e) { console.error('[cron:autoLeave]', e); }
     }, { timezone: s.timezone || 'Asia/Seoul' });
 
@@ -211,7 +366,9 @@ mongoose.connect(MONGO_URI, { autoIndex: true })
       try {
         const current = await getSettings(Setting);
         if (!current.autoReportEnabled) return;
-        await runDailyReport({ Setting, Services });
+        console.log('[cron:dailyReport] 일일리포트 발송 작업 시작');
+        const result = await runDailyReport({ Setting, Services });
+        console.log('[cron:dailyReport] 완료:', result);
       } catch (e) { console.error('[cron:dailyReport]', e); }
     }, { timezone: s.timezone || 'Asia/Seoul' });
 
