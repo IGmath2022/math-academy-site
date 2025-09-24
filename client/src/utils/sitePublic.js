@@ -76,6 +76,7 @@ export function persistThemeSnapshot(settings) {
       menu_blog_on: !!settings?.menu_blog_on,
       menu_materials_on: !!settings?.menu_materials_on,
       menu_contact_on: !!settings?.menu_contact_on,
+      menu_news_on: !!settings?.menu_news_on,
       home_sections: Array.isArray(settings?.home_sections) ? settings.home_sections : [],
       savedAt: Date.now(),
     };
@@ -143,6 +144,7 @@ export function usePublicSiteSettings() {
           menu_blog_on: s.menu_blog_on !== false && String(s.menu_blog_on) !== "false",
           menu_materials_on: s.menu_materials_on !== false && String(s.menu_materials_on) !== "false",
           menu_contact_on: s.menu_contact_on !== false && String(s.menu_contact_on) !== "false",
+          menu_news_on: s.menu_news_on !== false && String(s.menu_news_on) !== "false",
         });
       }
     } catch (e) {

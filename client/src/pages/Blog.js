@@ -6,10 +6,20 @@ function Blog({limit=7}) {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    console.log('Blog component mounted, fetching from:', `${API_URL}/api/blog`);
     fetch(`${API_URL}/api/blog`)
-      .then(res => res.json())
-      .then(list => setList(list.slice(0, limit)))
-      .catch(() => setError("블로그 데이터를 불러오지 못했습니다."));
+      .then(res => {
+        console.log('Blog API response status:', res.status);
+        return res.json();
+      })
+      .then(list => {
+        console.log('Blog data received:', list);
+        setList(list.slice(0, limit));
+      })
+      .catch(err => {
+        console.error('Blog fetch error:', err);
+        setError("블로그 데이터를 불러오지 못했습니다.");
+      });
   }, [limit]);
 
   return (

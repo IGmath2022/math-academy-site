@@ -33,6 +33,13 @@ import AdminUserManager from "./AdminUserManager";
 // ── (신규) 크론 설정 탭
 import CronSettings from "./CronSettings";
 
+
+// ── (신규) 콘텐츠 관리
+import SiteContentManager from "./SiteContentManager";
+
+// 인증 유틸
+import { getRole } from "../../utils/auth";
+
 /**
  * 스타일 가이드(이 파일 내부에서만 적용):
  * - 배경: 은은한 그라데이션 + 중앙 컨테이너 카드 느낌
@@ -186,22 +193,29 @@ function TabButton({ active, onClick, children }) {
 export default function AdminDashboardTabs() {
   useInjectOnceStyle();
 
-  // 탭 구성: 모두 기존 파일 재사용 + (신규) 자동 작업(크론)
+  const userRole = getRole();
+
+  // 탭 구성: 모두 기존 파일 재사용 + (신규) 자동 작업(크론) + 슈퍼 전용 홈페이지 설정
   const tabs = useMemo(
-    () => [
-      { key: "report", label: "일일 리포트" },
-      { key: "counsel", label: "상담·프로필·수업형태" },
-      { key: "users", label: "계정 관리" },
-      { key: "attendance", label: "출결 관리" },
-      { key: "progress", label: "진도 관리" },
-      { key: "subjects", label: "과목·단원" },
-      { key: "students", label: "학생 정보" },
-      { key: "schools", label: "학교 관리" },
-      { key: "periods", label: "학교 일정/학기" },
-      { key: "promo", label: "공지 · 팝업 배너" },
-      // ⬇️ (신규) 크론 설정 탭 추가
-      { key: "cron", label: "자동 작업(크론)" },
-    ],
+    () => {
+      const baseTabs = [
+        { key: "report", label: "일일 리포트" },
+        { key: "counsel", label: "상담·프로필·수업형태" },
+        { key: "users", label: "계정 관리" },
+        { key: "attendance", label: "출결 관리" },
+        { key: "progress", label: "진도 관리" },
+        { key: "subjects", label: "과목·단원" },
+        { key: "students", label: "학생 정보" },
+        { key: "schools", label: "학교 관리" },
+        { key: "periods", label: "학교 일정/학기" },
+        { key: "promo", label: "공지 · 팝업 배너" },
+        { key: "content", label: "콘텐츠 관리" },
+        { key: "cron", label: "자동 작업(크론)" },
+      ];
+
+
+      return baseTabs;
+    },
     []
   );
 
@@ -396,6 +410,17 @@ export default function AdminDashboardTabs() {
           </div>
         )}
 
+        {/* 콘텐츠 관리 */}
+        {tab === "content" && (
+          <SectionCard
+            title="홈페이지 콘텐츠 관리"
+            subtitle="배너 슬라이드, 학원 소개, 강사진, 갤러리 등 홈페이지 콘텐츠를 관리합니다."
+            actions={<span className="adm-pill">콘텐츠</span>}
+          >
+            <SiteContentManager />
+          </SectionCard>
+        )}
+
         {/* (신규) 자동 작업(크론) */}
         {tab === "cron" && (
           <SectionCard
@@ -406,6 +431,7 @@ export default function AdminDashboardTabs() {
             <CronSettings />
           </SectionCard>
         )}
+
       </div>
     </div>
   );

@@ -109,6 +109,8 @@ const publicSiteSettingsRoutes   = require('./routes/publicSiteSettingsRoutes');
 const bannerUpload               = require('./routes/bannerUpload');
 const adminCounselRoutes = require('./routes/adminCounselRoutes');
 const superSettingsRoutes = require('./routes/superSettingsRoutes');
+const siteContentRoutes = require('./routes/siteContentRoutes');
+const themeUpload = require('./routes/themeUpload');
 
 /* =========================
  * 라우트 마운트
@@ -141,14 +143,19 @@ app.use('/api/school', schoolRoutes); // 구식 별칭도 허용
 app.use('/api/school-periods', schoolPeriodRoutes);
 app.use('/api/schools/periods', schoolPeriodRoutes);
 
+// (신규) 관리자/슈퍼용: 크론 설정/수동 실행
+app.use('/api/super', superCronRoutes);
+
+// 사이트 설정 및 테마 업로드 (더 구체적인 경로부터 먼저)
+app.use('/api/content', siteContentRoutes);
+app.use('/api/theme', themeUpload);
+app.use('/api/banner', bannerUpload);
+
 // 퍼블릭 사이트 설정
 app.use('/api/public-site-settings', publicSiteSettingsRoutes);
 // ⬇️ 프론트가 쓰는 구 경로를 별칭으로 추가 (이번 404의 원인 해결)
 app.use('/api/site/public-settings', publicSiteSettingsRoutes);
 app.use('/api/site', publicSiteSettingsRoutes); // GET /api/site/public
-
-// (신규) 관리자/슈퍼용: 크론 설정/수동 실행
-app.use('/api/super', superCronRoutes);
 
 // 업로드(정적)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

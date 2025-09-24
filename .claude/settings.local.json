@@ -5,7 +5,16 @@
       "Bash(npm audit:*)",
       "Bash(npm run build:*)",
       "Bash(npm start)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(node:*)",
+      "Bash(taskkill:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(pkill:*)",
+      "Bash(python:*)",
+      "Bash(tasklist:*)",
+      "Bash(powershell:*)",
+      "Bash(cmd /c:*)"
     ],
     "deny": [],
     "ask": []

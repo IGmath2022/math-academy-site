@@ -159,6 +159,28 @@ export default function PopupBannerAdmin() {
     });
   }
 
+  function resetBanner(idx) {
+    if (typeof window !== "undefined") {
+      const confirmClear = window.confirm("배너 내용을 모두 비울까요?");
+      if (!confirmClear) return;
+    }
+    setBanners((prev) => {
+      const next = [...prev];
+      next[idx] = { ...EMPTY, visible: false };
+      return next;
+    });
+    setFiles((prev) => {
+      const next = [...prev];
+      next[idx] = null;
+      return next;
+    });
+    setUploading((prev) => {
+      const next = [...prev];
+      next[idx] = false;
+      return next;
+    });
+  }
+
   // ───────────────────────────────── 렌더 ─────────────────────────────────
   return (
     <div style={{ display: "grid", gap: 14 }}>
@@ -192,16 +214,34 @@ export default function PopupBannerAdmin() {
                   gap: 10,
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                   <div style={{ fontWeight: 800, color: "#1d2742" }}>팝업 배너 #{i + 1}</div>
-                  <label style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "#37446b" }}>
-                    <input
-                      type="checkbox"
-                      checked={!!b.visible}
-                      onChange={(e) => setField(i, "visible", e.target.checked)}
-                    />
-                    표시
-                  </label>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <label style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#37446b" }}>
+                      <input
+                        type="checkbox"
+                        checked={!!b.visible}
+                        onChange={(e) => setField(i, "visible", e.target.checked)}
+                      />
+                      표시
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => resetBanner(i)}
+                      disabled={uploading[i]}
+                      style={{
+                        padding: "6px 10px",
+                        borderRadius: 8,
+                        border: "1px solid #f3b6b6",
+                        background: "#fff5f5",
+                        color: "#d14b4b",
+                        fontSize: 12,
+                        fontWeight: 700,
+                      }}
+                    >
+                      비우기
+                    </button>
+                  </div>
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, alignItems: "center" }}>

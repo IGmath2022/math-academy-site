@@ -4,7 +4,10 @@ const router = express.Router();
 const ctrl = require('../controllers/publicSiteSettingsController');
 
 // ⚠️ 상대경로만 사용합니다. (app.js에서 어떤 경로로 마운트하든 동작)
-router.get('/public', ctrl.getPublic);
+router.get('/public', (req, res, next) => {
+  console.log('🚀 /public route called');
+  ctrl.getPublic(req, res, next);
+});
 // 구 경로 호환: /public-settings → /public 로 307
 router.get('/public-settings', (req, res) => {
   res.redirect(307, req.baseUrl.replace(/\/+$/, '') + '/public');

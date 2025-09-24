@@ -39,28 +39,29 @@ function NavBar() {
     navigate("/login");
   };
 
-  // 디버깅: 설정값 확인
-  console.log('NavBar settings:', settings);
-  console.log('NavBar loading:', loading);
 
   // 공개설정이 아직 로드 전이라면 "잠깐 숨김" -> 깜빡임 방지
   // 단, 캐시가 있으면 이미 settings가 있으므로 로딩 중에도 올바른 메뉴가 보입니다.
   const showHome      = settings?.menu_home_on ?? false;
+  const showNews      = settings?.menu_news_on ?? false;
   const showBlog      = settings?.menu_blog_on ?? false;
   const showMaterials = settings?.menu_materials_on ?? false;
   const showContact   = settings?.menu_contact_on ?? false;
 
-  console.log('Menu visibility:', {showHome, showBlog, showMaterials, showContact});
+  // 브랜딩 설정
+  const academyName = settings?.academy_name || 'IG수학학원';
+  const primaryColor = settings?.primary_color || '#2d4373';
+
 
   return (
     <nav style={{
       display: "flex", flexWrap: "wrap", justifyContent: "space-between",
-      alignItems: "center", background: "var(--brand, #2d4373)", padding: "10px 4vw",
+      alignItems: "center", background: primaryColor, padding: "10px 4vw",
       marginBottom: 24, position: "sticky", top: 0, zIndex: 100
     }}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
         {showHome && (
-          <Link style={{ color: "white", fontWeight: "bold", fontSize: 20, textDecoration: "none" }} to="/">IG수학학원</Link>
+          <Link style={{ color: "white", fontWeight: "bold", fontSize: 20, textDecoration: "none" }} to="/">{academyName}</Link>
         )}
         {showBlog && <Link style={{ color: "white", textDecoration: "none" }} to="/news">공지사항</Link>}
         {showContact && <Link to="/contact" style={{ color: "#fff", textDecoration: "none" }}>상담문의</Link>}
@@ -87,7 +88,7 @@ function NavBar() {
             onClick={handleLogout}
             style={{
               background: "#fff",
-              color: "var(--brand, #2d4373)",
+              color: primaryColor,
               border: "none",
               borderRadius: 8,
               padding: "6px 18px",

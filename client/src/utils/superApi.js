@@ -1,4 +1,3 @@
-// client/src/utils/superApi.js
 import { API_URL } from "../api";
 import { getToken } from "./auth";
 
@@ -8,7 +7,7 @@ export async function getSiteSettings() {
     headers: { Authorization: `Bearer ${token}` }
   });
   if (!r.ok) throw new Error('getSiteSettings failed');
-  return await r.json(); // { ok:true, settings:{...} }
+  return await r.json();
 }
 
 export async function saveSiteSettings(payload) {
@@ -22,5 +21,5 @@ export async function saveSiteSettings(payload) {
     body: JSON.stringify(payload)
   });
   if (!r.ok) throw new Error('saveSiteSettings failed');
-  return await r.json(); // { ok:true }
+  return await r.json();
 }
