@@ -1,4 +1,4 @@
-const express = require('express');
+ï»¿const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
@@ -7,7 +7,7 @@ const { isAuthenticated } = require('../middleware/auth');
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Cloudflare R2 ¼³Á¤
+// Cloudflare R2 ì„¤ì •
 const s3 = new S3Client({
   region: 'auto',
   endpoint: process.env.R2_ENDPOINT,
@@ -90,7 +90,7 @@ function requireSuper(req, res, next) {
   return next();
 }
 
-// ·Î°í ¾÷·Îµå (Çì´õ, ÆÄºñÄÜ, ·Îµù, È÷¾î·Î)
+// ë¡œê³  ì—…ë¡œë“œ (í—¤ë”, íŒŒë¹„ì½˜, ë¡œë”©, íˆì–´ë¡œ)
 router.post('/upload/logo', isAuthenticated, requireSuper, upload.single('file'), async (req, res) => {
   try {
     const file = req.file;
@@ -98,9 +98,9 @@ router.post('/upload/logo', isAuthenticated, requireSuper, upload.single('file')
 
     const allowed = new Set(['header', 'favicon', 'loading', 'hero']);
 
-    if (!file) return res.status(400).json({ message: 'ÆÄÀÏ ¾øÀ½' });
+    if (!file) return res.status(400).json({ message: 'íŒŒì¼ ì—†ìŒ' });
     if (!allowed.has(type)) {
-      return res.status(400).json({ message: 'Çã¿ëµÇÁö ¾ÊÀº ·Î°í Å¸ÀÔÀÔ´Ï´Ù.' });
+      return res.status(400).json({ message: 'í—ˆìš©ë˜ì§€ ì•Šì€ ë¡œê³  íƒ€ì…ì…ë‹ˆë‹¤.' });
     }
 
     const key = makeObjectKey(`theme/logos/${type}`, file.originalname);
@@ -116,16 +116,16 @@ router.post('/upload/logo', isAuthenticated, requireSuper, upload.single('file')
 
     res.json({ url: publicUrl, type });
   } catch (err) {
-    console.error('[·Î°í ¾÷·Îµå ¿À·ù]', err);
-    res.status(500).json({ message: '·Î°í ¾÷·Îµå¿¡ ½ÇÆĞÇß½À´Ï´Ù.', error: String(err?.message || err) });
+    console.error('[ë¡œê³  ì—…ë¡œë“œ ì˜¤ë¥˜]', err);
+    res.status(500).json({ message: 'ë¡œê³  ì—…ë¡œë“œì— ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤.', error: String(err?.message || err) });
   }
 });
 
-// °­»ç »çÁø ¾÷·Îµå
+// ê°•ì‚¬ ì‚¬ì§„ ì—…ë¡œë“œ
 router.post('/upload/teacher', isAuthenticated, upload.single('file'), async (req, res) => {
   try {
     const file = req.file;
-    if (!file) return res.status(400).json({ message: 'ÆÄÀÏ ¾øÀ½' });
+    if (!file) return res.status(400).json({ message: 'íŒŒì¼ ì—†ìŒ' });
 
     const key = makeObjectKey('theme/teachers', file.originalname);
     const params = {
@@ -140,18 +140,18 @@ router.post('/upload/teacher', isAuthenticated, upload.single('file'), async (re
 
     res.json({ url: publicUrl });
   } catch (err) {
-    console.error('[°­»ç »çÁø ¾÷·Îµå ¿À·ù]', err);
-    res.status(500).json({ message: '°­»ç »çÁø ¾÷·Îµå¿¡ ½ÇÆĞÇß½À´Ï´Ù.', error: String(err?.message || err) });
+    console.error('[ê°•ì‚¬ ì‚¬ì§„ ì—…ë¡œë“œ ì˜¤ë¥˜]', err);
+    res.status(500).json({ message: 'ê°•ì‚¬ ì‚¬ì§„ ì—…ë¡œë“œì— ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤.', error: String(err?.message || err) });
   }
 });
 
-// °¶·¯¸® ÀÌ¹ÌÁö ¾÷·Îµå
+// ê°¤ëŸ¬ë¦¬ ì´ë¯¸ì§€ ì—…ë¡œë“œ
 router.post('/upload/gallery', isAuthenticated, upload.single('file'), async (req, res) => {
   try {
     const file = req.file;
     const { category } = req.body; // 'facility', 'class', 'event'
 
-    if (!file) return res.status(400).json({ message: 'ÆÄÀÏ ¾øÀ½' });
+    if (!file) return res.status(400).json({ message: 'íŒŒì¼ ì—†ìŒ' });
 
     const safeCategory = sanitizeSegment(category, 'general');
     const key = makeObjectKey(`theme/gallery/${safeCategory}`, file.originalname);
@@ -167,9 +167,10 @@ router.post('/upload/gallery', isAuthenticated, upload.single('file'), async (re
 
     res.json({ url: publicUrl, category: safeCategory });
   } catch (err) {
-    console.error('[°¶·¯¸® ¾÷·Îµå ¿À·ù]', err);
-    res.status(500).json({ message: '°¶·¯¸® ¾÷·Îµå¿¡ ½ÇÆĞÇß½À´Ï´Ù.', error: String(err?.message || err) });
+    console.error('[ê°¤ëŸ¬ë¦¬ ì—…ë¡œë“œ ì˜¤ë¥˜]', err);
+    res.status(500).json({ message: 'ê°¤ëŸ¬ë¦¬ ì—…ë¡œë“œì— ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤.', error: String(err?.message || err) });
   }
 });
 
 module.exports = router;
+

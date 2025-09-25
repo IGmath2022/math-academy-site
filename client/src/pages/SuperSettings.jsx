@@ -1,11 +1,11 @@
-// client/src/pages/SuperSettings.jsx
+ï»¿// client/src/pages/SuperSettings.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { API_URL } from "../api";
 import { getToken, clearAuth } from "../utils/auth";
 import { getSiteSettings, saveSiteSettings } from "../utils/superApi";
 import { emitSiteSettingsUpdated, persistThemeSnapshot, applyTheme } from "../utils/sitePublic";
 
-/** ½´ÆÛ °ü¸®ÀÚ¿ë °ø°³ »çÀÌÆ® ¼³Á¤ ÆäÀÌÁö */
+/** ìŠˆí¼ ê´€ë¦¬ìžìš© ê³µê°œ ì‚¬ì´íŠ¸ ì„¤ì • íŽ˜ì´ì§€ */
 
 const INITIAL_SETTINGS = {
   menu_home_on: "true",
@@ -16,7 +16,7 @@ const INITIAL_SETTINGS = {
   blog_show: "true",
   site_theme_color: "#2d4373",
   site_theme_mode: "light",
-  default_class_name: "IG¼öÇÐ",
+  default_class_name: "IGìˆ˜í•™",
   home_sections: [],
   hero_title: "",
   hero_subtitle: "",
@@ -45,7 +45,7 @@ const THEME_PRESETS = [
   {
     key: "classic-navy",
     label: "Classic Navy",
-    description: "Â÷ºÐÇÑ ³×ÀÌºñ¿Í ¹àÀº È¸»ö Á¶ÇÕ",
+    description: "ì°¨ë¶„í•œ ë„¤ì´ë¹„ì™€ ë°ì€ íšŒìƒ‰ ì¡°í•©",
     siteThemeColor: "#2d4373",
     siteThemeMode: "light",
     primary: "#2d4373",
@@ -55,7 +55,7 @@ const THEME_PRESETS = [
   {
     key: "emerald-fresh",
     label: "Emerald Fresh",
-    description: "»ê¶æÇÑ ¿¡¸Þ¶öµå¿Í ¹Ì»ö",
+    description: "ì‚°ëœ»í•œ ì—ë©”ëž„ë“œì™€ ë¯¸ìƒ‰",
     siteThemeColor: "#1f8a70",
     siteThemeMode: "light",
     primary: "#1f8a70",
@@ -65,7 +65,7 @@ const THEME_PRESETS = [
   {
     key: "sunrise",
     label: "Sunrise Warm",
-    description: "µû¶æÇÑ ¿À·»Áö Æ÷ÀÎÆ®",
+    description: "ë”°ëœ»í•œ ì˜¤ë Œì§€ í¬ì¸íŠ¸",
     siteThemeColor: "#e07a3f",
     siteThemeMode: "light",
     primary: "#e07a3f",
@@ -75,7 +75,7 @@ const THEME_PRESETS = [
   {
     key: "slate-minimal",
     label: "Slate Minimal",
-    description: "¸ð´øÇÑ ½½·¹ÀÌÆ® Åæ",
+    description: "ëª¨ë˜í•œ ìŠ¬ë ˆì´íŠ¸ í†¤",
     siteThemeColor: "#465870",
     siteThemeMode: "light",
     primary: "#465870",
@@ -85,7 +85,7 @@ const THEME_PRESETS = [
   {
     key: "midnight",
     label: "Midnight Focus",
-    description: "¾îµÎ¿î ¹è°æ¿¡ ¼±¸íÇÑ Æ÷ÀÎÆ®",
+    description: "ì–´ë‘ìš´ ë°°ê²½ì— ì„ ëª…í•œ í¬ì¸íŠ¸",
     siteThemeColor: "#1b2430",
     siteThemeMode: "dark",
     primary: "#1b2430",
@@ -104,11 +104,11 @@ const HOME_SECTION_KEY_NORMALIZE = {
 };
 
 const HOME_SECTION_CHOICES = [
-  { key: "hero", label: "¸ÞÀÎ È÷¾î·Î", description: "Ã¹ È­¸é »ó´Ü ¼Ò°³ ¹è³Ê" },
-  { key: "about", label: "ÇÐ¿ø ¼Ò°³", description: "¿øÀå ÀÎ»ç¸» / ÇÐ¿ø ¼Ò°³ ¹®±¸" },
-  { key: "schedule", label: "À§Ä¡ ¾È³»", description: "Áöµµ ¹× ¿¬¶ôÃ³ ¿ä¾à" },
-  { key: "teachers", label: "°­»çÁø ¼Ò°³", description: "´ëÇ¥ °­»ç ¼Ò°³ ¼½¼Ç" },
-  { key: "blog", label: "ºí·Î±× ÃÖ½Å±Û", description: "ºí·Î±× ÃÖ½Å °Ô½Ã¹° ¼Ò°³" },
+  { key: "hero", label: "ë©”ì¸ ížˆì–´ë¡œ", description: "ì²« í™”ë©´ ìƒë‹¨ ì†Œê°œ ë°°ë„ˆ" },
+  { key: "about", label: "í•™ì› ì†Œê°œ", description: "ì›ìž¥ ì¸ì‚¬ë§ / í•™ì› ì†Œê°œ ë¬¸êµ¬" },
+  { key: "schedule", label: "ìœ„ì¹˜ ì•ˆë‚´", description: "ì§€ë„ ë° ì—°ë½ì²˜ ìš”ì•½" },
+  { key: "teachers", label: "ê°•ì‚¬ì§„ ì†Œê°œ", description: "ëŒ€í‘œ ê°•ì‚¬ ì†Œê°œ ì„¹ì…˜" },
+  { key: "blog", label: "ë¸”ë¡œê·¸ ìµœì‹ ê¸€", description: "ë¸”ë¡œê·¸ ìµœì‹  ê²Œì‹œë¬¼ ì†Œê°œ" },
 ];
 
 const boolToStr = (value) => (value ? "true" : "false");
@@ -252,7 +252,7 @@ export default function SuperSettings() {
         const { settings: s } = await getSiteSettings();
         setSettings(toStateShape(s));
       } catch (e) {
-        setErr("¼³Á¤À» ºÒ·¯¿ÀÁö ¸øÇß½À´Ï´Ù.");
+        setErr("ì„¤ì •ì„ ë¶ˆëŸ¬ì˜¤ì§€ ëª»í–ˆìŠµë‹ˆë‹¤.");
       } finally {
         setLoading(false);
       }
@@ -282,13 +282,13 @@ export default function SuperSettings() {
   if (loadingMe)
     return (
       <PageWrap>
-        <CenterText>±ÇÇÑ È®ÀÎ ÁßÀÔ´Ï´Ù¡¦</CenterText>
+        <CenterText>ê¶Œí•œ í™•ì¸ ì¤‘ìž…ë‹ˆë‹¤â€¦</CenterText>
       </PageWrap>
     );
   if (role !== "super")
     return (
       <PageWrap>
-        <CenterText>Á¢±Ù ±ÇÇÑÀÌ ÇÊ¿äÇÕ´Ï´Ù. (½´ÆÛ Àü¿ë)</CenterText>
+        <CenterText>ì ‘ê·¼ ê¶Œí•œì´ í•„ìš”í•©ë‹ˆë‹¤. (ìŠˆí¼ ì „ìš©)</CenterText>
       </PageWrap>
     );
 
@@ -330,7 +330,7 @@ export default function SuperSettings() {
 
     const token = getToken?.();
     if (!token) {
-      setErr("ÀÎÁõÀÌ ÇÊ¿äÇÕ´Ï´Ù. ´Ù½Ã ·Î±×ÀÎÇØ ÁÖ¼¼¿ä.");
+      setErr("ì¸ì¦ì´ í•„ìš”í•©ë‹ˆë‹¤. ë‹¤ì‹œ ë¡œê·¸ì¸í•´ ì£¼ì„¸ìš”.");
       setTimeout(() => setErr(""), 2500);
       if (event.target) event.target.value = "";
       return;
@@ -352,23 +352,23 @@ export default function SuperSettings() {
 
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
-        const message = payload?.message || "·Î°í ¾÷·Îµå¿¡ ½ÇÆÐÇß½À´Ï´Ù.";
+        const message = payload?.message || "ë¡œê³  ì—…ë¡œë“œì— ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤.";
         throw new Error(message);
       }
 
       const url = payload?.url;
       if (!url) {
-        throw new Error("¾÷·Îµå ÀÀ´ä¿¡¼­ URLÀ» Ã£À» ¼ö ¾ø½À´Ï´Ù.");
+        throw new Error("ì—…ë¡œë“œ ì‘ë‹µì—ì„œ URLì„ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤.");
       }
 
       setSettings((prev) => ({ ...prev, hero_logo_url: url }));
-      setMsg("·Î°í°¡ ¾÷·ÎµåµÇ¾ú½À´Ï´Ù. ÀúÀåÀ» ´­·¯ Àû¿ëÇÏ¼¼¿ä.");
+      setMsg("ë¡œê³ ê°€ ì—…ë¡œë“œë˜ì—ˆìŠµë‹ˆë‹¤. ì €ìž¥ì„ ëˆŒëŸ¬ ì ìš©í•˜ì„¸ìš”.");
       setTimeout(() => setMsg(""), 2000);
     } catch (error) {
       if (process.env.NODE_ENV !== "production") {
         console.error("[SuperSettings] hero logo upload failed", error);
       }
-      setErr(error?.message || "·Î°í ¾÷·Îµå¿¡ ½ÇÆÐÇß½À´Ï´Ù.");
+      setErr(error?.message || "ë¡œê³  ì—…ë¡œë“œì— ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤.");
       setTimeout(() => setErr(""), 3000);
     } finally {
       setUploadingLogo(false);
@@ -390,10 +390,10 @@ export default function SuperSettings() {
       persistThemeSnapshot(payload);
       applyTheme({ site_theme_color: payload.site_theme_color, site_theme_mode: payload.site_theme_mode });
       emitSiteSettingsUpdated();
-      setMsg("ÀúÀåµÇ¾ú½À´Ï´Ù.");
+      setMsg("ì €ìž¥ë˜ì—ˆìŠµë‹ˆë‹¤.");
       setTimeout(() => setMsg(""), 1800);
     } catch (e) {
-      setErr("ÀúÀå¿¡ ½ÇÆÐÇß½À´Ï´Ù. ´Ù½Ã ½ÃµµÇØ ÁÖ¼¼¿ä.");
+      setErr("ì €ìž¥ì— ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤. ë‹¤ì‹œ ì‹œë„í•´ ì£¼ì„¸ìš”.");
       setTimeout(() => setErr(""), 2000);
     } finally {
       setSaving(false);
@@ -403,10 +403,10 @@ export default function SuperSettings() {
   return (
     <PageWrap>
       <Header>
-        <h2 style={{ margin: 0, fontSize: 20 }}>°ø°³ »çÀÌÆ® ¼³Á¤ (½´ÆÛ)</h2>
+        <h2 style={{ margin: 0, fontSize: 20 }}>ê³µê°œ ì‚¬ì´íŠ¸ ì„¤ì • (ìŠˆí¼)</h2>
         <div>
           <button onClick={save} disabled={saving} style={btnPrimary}>
-            {saving ? "ÀúÀå Áß¡¦" : "ÀúÀå"}
+            {saving ? "ì €ìž¥ ì¤‘â€¦" : "ì €ìž¥"}
           </button>
         </div>
       </Header>
@@ -416,36 +416,36 @@ export default function SuperSettings() {
 
       {loading ? (
         <Panel>
-          <CenterText>ºÒ·¯¿À´Â ÁßÀÔ´Ï´Ù¡¦</CenterText>
+          <CenterText>ë¶ˆëŸ¬ì˜¤ëŠ” ì¤‘ìž…ë‹ˆë‹¤â€¦</CenterText>
         </Panel>
       ) : (
         <>
           <Panel>
-            <SectionTitle>¸Þ´º ³ëÃâ</SectionTitle>
-            <Note>Ã¼Å©µÈ ¸Þ´º¸¸ °ø°³ »çÀÌÆ® »ó´Ü ³×ºñ°ÔÀÌ¼Ç¿¡ ³ëÃâµË´Ï´Ù.</Note>
+            <SectionTitle>ë©”ë‰´ ë…¸ì¶œ</SectionTitle>
+            <Note>ì²´í¬ëœ ë©”ë‰´ë§Œ ê³µê°œ ì‚¬ì´íŠ¸ ìƒë‹¨ ë„¤ë¹„ê²Œì´ì…˜ì— ë…¸ì¶œë©ë‹ˆë‹¤.</Note>
             <Row>
               <Switch
-                label="È¨"
+                label="í™ˆ"
                 value={settings.menu_home_on}
                 onChange={(v) => onChange("menu_home_on", v)}
               />
               <Switch
-                label="°øÁö»çÇ×"
+                label="ê³µì§€ì‚¬í•­"
                 value={settings.menu_news_on}
                 onChange={(v) => onChange("menu_news_on", v)}
               />
               <Switch
-                label="ºí·Î±×"
+                label="ë¸”ë¡œê·¸"
                 value={settings.menu_blog_on}
                 onChange={(v) => onChange("menu_blog_on", v)}
               />
               <Switch
-                label="ÀÚ·á½Ç"
+                label="ìžë£Œì‹¤"
                 value={settings.menu_materials_on}
                 onChange={(v) => onChange("menu_materials_on", v)}
               />
               <Switch
-                label="»ó´ã¹®ÀÇ"
+                label="ìƒë‹´ë¬¸ì˜"
                 value={settings.menu_contact_on}
                 onChange={(v) => onChange("menu_contact_on", v)}
               />
@@ -453,8 +453,8 @@ export default function SuperSettings() {
           </Panel>
 
           <Panel>
-            <SectionTitle>Å×¸¶ & »ö»ó</SectionTitle>
-            <Note>¿øÇÏ´Â ºÐÀ§±âÀÇ Å×¸¶¸¦ ¼±ÅÃÇÏ¸é ¾Æ·¡ »ö»ó°ªÀÌ ÀÚµ¿À¸·Î Ã¤¿öÁý´Ï´Ù. ¼¼ºÎ »ö»óÀº ¼±ÅÃ ÈÄ ¼öÁ¤ÇÒ ¼ö ÀÖ½À´Ï´Ù.</Note>
+            <SectionTitle>í…Œë§ˆ & ìƒ‰ìƒ</SectionTitle>
+            <Note>ì›í•˜ëŠ” ë¶„ìœ„ê¸°ì˜ í…Œë§ˆë¥¼ ì„ íƒí•˜ë©´ ì•„ëž˜ ìƒ‰ìƒê°’ì´ ìžë™ìœ¼ë¡œ ì±„ì›Œì§‘ë‹ˆë‹¤. ì„¸ë¶€ ìƒ‰ìƒì€ ì„ íƒ í›„ ìˆ˜ì •í•  ìˆ˜ ìžˆìŠµë‹ˆë‹¤.</Note>
             <div style={{ display: "grid", gap: 12 }}>
               <div
                 style={{
@@ -502,7 +502,7 @@ export default function SuperSettings() {
               </div>
 
               <Row>
-                <Field label="¸ÞÀÎ »ö»ó">
+                <Field label="ë©”ì¸ ìƒ‰ìƒ">
                   <input
                     type="color"
                     value={settings.site_theme_color || "#2d4373"}
@@ -516,7 +516,7 @@ export default function SuperSettings() {
                     style={inp}
                   />
                 </Field>
-                <Field label="Å×¸¶ ¸ðµå">
+                <Field label="í…Œë§ˆ ëª¨ë“œ">
                   <label style={{ marginRight: 10 }}>
                     <input
                       type="radio"
@@ -586,8 +586,8 @@ export default function SuperSettings() {
           </Panel>
 
           <Panel>
-            <SectionTitle>È¨ ¼½¼Ç Ç¥½Ã</SectionTitle>
-            <Note>È¨ÆäÀÌÁö¿¡ º¸¿©ÁÙ ±âº» ¼½¼ÇÀ» ¼±ÅÃÇÏ¼¼¿ä. ºñÈ°¼ºÈ­ÇÏ¸é ÇØ´ç ¿µ¿ªÀÌ ¼û°ÜÁý´Ï´Ù.</Note>
+            <SectionTitle>í™ˆ ì„¹ì…˜ í‘œì‹œ</SectionTitle>
+            <Note>í™ˆíŽ˜ì´ì§€ì— ë³´ì—¬ì¤„ ê¸°ë³¸ ì„¹ì…˜ì„ ì„ íƒí•˜ì„¸ìš”. ë¹„í™œì„±í™”í•˜ë©´ í•´ë‹¹ ì˜ì—­ì´ ìˆ¨ê²¨ì§‘ë‹ˆë‹¤.</Note>
             <div style={{ display: "grid", gap: 10 }}>
               {homeSections.map((section) => {
                 const meta = HOME_SECTION_CHOICES.find((item) => item.key === section.key);
@@ -621,22 +621,22 @@ export default function SuperSettings() {
           </Panel>
 
           <Panel>
-            <SectionTitle>È¨ ¼½¼Ç ÄÜÅÙÃ÷</SectionTitle>
-            <Note>¸ÞÀÎ ÆäÀÌÁö¿¡ º¸¿©ÁÙ ´ëÇ¥ ¹®±¸¸¦ Á÷Á¢ ÀÔ·ÂÇÒ ¼ö ÀÖ½À´Ï´Ù.</Note>
+            <SectionTitle>í™ˆ ì„¹ì…˜ ì½˜í…ì¸ </SectionTitle>
+            <Note>ë©”ì¸ íŽ˜ì´ì§€ì— ë³´ì—¬ì¤„ ëŒ€í‘œ ë¬¸êµ¬ë¥¼ ì§ì ‘ ìž…ë ¥í•  ìˆ˜ ìžˆìŠµë‹ˆë‹¤.</Note>
 
-            {/* È÷¾î·Î ¼½¼Ç */}
-            <ContentSection title="?? È÷¾î·Î ¼½¼Ç" description="¸ÞÀÎ ÆäÀÌÁö »ó´Ü Ã¹ÀÎ»ó ¿µ¿ª">
+            {/* ížˆì–´ë¡œ ì„¹ì…˜ */}
+            <ContentSection title="?? ížˆì–´ë¡œ ì„¹ì…˜" description="ë©”ì¸ íŽ˜ì´ì§€ ìƒë‹¨ ì²«ì¸ìƒ ì˜ì—­">
               <Row>
-                <Field label="È÷¾î·Î Á¦¸ñ">
+                <Field label="ížˆì–´ë¡œ ì œëª©">
                   <input
                     type="text"
                     value={settings.hero_title || ""}
                     onChange={(e) => onChange("hero_title", e.target.value)}
                     style={inp}
-                    placeholder="¿¹) IG ¼öÇÐÇÐ¿ø"
+                    placeholder="ì˜ˆ) IG ìˆ˜í•™í•™ì›"
                   />
                 </Field>
-                <Field label="È÷¾î·Î ·Î°í URL">
+                <Field label="ížˆì–´ë¡œ ë¡œê³  URL">
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                     <input
                       type="text"
@@ -651,14 +651,14 @@ export default function SuperSettings() {
                       disabled={uploadingLogo}
                       style={{ ...btnPrimary, padding: "8px 12px", background: "#475569" }}
                     >
-                      {uploadingLogo ? "¾÷·Îµå Áß..." : "ÆÄÀÏ ¾÷·Îµå"}
+                      {uploadingLogo ? "ì—…ë¡œë“œ ì¤‘..." : "íŒŒì¼ ì—…ë¡œë“œ"}
                     </button>
                   </div>
                   {settings.hero_logo_url && (
                     <div style={{ marginTop: 10 }}>
                       <img
                         src={settings.hero_logo_url}
-                        alt="¾÷·ÎµåµÈ ·Î°í ¹Ì¸®º¸±â"
+                        alt="ì—…ë¡œë“œëœ ë¡œê³  ë¯¸ë¦¬ë³´ê¸°"
                         style={{ width: 72, height: 72, objectFit: "contain", borderRadius: 12, border: "1px solid #e2e8f0" }}
                       />
                     </div>
@@ -672,60 +672,60 @@ export default function SuperSettings() {
                   />
                 </Field>
               </Row>
-              <FullWidthField label="È÷¾î·Î ºÎÁ¦¸ñ">
+              <FullWidthField label="ížˆì–´ë¡œ ë¶€ì œëª©">
                 <textarea
                   value={settings.hero_subtitle || ""}
                   onChange={(e) => onChange("hero_subtitle", e.target.value)}
                   style={{ ...textarea, minHeight: 80 }}
                   rows={3}
-                  placeholder="ÇÐ¿øÀÇ ÇÙ½É ¸Þ½ÃÁö¸¦ ÀÔ·ÂÇÏ¼¼¿ä. ¿¹) 'Ã¼°èÀûÀÎ ¼öÇÐ ±³À°À¸·Î ²ÞÀ» ½ÇÇöÇÏ¼¼¿ä'"
+                  placeholder="í•™ì›ì˜ í•µì‹¬ ë©”ì‹œì§€ë¥¼ ìž…ë ¥í•˜ì„¸ìš”. ì˜ˆ) 'ì²´ê³„ì ì¸ ìˆ˜í•™ êµìœ¡ìœ¼ë¡œ ê¿ˆì„ ì‹¤í˜„í•˜ì„¸ìš”'"
                 />
               </FullWidthField>
             </ContentSection>
 
-            {/* ÇÐ¿ø ¼Ò°³ ¼½¼Ç */}
-            <ContentSection title="?? ÇÐ¿ø ¼Ò°³" description="About ¼½¼Ç¿¡ Ç¥½ÃµÉ ³»¿ë">
-              <FullWidthField label="ÇÐ¿ø ¼Ò°³ ¹®±¸">
+            {/* í•™ì› ì†Œê°œ ì„¹ì…˜ */}
+            <ContentSection title="?? í•™ì› ì†Œê°œ" description="About ì„¹ì…˜ì— í‘œì‹œë  ë‚´ìš©">
+              <FullWidthField label="í•™ì› ì†Œê°œ ë¬¸êµ¬">
                 <textarea
                   value={settings.about_md || ""}
                   onChange={(e) => onChange("about_md", e.target.value)}
                   style={{ ...textarea, minHeight: 120 }}
                   rows={6}
-                  placeholder={`¸ÞÀÎ ÆäÀÌÁö ¼Ò°³ ¿µ¿ª¿¡ º¸¿©ÁÙ ³»¿ëÀ» ÀÔ·ÂÇÏ¼¼¿ä.
+                  placeholder={`ë©”ì¸ íŽ˜ì´ì§€ ì†Œê°œ ì˜ì—­ì— ë³´ì—¬ì¤„ ë‚´ìš©ì„ ìž…ë ¥í•˜ì„¸ìš”.
 
-¿¹½Ã:
-ÀúÈñ IG ¼öÇÐÇÐ¿øÀº 20³â°£ÀÇ ±³À° °æÇèÀ» ¹ÙÅÁÀ¸·Î
-ÇÐ»ý °³°³ÀÎÀÇ ¼öÁØ¿¡ ¸Â´Â ¸ÂÃãÇü ¼öÇÐ ±³À°À» Á¦°øÇÕ´Ï´Ù.
-Ã¼°èÀûÀÎ Ä¿¸®Å§·³°ú °ËÁõµÈ ±³¼ö¹ýÀ¸·Î ÇÐ»ýµéÀÇ ½Ç·Â Çâ»óÀ» µ½°Ú½À´Ï´Ù.`}
+ì˜ˆì‹œ:
+ì €í¬ IG ìˆ˜í•™í•™ì›ì€ 20ë…„ê°„ì˜ êµìœ¡ ê²½í—˜ì„ ë°”íƒ•ìœ¼ë¡œ
+í•™ìƒ ê°œê°œì¸ì˜ ìˆ˜ì¤€ì— ë§žëŠ” ë§žì¶¤í˜• ìˆ˜í•™ êµìœ¡ì„ ì œê³µí•©ë‹ˆë‹¤.
+ì²´ê³„ì ì¸ ì»¤ë¦¬í˜ëŸ¼ê³¼ ê²€ì¦ëœ êµìˆ˜ë²•ìœ¼ë¡œ í•™ìƒë“¤ì˜ ì‹¤ë ¥ í–¥ìƒì„ ë•ê² ìŠµë‹ˆë‹¤.`}
                 />
               </FullWidthField>
             </ContentSection>
 
-            {/* °­»çÁø ¼½¼Ç */}
-            <ContentSection title="????? °­»çÁø" description="°­»çÁø ¼½¼Ç¿¡ Ç¥½ÃµÉ ³»¿ë">
-              <FullWidthField label="°­»çÁø ¼Ò°³ ¹®±¸">
+            {/* ê°•ì‚¬ì§„ ì„¹ì…˜ */}
+            <ContentSection title="????? ê°•ì‚¬ì§„" description="ê°•ì‚¬ì§„ ì„¹ì…˜ì— í‘œì‹œë  ë‚´ìš©">
+              <FullWidthField label="ê°•ì‚¬ì§„ ì†Œê°œ ë¬¸êµ¬">
                 <textarea
                   value={settings.teachers_intro || ""}
                   onChange={(e) => onChange("teachers_intro", e.target.value)}
                   style={{ ...textarea, minHeight: 80 }}
                   rows={4}
-                  placeholder={`°­»çÁø ¼½¼Ç »ó´Ü¿¡ º¸¿©ÁÙ ¼Ò°³ ¹®±¸¸¦ ÀÔ·ÂÇÏ¼¼¿ä.
+                  placeholder={`ê°•ì‚¬ì§„ ì„¹ì…˜ ìƒë‹¨ì— ë³´ì—¬ì¤„ ì†Œê°œ ë¬¸êµ¬ë¥¼ ìž…ë ¥í•˜ì„¸ìš”.
 
-¿¹½Ã: Ç³ºÎÇÑ °æÇè°ú Àü¹®¼ºÀ» °®Ãá ÃÖ°íÀÇ °­»çÁøÀÌ ÇÐ»ýµéÀÇ ¼öÇÐ ½Ç·Â Çâ»óÀ» Ã¥ÀÓÁý´Ï´Ù.`}
+ì˜ˆì‹œ: í’ë¶€í•œ ê²½í—˜ê³¼ ì „ë¬¸ì„±ì„ ê°–ì¶˜ ìµœê³ ì˜ ê°•ì‚¬ì§„ì´ í•™ìƒë“¤ì˜ ìˆ˜í•™ ì‹¤ë ¥ í–¥ìƒì„ ì±…ìž„ì§‘ë‹ˆë‹¤.`}
                 />
               </FullWidthField>
-              <FullWidthField label="°­»çÁø ¸ñ·Ï">
+              <FullWidthField label="ê°•ì‚¬ì§„ ëª©ë¡">
                 <textarea
                   value={settings.teachers_list || ""}
                   onChange={(e) => onChange("teachers_list", e.target.value)}
                   style={{ ...textarea, minHeight: 150 }}
                   rows={10}
-                  placeholder={`°­»çÁø Á¤º¸¸¦ ÀÔ·ÂÇÏ¼¼¿ä. ÇÑ ÁÙ¿¡ ÇÑ ¸í¾¿ ÀÛ¼ºÇØÁÖ¼¼¿ä.
+                  placeholder={`ê°•ì‚¬ì§„ ì •ë³´ë¥¼ ìž…ë ¥í•˜ì„¸ìš”. í•œ ì¤„ì— í•œ ëª…ì”© ìž‘ì„±í•´ì£¼ì„¸ìš”.
 
-¿¹½Ã:
-±è¼öÇÐ ¿øÀå - ¼­¿ï´ë ¼öÇÐ±³À°°ú Á¹¾÷, 20³â °æ·Â - °íµî¼öÇÐ, ¹ÌÀûºÐ
-ÀÌ¹ÌÀû °­»ç - ¿¬¼¼´ë ¼öÇÐ°ú Á¹¾÷, 15³â °æ·Â - Áßµî¼öÇÐ, ±âÇÏ
-¹ÚÅë°è °­»ç - °í·Á´ë Åë°èÇÐ°ú Á¹¾÷, 10³â °æ·Â - È®·ü°ú Åë°è`}
+ì˜ˆì‹œ:
+ê¹€ìˆ˜í•™ ì›ìž¥ - ì„œìš¸ëŒ€ ìˆ˜í•™êµìœ¡ê³¼ ì¡¸ì—…, 20ë…„ ê²½ë ¥ - ê³ ë“±ìˆ˜í•™, ë¯¸ì ë¶„
+ì´ë¯¸ì  ê°•ì‚¬ - ì—°ì„¸ëŒ€ ìˆ˜í•™ê³¼ ì¡¸ì—…, 15ë…„ ê²½ë ¥ - ì¤‘ë“±ìˆ˜í•™, ê¸°í•˜
+ë°•í†µê³„ ê°•ì‚¬ - ê³ ë ¤ëŒ€ í†µê³„í•™ê³¼ ì¡¸ì—…, 10ë…„ ê²½ë ¥ - í™•ë¥ ê³¼ í†µê³„`}
                 />
               </FullWidthField>
             </ContentSection>
@@ -733,19 +733,19 @@ export default function SuperSettings() {
 
 
           <Panel>
-            <SectionTitle>ºê·£µù & ±âº» Á¤º¸</SectionTitle>
-            <Note>ÇÐ¿ø¸í, ¿¬¶ôÃ³ µî È¨ÆäÀÌÁö Àü¹Ý¿¡ ³ëÃâµÇ´Â Á¤º¸¸¦ ÀÔ·ÂÇÕ´Ï´Ù.</Note>
+            <SectionTitle>ë¸Œëžœë”© & ê¸°ë³¸ ì •ë³´</SectionTitle>
+            <Note>í•™ì›ëª…, ì—°ë½ì²˜ ë“± í™ˆíŽ˜ì´ì§€ ì „ë°˜ì— ë…¸ì¶œë˜ëŠ” ì •ë³´ë¥¼ ìž…ë ¥í•©ë‹ˆë‹¤.</Note>
             <Row>
-              <Field label="ÇÐ¿ø¸í">
+              <Field label="í•™ì›ëª…">
                 <input
                   type="text"
                   value={settings.academy_name || ""}
                   onChange={(e) => onChange("academy_name", e.target.value)}
                   style={inp}
-                  placeholder="¿¹) IG¼öÇÐ ÇÐ¿ø"
+                  placeholder="ì˜ˆ) IGìˆ˜í•™ í•™ì›"
                 />
               </Field>
-              <Field label="¿øÀå¸í">
+              <Field label="ì›ìž¥ëª…">
                 <input
                   type="text"
                   value={settings.principal_name || ""}
@@ -755,7 +755,7 @@ export default function SuperSettings() {
               </Field>
             </Row>
             <Row>
-              <Field label="ÁÖ¼Ò">
+              <Field label="ì£¼ì†Œ">
                 <input
                   type="text"
                   value={settings.academy_address || ""}
@@ -763,7 +763,7 @@ export default function SuperSettings() {
                   style={inp}
                 />
               </Field>
-              <Field label="´ëÇ¥ ÀüÈ­">
+              <Field label="ëŒ€í‘œ ì „í™”">
                 <input
                   type="text"
                   value={settings.academy_phone || ""}
@@ -773,7 +773,7 @@ export default function SuperSettings() {
               </Field>
             </Row>
             <Row>
-              <Field label="´ëÇ¥ ÀÌ¸ÞÀÏ">
+              <Field label="ëŒ€í‘œ ì´ë©”ì¼">
                 <input
                   type="email"
                   value={settings.academy_email || ""}
@@ -781,13 +781,13 @@ export default function SuperSettings() {
                   style={inp}
                 />
               </Field>
-              <Field label="¼³¸³ ¿¬µµ">
+              <Field label="ì„¤ë¦½ ì—°ë„">
                 <input
                   type="text"
                   value={settings.founded_year || ""}
                   onChange={(e) => onChange("founded_year", e.target.value)}
                   style={inp}
-                  placeholder="¿¹) 2020"
+                  placeholder="ì˜ˆ) 2020"
                 />
               </Field>
             </Row>
@@ -798,7 +798,7 @@ export default function SuperSettings() {
   );
 }
 
-/* ---------------- UI À¯Æ¿ ---------------- */
+/* ---------------- UI ìœ í‹¸ ---------------- */
 function strBool(v) {
   if (typeof v === "boolean") return v;
   return String(v) === "true";
@@ -895,7 +895,7 @@ const inp = { padding: "8px 10px", border: "1px solid #cfd5e2", borderRadius: 8,
 const textarea = { ...inp, minHeight: 90, width: "100%", resize: "vertical" };
 const colorInput = { width: 50, height: 30, border: "none", background: "transparent", cursor: "pointer" };
 
-// »õ·Î¿î UI ÄÄÆ÷³ÍÆ®µé
+// ìƒˆë¡œìš´ UI ì»´í¬ë„ŒíŠ¸ë“¤
 const ContentSection = ({ title, description, children }) => (
   <div style={{
     background: "#fafbfc",
@@ -942,6 +942,7 @@ const FullWidthField = ({ label, children }) => (
     {children}
   </div>
 );
+
 
 
 
