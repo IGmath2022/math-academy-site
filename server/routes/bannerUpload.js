@@ -8,10 +8,10 @@ const { isAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Multer: 임시로 로컬 uploads/ 에 저장한 뒤 R2로 업로드
+// Multer: ?�시�?로컬 uploads/ ???�?�한 ??R2�??�로??
 const upload = multer({ dest: 'uploads/' });
 
-// Cloudflare R2 연결 설정 (AWS SDK v2 사용)
+// Cloudflare R2 ?�결 ?�정 (AWS SDK v2 ?�용)
 const s3 = new AWS.S3({
   endpoint: process.env.R2_ENDPOINT,
   accessKeyId: process.env.R2_ACCESS_KEY_ID,
@@ -35,20 +35,21 @@ function buildPublicUrl({ keyName, uploadResult }) {
   const baseRaw = (process.env.REACT_APP_R2_PUBLIC_URL || '').trim();
   if (baseRaw) {
     let base = baseRaw.replace(/\/+$/, '');
+
     try {
-      const host = new URL(base).hostname;
+      const parsed = new URL(base);
+      let host = parsed.hostname;
       const accountFromBase = parseAccountIdFromEndpoint(`https://${host}`);
       if (accountFromBase && /\.r2\.cloudflarestorage\.com$/i.test(host)) {
-        base = `https://pub-${accountFromBase}.r2.dev`;
+        host = `pub-${accountFromBase}.r2.dev`;
       }
+      const pathSegments = parsed.pathname.split('/').filter(Boolean);
+      const normalizedPath = pathSegments.length ? `/${pathSegments.join('/')}` : '';
+      base = `${parsed.protocol}//${host}${normalizedPath}`.replace(/\/+$/, '');
     } catch (_) {
-      /* ignore invalid URL */
+      /* ignore invalid base */
     }
 
-    const bucket = (process.env.R2_BUCKET || '').trim().replace(/\/+$/, '');
-    if (bucket && !base.toLowerCase().endsWith(`/${bucket}`.toLowerCase())) {
-      base = `${base}/${bucket}`;
-    }
     return `${base}/${keyName}`;
   }
 
@@ -64,16 +65,15 @@ function buildPublicUrl({ keyName, uploadResult }) {
 
   return keyName;
 }
-
-// 배너 이미지 업로드
+// 배너 ?��?지 ?�로??
 router.post('/upload', isAdmin, upload.single('file'), async (req, res) => {
   try {
     const file = req.file;
     if (!file) {
-      return res.status(400).json({ message: '파일이 없습니다.' });
+      return res.status(400).json({ message: '?�일???�습?�다.' });
     }
 
-    // 파일명 깨짐 방지 및 확장자 유지
+    // ?�일�?깨짐 방�? �??�장???��?
     const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
     const ext = path.extname(originalName) || '';
     const keyName = `banners/${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`;
@@ -86,22 +86,23 @@ router.post('/upload', isAdmin, upload.single('file'), async (req, res) => {
       ContentType: file.mimetype,
     }).promise();
 
-    // 업로드 후 로컬 임시 파일 제거
+    // ?�로????로컬 ?�시 ?�일 ?�거
     fs.unlinkSync(file.path);
 
     const publicUrl = buildPublicUrl({ keyName, uploadResult });
     res.json({ url: publicUrl });
   } catch (err) {
-    console.error('[배너 업로드 에러]', err);
+    console.error('[배너 ?�로???�러]', err);
     if (req.file && req.file.path && fs.existsSync(req.file.path)) {
       try {
         fs.unlinkSync(req.file.path);
       } catch (unlinkErr) {
-        console.error('[임시 파일 삭제 에러]', unlinkErr);
+        console.error('[?�시 ?�일 ??�� ?�러]', unlinkErr);
       }
     }
-    res.status(500).json({ message: '배너 업로드 실패', error: String(err.message || err) });
+    res.status(500).json({ message: '배너 ?�로???�패', error: String(err.message || err) });
   }
 });
 
 module.exports = router;
+
