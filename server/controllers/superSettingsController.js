@@ -79,9 +79,16 @@ exports.saveSiteSettings = async (req, res) => {
       header_logo, favicon, loading_logo,
       primary_color, secondary_color, accent_color,
       title_font, body_font,
-      // 팝업 배너
-      popupBanners,
     } = req.body || {};
+
+    let popupBanners = [];
+    try {
+      const rawPopup = await getSetting('popupBanners', '[]');
+      const parsedPopup = JSON.parse(rawPopup);
+      if (Array.isArray(parsedPopup)) popupBanners = parsedPopup;
+    } catch {
+      popupBanners = [];
+    }
 
     await setSetting('menu_home_on',       toStrBool(menu_home_on));
     await setSetting('menu_blog_on',       toStrBool(menu_blog_on));
@@ -93,8 +100,6 @@ exports.saveSiteSettings = async (req, res) => {
     await setSetting('site_theme_mode',    (site_theme_mode === 'dark') ? 'dark' : 'light');
 
     await setSetting('home_sections',      Array.isArray(home_sections) ? home_sections : []);
-
-    await setSetting('popupBanners',       Array.isArray(popupBanners) ? popupBanners : []);
 
     await setSetting('hero_title',         String(hero_title ?? ''));
     await setSetting('hero_subtitle',      String(hero_subtitle ?? ''));
@@ -156,7 +161,7 @@ exports.saveSiteSettings = async (req, res) => {
         academy_description: String(academy_description ?? ''),
         title_font: String(title_font ?? 'Noto Sans KR'),
         body_font: String(body_font ?? 'system-ui'),
-        popupBanners: Array.isArray(popupBanners) ? popupBanners : [],
+        popupBanners: popupBanners,
       };
 
       await Setting.findOneAndUpdate(

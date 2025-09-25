@@ -7,8 +7,8 @@ import { getToken } from "../../utils/auth";
  * PopupBannerAdmin
  * - 배너 3개(이미지/제목/본문/링크/표시여부)를 관리
  * - 이미지 업로드: POST /api/banner/upload  (multipart/form-data) -> { url }
- * - 설정 조회:     GET  /api/super/site-settings  → 실패 시 GET /api/site/public
- * - 설정 저장:     POST /api/super/site-settings  (payload 내 popupBanners: [{...},{...},{...}])
+ * - 설정 조회:     GET  /api/admin/popup-banners  → 실패 시 GET /api/site/public
+ * - 설정 저장:     PUT  /api/admin/popup-banners  (payload 내 popupBanners: [{...},{...},{...}])
  *
  * 데이터 스키마:
  *   popupBanners: Array<{
@@ -43,14 +43,12 @@ export default function PopupBannerAdmin() {
   async function loadSettings() {
     setLoading(true);
     try {
-      // 1) 관리자 전체 설정 우선
-      const { data } = await axios.get(`${API_URL}/api/super/site-settings`, {
+      const { data } = await axios.get(`${API_URL}/api/admin/popup-banners`, {
         headers,
       });
       const arr = Array.isArray(data?.popupBanners) ? data.popupBanners : [];
       setBanners([0, 1, 2].map((i) => ({ ...EMPTY, ...(arr[i] || {}) })));
     } catch (e1) {
-      // 2) 공개용 폴백
       try {
         const { data } = await axios.get(`${API_URL}/api/site/public`);
         const arr = Array.isArray(data?.popupBanners) ? data.popupBanners : [];
@@ -125,18 +123,9 @@ export default function PopupBannerAdmin() {
   async function saveAll() {
     setSaving(true);
     try {
-      // 기존 설정 불러와 merge (다른 키 보존)
-      let base = {};
-      try {
-        const { data } = await axios.get(`${API_URL}/api/super/site-settings`, { headers });
-        base = data && typeof data === "object" ? data : {};
-      } catch {
-        base = {};
-      }
-      const payload = { ...base, popupBanners: banners };
-      await axios.post(`${API_URL}/api/super/site-settings`, payload, { headers });
+      const payload = { popupBanners: banners };
+      await axios.put(`${API_URL}/api/admin/popup-banners`, payload, { headers });
 
-      // 저장 직후 재조회(새로고침과 일치 보장)
       await loadSettings();
       alert("팝업 배너 설정이 저장되었습니다.");
     } catch (e) {
@@ -144,7 +133,7 @@ export default function PopupBannerAdmin() {
         // eslint-disable-next-line no-console
         console.error("팝업 배너 설정 저장 실패:", e);
       }
-      alert("설정 저장 실패(권한 또는 서버 라우트 확인 필요)");
+      alert("설정 저장 실패(권한 또는 서버 오류 확인 필요)");
     } finally {
       setSaving(false);
     }

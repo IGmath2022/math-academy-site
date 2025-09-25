@@ -4,6 +4,7 @@ const router = express.Router();
 
 const { requireAdminOrSuper } = require('../middleware/auth');
 const lessons = require('../controllers/lessonsController');
+const adminPopupBannerRoutes = require('./adminPopupBannerRoutes');
 
 /**
  * app.js 에서 app.use('/api/admin', adminLessonRoutes) 로 마운트됨.
@@ -50,6 +51,8 @@ router.post('/attendance/set-times', requireAdminOrSuper, lessons.setAttendanceT
  * =========================== */
 router.get('/settings/daily-auto', requireAdminOrSuper, lessons.getDailyAuto);
 router.post('/settings/daily-auto', requireAdminOrSuper, lessons.setDailyAuto);
+
+router.use('/popup-banners', adminPopupBannerRoutes);
 
 module.exports = router;
 
