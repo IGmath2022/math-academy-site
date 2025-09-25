@@ -17,7 +17,7 @@ const Section = memo(function Section({ title, children }) {
 });
 
 export default function Main() {
-  const { ready, home } = useSiteSettings();
+  const { ready, home, branding } = useSiteSettings();
 
   const skeletonStyles = useMemo(
     () => ({
@@ -44,9 +44,21 @@ export default function Main() {
   const hero = home?.hero || {};
   const about = home?.about || {};
 
-  console.log('Main.js - home:', home);
-  console.log('Main.js - byKey:', byKey);
-  console.log('Main.js - blog section condition:', byKey.blog !== false && home?.blog_show !== false);
+  const brandingInfo = branding || {};
+  const academyName = typeof brandingInfo.academy_name === "string" && brandingInfo.academy_name.trim()
+    ? brandingInfo.academy_name.trim()
+    : "Math Academy";
+  const principalName = typeof brandingInfo.principal_name === "string" ? brandingInfo.principal_name.trim() : "";
+  const academyAddress = typeof brandingInfo.academy_address === "string" ? brandingInfo.academy_address.trim() : "";
+  const academyPhone = typeof brandingInfo.academy_phone === "string" ? brandingInfo.academy_phone.trim() : "";
+  const academyEmail = typeof brandingInfo.academy_email === "string" ? brandingInfo.academy_email.trim() : "";
+  const academyDescription = typeof brandingInfo.academy_description === "string"
+    ? brandingInfo.academy_description.trim()
+    : "";
+
+  const scheduleAddress = academyAddress || "서울특별시 강남구 학원로 24, 5층 204호 (IG수학학원)";
+  const displayPhone = academyPhone || "02-563-2925";
+  const phoneHref = displayPhone.replace(/[^0-9+]/g, "") || displayPhone;
 
   return (
     <div className="container" style={wrapStyle}>
@@ -62,7 +74,7 @@ export default function Main() {
             />
           )}
           <h1 style={{ fontSize: 32, marginBottom: 10, letterSpacing: "-1px" }}>
-            {hero.title || "IG수학학원"}
+            {hero.title || academyName}
           </h1>
           {(hero.subtitle || "") && (
             <p style={{ color: "#456", fontSize: 16, margin: 0, marginTop: 4 }}>{hero.subtitle}</p>
@@ -73,16 +85,14 @@ export default function Main() {
       {byKey.about !== false && (
         <Section title="학원 소개">
           <p style={{ lineHeight: 1.7, color: "#333", whiteSpace: "pre-wrap" }}>
-            {about.md || "학생 맞춤 커리큘럼으로 실력을 키워갑니다."}
+            {about.md || "학생 개별 맞춤 전략으로 실력을 끌어올립니다."}
           </p>
         </Section>
       )}
 
       {byKey.schedule !== false && (
         <Section title="위치 안내">
-          <p style={{ color: "#444" }}>
-            서울특별시 강남구 학원로 24, 5층 204호 (IG수학학원)
-          </p>
+          <p style={{ color: "#444", whiteSpace: "pre-wrap" }}>{scheduleAddress}</p>
           <div>
             <KakaoMap />
           </div>
@@ -102,7 +112,7 @@ export default function Main() {
             </div>
           ) : (
             <ul style={{ paddingLeft: 18, color: "#333", margin: 0 }}>
-              <li style={{ marginBottom: 7 }}>원장 홍길동: 수학 교육 경력 10년</li>
+              <li style={{ marginBottom: 7 }}>예시 강사: 10년 이상 입시 지도 경험</li>
             </ul>
           )}
         </Section>
@@ -110,8 +120,33 @@ export default function Main() {
 
       {byKey.blog !== false && home?.blog_show !== false && <Blog limit={3} />}
 
-      <footer style={{ textAlign: "center", marginTop: 42, color: "#666" }}>
-        <p style={{ fontSize: 15, marginBottom: 10 }}>문의: 02-563-2925</p>
+      <footer style={footerStyle}>
+        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>{academyName}</h2>
+        {academyDescription && (
+          <p style={{ margin: "12px 0", color: "#495260", lineHeight: 1.5 }}>{academyDescription}</p>
+        )}
+        <div style={{ display: "grid", gap: 4, fontSize: 14, color: "#4a5361" }}>
+          {principalName && <span>대표 : {principalName}</span>}
+          {scheduleAddress && <span>주소 : {scheduleAddress}</span>}
+          {displayPhone && (
+            <span>
+              전화 :
+              {" "}
+              <a href={`tel:${phoneHref}`} style={{ color: "#2d4373", textDecoration: "none" }}>
+                {displayPhone}
+              </a>
+            </span>
+          )}
+          {academyEmail && (
+            <span>
+              메일 :
+              {" "}
+              <a href={`mailto:${academyEmail}`} style={{ color: "#2d4373", textDecoration: "none" }}>
+                {academyEmail}
+              </a>
+            </span>
+          )}
+        </div>
         <a
           href="https://pf.kakao.com/_dSHvxj"
           target="_blank"
@@ -135,6 +170,14 @@ const wrapStyle = {
   minHeight: 420,
 };
 
+const footerStyle = {
+  textAlign: "center",
+  marginTop: 42,
+  color: "#666",
+  display: "grid",
+  gap: 14,
+};
+
 const kakaoBtn = {
   display: "inline-block",
   background: "#FEE500",
@@ -144,7 +187,7 @@ const kakaoBtn = {
   width: "98%",
   borderRadius: 20,
   textDecoration: "none",
-  marginTop: 8,
+  marginTop: 4,
   boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
   fontSize: 17,
   letterSpacing: "-0.5px",

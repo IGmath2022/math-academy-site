@@ -1,4 +1,4 @@
-﻿// client/src/pages/SuperSettings.jsx
+// client/src/pages/SuperSettings.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { API_URL } from "../api";
 import { getToken, clearAuth } from "../utils/auth";
@@ -249,8 +249,9 @@ export default function SuperSettings() {
     (async () => {
       try {
         setLoading(true);
-        const { settings: s } = await getSiteSettings();
-        setSettings(toStateShape(s));
+        const data = await getSiteSettings();
+        const rawSettings = data?.settings ?? data;
+        setSettings(toStateShape(rawSettings));
       } catch (e) {
         setErr("설정을 불러오지 못했습니다.");
       } finally {
@@ -278,6 +279,10 @@ export default function SuperSettings() {
     settings.secondary_color,
     settings.accent_color,
   ]);
+
+  useEffect(() => {
+    applyTheme({ site_theme_color: settings.site_theme_color, site_theme_mode: settings.site_theme_mode });
+  }, [settings.site_theme_color, settings.site_theme_mode]);
 
   if (loadingMe)
     return (
@@ -385,10 +390,11 @@ export default function SuperSettings() {
 
       const payload = buildPayload(settings);
 
-      await saveSiteSettings(payload);
-      setSettings((prev) => toStateShape({ ...prev, ...payload }));
-      persistThemeSnapshot(payload);
-      applyTheme({ site_theme_color: payload.site_theme_color, site_theme_mode: payload.site_theme_mode });
+      const result = await saveSiteSettings(payload);
+      const latest = result?.settings ?? payload;
+      setSettings(toStateShape(latest));
+      persistThemeSnapshot(latest);
+      applyTheme({ site_theme_color: latest.site_theme_color, site_theme_mode: latest.site_theme_mode });
       emitSiteSettingsUpdated();
       setMsg("저장되었습니다.");
       setTimeout(() => setMsg(""), 1800);
@@ -942,10 +948,3 @@ const FullWidthField = ({ label, children }) => (
     {children}
   </div>
 );
-
-
-
-
-
-
-
