@@ -1,13 +1,13 @@
-// server/routes/themeUpload.js
 const express = require('express');
 const multer = require('multer');
+const path = require('path');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { isAuthenticated } = require('../middleware/auth');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Cloudflare R2 ì„¤ì •
+// Cloudflare R2 ¼³Á¤
 const s3 = new S3Client({
   region: 'auto',
   endpoint: process.env.R2_ENDPOINT,
@@ -17,94 +17,158 @@ const s3 = new S3Client({
   },
 });
 
-// ìŠˆí¼ ê¶Œí•œ ì²´í¬
-function onlySuper(req, res, next) {
+function parseAccountIdFromEndpoint(endpoint) {
+  if (!endpoint) return '';
+  try {
+    const host = new URL(endpoint).hostname;
+    const match = host.match(/^([^.]+)\.r2\.cloudflarestorage\.com$/i);
+    return match ? match[1] : '';
+  } catch {
+    return '';
+  }
+}
+
+function resolvePublicBase() {
+  const raw = (process.env.REACT_APP_R2_PUBLIC_URL || '').trim();
+  if (raw) {
+    let base = raw.replace(/\/+$/, '');
+    try {
+      const parsed = new URL(base);
+      let host = parsed.hostname;
+      const accountFromBase = parseAccountIdFromEndpoint(`https://${host}`);
+      if (accountFromBase && /\.r2\.cloudflarestorage\.com$/i.test(host)) {
+        host = `pub-${accountFromBase}.r2.dev`;
+      }
+      const pathSegments = parsed.pathname.split('/').filter(Boolean);
+      const normalizedPath = pathSegments.length ? `/${pathSegments.join('/')}` : '';
+      base = `${parsed.protocol}//${host}${normalizedPath}`.replace(/\/+$/, '');
+    } catch {
+      /* ignore invalid base */
+    }
+    return base;
+  }
+
+  const accountId = process.env.R2_ACCOUNT_ID || parseAccountIdFromEndpoint(process.env.R2_ENDPOINT || '');
+  const bucket = process.env.R2_BUCKET;
+  if (accountId && bucket) {
+    return `https://pub-${accountId}.r2.dev/${bucket}`.replace(/\/+$/, '');
+  }
+  return '';
+}
+
+const PUBLIC_BASE = resolvePublicBase();
+
+function buildPublicUrl(keyName) {
+  return PUBLIC_BASE ? `${PUBLIC_BASE}/${keyName}` : keyName;
+}
+
+function decodeFilename(name) {
+  if (!name) return 'file';
+  try {
+    return Buffer.from(name, 'latin1').toString('utf8');
+  } catch {
+    return name;
+  }
+}
+
+function makeObjectKey(prefix, originalName) {
+  const decoded = decodeFilename(originalName);
+  const ext = path.extname(decoded) || '';
+  return `${prefix}/${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`;
+}
+
+function sanitizeSegment(value, fallback = 'general') {
+  const normalized = String(value || fallback || 'general').trim();
+  return normalized ? normalized.replace(/[^a-zA-Z0-9_-]+/g, '-') || fallback : fallback;
+}
+
+function requireSuper(req, res, next) {
   if (!req.user) return res.status(401).json({ message: 'Authentication required' });
   if (req.user.role !== 'super') {
     return res.status(403).json({ message: 'Super admin only' });
   }
-  next();
+  return next();
 }
 
-// ë¡œê³  ì—…ë¡œë“œ (í—¤ë”, íŒŒë¹„ì½˜, ë¡œë”©)
-router.post('/upload/logo', isAuthenticated, onlySuper, upload.single('file'), async (req, res) => {
+// ·Î°í ¾÷·Îµå (Çì´õ, ÆÄºñÄÜ, ·Îµù, È÷¾î·Î)
+router.post('/upload/logo', isAuthenticated, requireSuper, upload.single('file'), async (req, res) => {
   try {
     const file = req.file;
-    const { type } = req.body; // 'header', 'favicon', 'loading'
+    const { type } = req.body; // 'header', 'favicon', 'loading', 'hero'
 
-    if (!file) return res.status(400).json({ message: "íŒŒì¼ ì—†ìŒ" });
-    if (!['header', 'favicon', 'loading'].includes(type)) {
-      return res.status(400).json({ message: "ì˜ëª»ëœ ë¡œê³  íƒ€ì…" });
+    const allowed = new Set(['header', 'favicon', 'loading', 'hero']);
+
+    if (!file) return res.status(400).json({ message: 'ÆÄÀÏ ¾øÀ½' });
+    if (!allowed.has(type)) {
+      return res.status(400).json({ message: 'Çã¿ëµÇÁö ¾ÊÀº ·Î°í Å¸ÀÔÀÔ´Ï´Ù.' });
     }
 
-    const key = `theme/logos/${type}/${Date.now()}_${file.originalname}`;
+    const key = makeObjectKey(`theme/logos/${type}`, file.originalname);
     const params = {
       Bucket: process.env.R2_BUCKET,
       Key: key,
       Body: file.buffer,
       ContentType: file.mimetype,
-      ACL: 'public-read'
     };
 
     await s3.send(new PutObjectCommand(params));
-    const publicUrl = `${process.env.REACT_APP_R2_PUBLIC_URL}/${key}`;
+    const publicUrl = buildPublicUrl(key);
 
     res.json({ url: publicUrl, type });
   } catch (err) {
-    console.error("[ë¡œê³  ì—…ë¡œë“œ ì—ëŸ¬]", err);
-    res.status(500).json({ message: "ë¡œê³  ì—…ë¡œë“œ ì‹¤íŒ¨", error: String(err) });
+    console.error('[·Î°í ¾÷·Îµå ¿À·ù]', err);
+    res.status(500).json({ message: '·Î°í ¾÷·Îµå¿¡ ½ÇÆĞÇß½À´Ï´Ù.', error: String(err?.message || err) });
   }
 });
 
-// ê°•ì‚¬ ì‚¬ì§„ ì—…ë¡œë“œ
+// °­»ç »çÁø ¾÷·Îµå
 router.post('/upload/teacher', isAuthenticated, upload.single('file'), async (req, res) => {
   try {
     const file = req.file;
-    if (!file) return res.status(400).json({ message: "íŒŒì¼ ì—†ìŒ" });
+    if (!file) return res.status(400).json({ message: 'ÆÄÀÏ ¾øÀ½' });
 
-    const key = `theme/teachers/${Date.now()}_${file.originalname}`;
+    const key = makeObjectKey('theme/teachers', file.originalname);
     const params = {
       Bucket: process.env.R2_BUCKET,
       Key: key,
       Body: file.buffer,
       ContentType: file.mimetype,
-      ACL: 'public-read'
     };
 
     await s3.send(new PutObjectCommand(params));
-    const publicUrl = `${process.env.REACT_APP_R2_PUBLIC_URL}/${key}`;
+    const publicUrl = buildPublicUrl(key);
 
     res.json({ url: publicUrl });
   } catch (err) {
-    console.error("[ê°•ì‚¬ ì‚¬ì§„ ì—…ë¡œë“œ ì—ëŸ¬]", err);
-    res.status(500).json({ message: "ê°•ì‚¬ ì‚¬ì§„ ì—…ë¡œë“œ ì‹¤íŒ¨", error: String(err) });
+    console.error('[°­»ç »çÁø ¾÷·Îµå ¿À·ù]', err);
+    res.status(500).json({ message: '°­»ç »çÁø ¾÷·Îµå¿¡ ½ÇÆĞÇß½À´Ï´Ù.', error: String(err?.message || err) });
   }
 });
 
-// ê°¤ëŸ¬ë¦¬ ì´ë¯¸ì§€ ì—…ë¡œë“œ
+// °¶·¯¸® ÀÌ¹ÌÁö ¾÷·Îµå
 router.post('/upload/gallery', isAuthenticated, upload.single('file'), async (req, res) => {
   try {
     const file = req.file;
     const { category } = req.body; // 'facility', 'class', 'event'
 
-    if (!file) return res.status(400).json({ message: "íŒŒì¼ ì—†ìŒ" });
+    if (!file) return res.status(400).json({ message: 'ÆÄÀÏ ¾øÀ½' });
 
-    const key = `theme/gallery/${category || 'general'}/${Date.now()}_${file.originalname}`;
+    const safeCategory = sanitizeSegment(category, 'general');
+    const key = makeObjectKey(`theme/gallery/${safeCategory}`, file.originalname);
     const params = {
       Bucket: process.env.R2_BUCKET,
       Key: key,
       Body: file.buffer,
       ContentType: file.mimetype,
-      ACL: 'public-read'
     };
 
     await s3.send(new PutObjectCommand(params));
-    const publicUrl = `${process.env.REACT_APP_R2_PUBLIC_URL}/${key}`;
+    const publicUrl = buildPublicUrl(key);
 
-    res.json({ url: publicUrl, category });
+    res.json({ url: publicUrl, category: safeCategory });
   } catch (err) {
-    console.error("[ê°¤ëŸ¬ë¦¬ ì—…ë¡œë“œ ì—ëŸ¬]", err);
-    res.status(500).json({ message: "ê°¤ëŸ¬ë¦¬ ì—…ë¡œë“œ ì‹¤íŒ¨", error: String(err) });
+    console.error('[°¶·¯¸® ¾÷·Îµå ¿À·ù]', err);
+    res.status(500).json({ message: '°¶·¯¸® ¾÷·Îµå¿¡ ½ÇÆĞÇß½À´Ï´Ù.', error: String(err?.message || err) });
   }
 });
 
