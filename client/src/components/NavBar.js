@@ -47,6 +47,7 @@ function NavBar() {
   const showBlog      = settings?.menu_blog_on ?? false;
   const showMaterials = settings?.menu_materials_on ?? false;
   const showContact   = settings?.menu_contact_on ?? false;
+  const showTeachers  = settings?.menu_teachers_on ?? false;
 
   // 브랜딩 설정
   const academyName = settings?.academy_name || 'IG수학학원';
@@ -67,6 +68,7 @@ function NavBar() {
         {showContact && <Link to="/contact" style={{ color: "#fff", textDecoration: "none" }}>상담문의</Link>}
         {showBlog && <Link to="/blog" style={{ color: "#fff", textDecoration: "none" }}>블로그최신글</Link>}
         {showMaterials && <Link style={{ color: "white", textDecoration: "none" }} to="/materials">자료실</Link>}
+        {showTeachers && <Link style={{ color: "white", textDecoration: "none" }} to="/teachers">강사진</Link>}
       </div>
 
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>

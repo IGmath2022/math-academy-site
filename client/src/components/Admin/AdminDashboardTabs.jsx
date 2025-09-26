@@ -37,6 +37,9 @@ import CronSettings from "./CronSettings";
 // ── (신규) 콘텐츠 관리
 import SiteContentManager from "./SiteContentManager";
 
+// ── (신규) 강사 프로필 관리
+import TeacherProfileManager from "./TeacherProfileManager";
+
 // 인증 유틸
 import { getRole } from "../../utils/auth";
 
@@ -206,6 +209,7 @@ export default function AdminDashboardTabs() {
         { key: "progress", label: "진도 관리" },
         { key: "subjects", label: "과목·단원" },
         { key: "students", label: "학생 정보" },
+        { key: "teachers", label: "강사 관리" },
         { key: "schools", label: "학교 관리" },
         { key: "periods", label: "학교 일정/학기" },
         { key: "promo", label: "공지 · 팝업 배너" },
@@ -362,6 +366,17 @@ export default function AdminDashboardTabs() {
             actions={<span className="adm-pill">관리</span>}
           >
             <StudentManager />
+          </SectionCard>
+        )}
+
+        {/* 강사 관리 */}
+        {tab === "teachers" && (
+          <SectionCard
+            title="강사 프로필 관리"
+            subtitle="강사 정보, 경력, 사진 등 프로필 관리"
+            actions={<span className="adm-pill">관리</span>}
+          >
+            <TeacherProfileManager />
           </SectionCard>
         )}
 

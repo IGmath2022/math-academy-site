@@ -15,6 +15,7 @@ import Contact from "./pages/Contact";
 import Blog from "./pages/Blog";
 import AttendancePage from "./pages/AttendancePage";
 import ReportPublic from "./pages/ReportPublic";
+import Teachers from "./pages/Teachers";
 
 // 슈퍼 설정 페이지 (통합본) + 레거시 경로 호환용 래퍼
 import SuperSettings from "./pages/SuperSettings";
@@ -36,6 +37,7 @@ function App() {
             <Route path="/materials" element={<Materials />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/blog" element={<Blog />} />
+            <Route path="/teachers" element={<Teachers />} />
 
             {/* 슈퍼 관리자 설정 (신규 표준 경로) */}
             <Route path="/super-settings" element={<SuperSettings />} />

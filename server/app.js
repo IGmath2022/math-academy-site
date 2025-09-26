@@ -112,6 +112,7 @@ const adminPopupBannerRoutes = require('./routes/adminPopupBannerRoutes');
 const superSettingsRoutes = require('./routes/superSettingsRoutes');
 const siteContentRoutes = require('./routes/siteContentRoutes');
 const themeUpload = require('./routes/themeUpload');
+const teacherProfileRoutes = require('./routes/teacherProfileRoutes');
 
 /* =========================
  * 라우트 마운트
@@ -147,6 +148,9 @@ app.use('/api/schools/periods', schoolPeriodRoutes);
 
 // (신규) 관리자/슈퍼용: 크론 설정/수동 실행
 app.use('/api/super', superCronRoutes);
+
+// 강사 프로필 관리
+app.use('/api/teacher-profiles', teacherProfileRoutes);
 
 // 사이트 설정 및 테마 업로드 (더 구체적인 경로부터 먼저)
 app.use('/api/content', siteContentRoutes);

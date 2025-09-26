@@ -13,6 +13,7 @@ const INITIAL_SETTINGS = {
   menu_materials_on: "true",
   menu_contact_on: "true",
   menu_news_on: "true",
+  menu_teachers_on: "false",
   blog_show: "true",
   site_theme_color: "#2d4373",
   site_theme_mode: "light",
@@ -143,6 +144,7 @@ function toStateShape(input = {}) {
     menu_materials_on: boolToStr(boolValue(input.menu_materials_on, INITIAL_SETTINGS.menu_materials_on)),
     menu_contact_on: boolToStr(boolValue(input.menu_contact_on, INITIAL_SETTINGS.menu_contact_on)),
     menu_news_on: boolToStr(boolValue(input.menu_news_on, INITIAL_SETTINGS.menu_news_on)),
+    menu_teachers_on: boolToStr(boolValue(input.menu_teachers_on, INITIAL_SETTINGS.menu_teachers_on)),
     blog_show: boolToStr(boolValue(input.blog_show, INITIAL_SETTINGS.blog_show)),
     site_theme_color: input.site_theme_color || INITIAL_SETTINGS.site_theme_color,
     site_theme_mode: input.site_theme_mode === "dark" ? "dark" : "light",
@@ -180,6 +182,7 @@ function buildPayload(state) {
     menu_materials_on: state.menu_materials_on === "true",
     menu_contact_on: state.menu_contact_on === "true",
     menu_news_on: state.menu_news_on === "true",
+    menu_teachers_on: state.menu_teachers_on === "true",
     blog_show: state.blog_show === "true",
     site_theme_color: sanitizeStr(state.site_theme_color, INITIAL_SETTINGS.site_theme_color),
     site_theme_mode: state.site_theme_mode === "dark" ? "dark" : "light",
@@ -507,6 +510,11 @@ export default function SuperSettings() {
                 label="상담문의"
                 value={settings.menu_contact_on}
                 onChange={(v) => onChange("menu_contact_on", v)}
+              />
+              <Switch
+                label="강사진"
+                value={settings.menu_teachers_on}
+                onChange={(v) => onChange("menu_teachers_on", v)}
               />
             </Row>
           </Panel>
