@@ -2,7 +2,18 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+
+// AWS SDK v2 deprecation 경고 필터링
+const originalEmitWarning = process.emitWarning;
+process.emitWarning = (warning, ...args) => {
+  if (typeof warning === 'string' && warning.includes('AWS SDK for JavaScript (v2) is in maintenance mode')) {
+    return; // AWS SDK v2 경고는 무시
+  }
+  return originalEmitWarning.call(process, warning, ...args);
+};
+
 const AWS = require('aws-sdk');
+
 const Material = require('../models/Material');
 const { isAdmin } = require('../middleware/auth');
 

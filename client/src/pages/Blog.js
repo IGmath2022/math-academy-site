@@ -6,14 +6,17 @@ function Blog({limit=7}) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    console.log('Blog component mounted, fetching from:', `${API_URL}/api/blog`);
+    // eslint-disable-next-line no-console
+    if (process.env.NODE_ENV === 'development') console.log('Blog component mounted, fetching from:', `${API_URL}/api/blog`);
     fetch(`${API_URL}/api/blog`)
       .then(res => {
-        console.log('Blog API response status:', res.status);
+        // eslint-disable-next-line no-console
+        if (process.env.NODE_ENV === 'development') console.log('Blog API response status:', res.status);
         return res.json();
       })
       .then(list => {
-        console.log('Blog data received:', list);
+        // eslint-disable-next-line no-console
+        if (process.env.NODE_ENV === 'development') console.log('Blog data received:', list);
         setList(list.slice(0, limit));
       })
       .catch(err => {

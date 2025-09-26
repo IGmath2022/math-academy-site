@@ -144,7 +144,7 @@ const buildServicesAdapter = () => ({
         const reportUrl = `${REPORT_BASE}/r/${report.logId}`;
 
         // 알림톡 발송
-        await sendReportAlimtalk(report.parentPhone, {
+        const sendResult = await sendReportAlimtalk(report.parentPhone, {
           studentName: report.studentName,
           course: report.course,
           content: report.content,
@@ -153,11 +153,16 @@ const buildServicesAdapter = () => ({
           date: report.date
         });
 
-        // 발송 상태 업데이트
-        await LessonLog.findByIdAndUpdate(report.logId, {
-          notifyStatus: '발송',
-          notifyLog: `자동발송 완료 - ${moment().tz('Asia/Seoul').format('YYYY-MM-DD HH:mm:ss')}`
-        });
+        // 발송 성공 시에만 상태 업데이트
+        if (sendResult && sendResult.success !== false) {
+          await LessonLog.findByIdAndUpdate(report.logId, {
+            notifyStatus: '발송',
+            notifyLog: `자동발송 완료 - ${moment().tz('Asia/Seoul').format('YYYY-MM-DD HH:mm:ss')}`
+          });
+        } else {
+          // 발송 실패하면 에러 발생시켜 catch 블록으로 보냄
+          throw new Error('알림톡 발송 실패');
+        }
 
         processed.push({
           studentName: report.studentName,
@@ -167,10 +172,9 @@ const buildServicesAdapter = () => ({
       } catch (error) {
         console.error(`리포트 발송 실패 - ${report.studentName}:`, error);
 
-        // 발송 실패 기록
+        // 발송 실패 시 상태를 '대기'로 유지하여 재시도 가능하게 함
         await LessonLog.findByIdAndUpdate(report.logId, {
-          notifyStatus: '실패',
-          notifyLog: `자동발송 실패 - ${error.message}`
+          notifyLog: `자동발송 실패 - ${error.message} (${moment().tz('Asia/Seoul').format('YYYY-MM-DD HH:mm:ss')})`
         });
       }
     }

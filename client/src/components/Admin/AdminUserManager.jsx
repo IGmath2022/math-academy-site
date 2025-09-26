@@ -1,4 +1,4 @@
-﻿// client/src/components/Admin/AdminUserManager.jsx
+// client/src/components/Admin/AdminUserManager.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { API_URL } from "../../api";

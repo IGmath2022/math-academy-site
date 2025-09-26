@@ -219,6 +219,7 @@ export default function SuperSettings() {
   const [err, setErr] = useState("");
   const logoInputRef = useRef(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [deletingLogo, setDeletingLogo] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -378,6 +379,58 @@ export default function SuperSettings() {
     } finally {
       setUploadingLogo(false);
       if (event.target) event.target.value = "";
+    }
+  };
+
+  const removeHeroLogo = async () => {
+    const currentUrl = settings.hero_logo_url || '';
+    if (!currentUrl) {
+      setSettings((prev) => ({ ...prev, hero_logo_url: '' }));
+      setMsg('로고 경로를 비웠습니다. 저장을 눌러 반영해 주세요.');
+      setTimeout(() => setMsg(''), 2000);
+      return;
+    }
+
+    if (!window.confirm('현재 등록된 히어로 로고를 삭제하시겠어요?')) return;
+
+    const token = getToken?.();
+    if (!token) {
+      setErr('인증이 필요합니다. 다시 로그인해 주세요.');
+      setTimeout(() => setErr(''), 2500);
+      return;
+    }
+
+    setDeletingLogo(true);
+    try {
+      const response = await fetch(`${API_URL}/api/theme/delete/logo`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: currentUrl, type: 'hero' }),
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        const message = payload?.message || '로고 삭제에 실패했습니다.';
+        throw new Error(message);
+      }
+
+      setSettings((prev) => ({ ...prev, hero_logo_url: '' }));
+      setMsg('로고가 삭제되었습니다. 저장을 눌러 반영해 주세요.');
+      setTimeout(() => setMsg(''), 2500);
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[SuperSettings] hero logo delete failed', error);
+      }
+      setErr(error?.message || '로고 삭제에 실패했습니다.');
+      setTimeout(() => setErr(''), 3000);
+    } finally {
+      setDeletingLogo(false);
+      if (logoInputRef.current) {
+        logoInputRef.current.value = '';
+      }
     }
   };
 
@@ -654,10 +707,25 @@ export default function SuperSettings() {
                     <button
                       type="button"
                       onClick={triggerLogoUpload}
-                      disabled={uploadingLogo}
+                      disabled={uploadingLogo || deletingLogo}
                       style={{ ...btnPrimary, padding: "8px 12px", background: "#475569" }}
                     >
-                      {uploadingLogo ? "업로드 중..." : "파일 업로드"}
+                      {uploadingLogo ? "파일 업로드 중..." : "파일 업로드"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={removeHeroLogo}
+                      disabled={uploadingLogo || deletingLogo}
+                      style={{
+                        padding: "8px 12px",
+                        borderRadius: 10,
+                        border: "1px solid #f1b0b7",
+                        background: "#fff5f5",
+                        color: "#d1434b",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {deletingLogo ? "삭제 중..." : "삭제"}
                     </button>
                   </div>
                   {settings.hero_logo_url && (

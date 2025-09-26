@@ -14,17 +14,33 @@ const SNAPSHOT_KEY = "site_theme_snapshot_v1";
 /** CSS 변수/데이터 속성으로 테마 적용 */
 export function applyTheme({ site_theme_color, site_theme_mode }) {
   try {
+    if (typeof document === "undefined") {
+      return;
+    }
+
     const root = document.documentElement;
-    if (site_theme_color) {
-      root.style.setProperty("--theme-primary", site_theme_color);
-    }
-    if (site_theme_mode === "dark") {
-      root.setAttribute("data-theme", "dark");
-    } else if (site_theme_mode === "light") {
-      root.setAttribute("data-theme", "light");
-    } else {
-      root.removeAttribute("data-theme");
-    }
+    const body = document.body || null;
+    const targets = [root, body].filter(Boolean);
+    const color = typeof site_theme_color === "string" ? site_theme_color.trim() : "";
+
+    targets.forEach((node) => {
+      if (!node || !node.style || typeof node.style.setProperty !== "function") return;
+      if (color) {
+        node.style.setProperty("--theme-primary", color);
+      } else if (typeof node.style.removeProperty === "function") {
+        node.style.removeProperty("--theme-primary");
+      }
+    });
+
+    const mode = site_theme_mode === "dark" ? "dark" : site_theme_mode === "light" ? "light" : "";
+    targets.forEach((node) => {
+      if (!node) return;
+      if (mode) {
+        node.setAttribute("data-theme", mode);
+      } else {
+        node.removeAttribute("data-theme");
+      }
+    });
   } catch {
     // SSR 등 DOM 미존재 상황 무시
   }
@@ -122,12 +138,15 @@ export function usePublicSiteSettings() {
     try {
       setError("");
       setLoading(true);
-      console.log('Fetching public settings...');
+      // eslint-disable-next-line no-console
+      if (process.env.NODE_ENV === 'development') console.log('Fetching public settings...');
       const j = await fetchPublicSiteSettings(); // { ok, settings }
-      console.log('API response:', j);
+      // eslint-disable-next-line no-console
+      if (process.env.NODE_ENV === 'development') console.log('API response:', j);
       // API가 직접 설정 객체를 반환하는 경우와 {ok, settings} 구조 모두 지원
       const s = j?.settings || (j?.siteName ? j : null);
-      console.log('Extracted settings:', s);
+      // eslint-disable-next-line no-console
+      if (process.env.NODE_ENV === 'development') console.log('Extracted settings:', s);
       setSettings(s);
 
       // 테마 즉시 적용

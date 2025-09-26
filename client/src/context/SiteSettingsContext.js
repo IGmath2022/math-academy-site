@@ -1,4 +1,4 @@
-﻿// client/src/context/SiteSettingsContext.js
+// client/src/context/SiteSettingsContext.js
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { API_URL } from "../api";
 
