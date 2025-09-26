@@ -247,30 +247,12 @@ export default function AdminDashboardTabs() {
         {tab === "report" && (
           <div className="adm-section-gap">
             <SectionCard
-              title="자동 발송 · 자동 아웃"
-              subtitle="리포트 자동 발송/퇴실 자동 처리 토글"
-              actions={<span className="adm-pill">운영</span>}
-            >
-              <div className="adm-row">
-                <div className="adm-card" style={{ border: "0", boxShadow: "none" }}>
-                  <div className="adm-card-body">
-                    <DailyReportAutoSwitch />
-                  </div>
-                </div>
-                <div className="adm-card" style={{ border: "0", boxShadow: "none" }}>
-                  <div className="adm-card-body">
-                    <AutoLeaveSwitch />
-                  </div>
-                </div>
-              </div>
-            </SectionCard>
-
-            <SectionCard
               title="리포트 작성 · 발송"
               subtitle="일일 리포트 작성 후 바로 발송"
               actions={
                 <>
                   <button className="adm-btn">가이드</button>
+                  <span className="adm-pill">수동작업</span>
                 </>
               }
             >

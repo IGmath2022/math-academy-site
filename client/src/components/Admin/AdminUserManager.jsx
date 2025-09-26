@@ -30,6 +30,12 @@ const btnGhost = {
   color: "#2d4373",
 };
 
+const btnDanger = {
+  ...btnPrimary,
+  background: "#dc3545",
+  color: "#fff",
+};
+
 const th = {
   padding: "10px 12px",
   textAlign: "left",
@@ -50,6 +56,7 @@ export default function AdminUserManager() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [pendingId, setPendingId] = useState("");
+  const [deletingId, setDeletingId] = useState("");
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "teacher" });
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
@@ -146,6 +153,26 @@ export default function AdminUserManager() {
       setError(e?.response?.data?.message || "계정 상태 변경에 실패했습니다.");
     } finally {
       setPendingId("");
+    }
+  };
+
+  const deleteUser = async (id, name) => {
+    if (!window.confirm(`정말로 '${name}' 계정을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`)) {
+      return;
+    }
+
+    setDeletingId(id);
+    setError("");
+    setMsg("");
+    try {
+      await axios.delete(`${API_URL}/api/users/${id}`, withAuth());
+      setMsg("계정이 삭제되었습니다.");
+      await load();
+    } catch (e) {
+      if (handle401(e)) return;
+      setError(e?.response?.data?.message || "계정 삭제에 실패했습니다.");
+    } finally {
+      setDeletingId("");
     }
   };
 
@@ -259,18 +286,34 @@ export default function AdminUserManager() {
                 <td style={td}>{user.role === "admin" ? "관리자" : "강사"}</td>
                 <td style={td}>{user.active ? "Y" : "N"}</td>
                 <td style={td}>
-                  <button
-                    type="button"
-                    style={{
-                      ...btnGhost,
-                      padding: "6px 12px",
-                      opacity: pendingId === user._id ? 0.6 : 1,
-                    }}
-                    disabled={pendingId === user._id}
-                    onClick={() => toggleActive(user._id, user.active)}
-                  >
-                    {user.active ? "비활성" : "활성"}
-                  </button>
+                  <div style={{ display: "flex", gap: "6px" }}>
+                    <button
+                      type="button"
+                      style={{
+                        ...btnGhost,
+                        padding: "6px 12px",
+                        fontSize: "12px",
+                        opacity: pendingId === user._id ? 0.6 : 1,
+                      }}
+                      disabled={pendingId === user._id || deletingId === user._id}
+                      onClick={() => toggleActive(user._id, user.active)}
+                    >
+                      {user.active ? "비활성" : "활성"}
+                    </button>
+                    <button
+                      type="button"
+                      style={{
+                        ...btnDanger,
+                        padding: "6px 12px",
+                        fontSize: "12px",
+                        opacity: deletingId === user._id ? 0.6 : 1,
+                      }}
+                      disabled={pendingId === user._id || deletingId === user._id}
+                      onClick={() => deleteUser(user._id, user.name)}
+                    >
+                      삭제
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

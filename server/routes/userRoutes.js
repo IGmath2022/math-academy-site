@@ -24,8 +24,19 @@ router.get('/', isAdmin, async (req, res) => {
   if (req.query.role) where.role = req.query.role;
   if (req.query.active === "false") where.active = false;
   else if (req.query.active === "true") where.active = true;
-  else if (!("active" in req.query)) where.active = true;
-  
+  else if (!req.query.includeInactive) where.active = true;
+
+  // 검색 기능 추가
+  if (req.query.q) {
+    const searchQuery = req.query.q.trim();
+    where.$or = [
+      { name: { $regex: searchQuery, $options: 'i' } },
+      { phone: { $regex: searchQuery, $options: 'i' } },
+      { parentName: { $regex: searchQuery, $options: 'i' } },
+      { parentPhone: { $regex: searchQuery, $options: 'i' } }
+    ];
+  }
+
   const users = await User.find(where).populate('schoolId').lean();
   const patched = users.map(u => ({
     ...u,

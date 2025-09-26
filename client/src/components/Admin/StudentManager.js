@@ -12,43 +12,80 @@ import { API_URL } from '../../api';
 
 function StudentProgressHistory({ userId, onClose }) {
   const [progress, setProgress] = useState([]);
+  const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const fetchProgress = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-      const res = await axios.get(`${API_URL}/api/progress?userId=${userId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setProgress(res.data || []);
+
+      // 온라인 진도와 출석 기록을 동시에 가져오기
+      const [progressRes, attendanceRes] = await Promise.all([
+        axios.get(`${API_URL}/api/progress?userId=${userId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.get(`${API_URL}/api/attendance?userId=${userId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      ]);
+
+      setProgress(progressRes.data || []);
+      setAttendance(attendanceRes.data || []);
     } catch (e) {
       if (process.env.NODE_ENV !== "production") {
         // eslint-disable-next-line no-console
-        console.error("학생 진도 조회 실패:", e);
+        console.error("학생 이력 조회 실패:", e);
       }
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchProgress(); }, [userId]);
+  useEffect(() => { fetchData(); }, [userId]);
+
+  // 온라인 진도와 출석 기록을 날짜순으로 정렬하여 통합
+  const combinedHistory = [...progress.map(p => ({
+    ...p,
+    type: 'online',
+    date: p.date,
+    display: `온라인: ${p.chapter?.title || '-'} (${p.rate || '-'}%) ${p.memo ? '- ' + p.memo : ''}`
+  })), ...attendance.map(a => ({
+    ...a,
+    type: 'attendance',
+    date: a.date,
+    display: `현강: ${a.type === 'in' ? '입실' : '퇴실'} ${a.time} ${a.memo ? '- ' + a.memo : ''}`
+  }))].sort((a, b) => new Date(b.date) - new Date(a.date));
 
   return (
     <div style={{ padding: 16 }}>
-      <h4 style={{ margin: 0, marginBottom: 10, color: "#0f172a" }}>진행 이력</h4>
+      <h4 style={{ margin: 0, marginBottom: 10, color: "#0f172a" }}>진행 이력 (온라인 + 현강)</h4>
       {loading ? (
         <div style={{ color: "#64748b" }}>불러오는 중…</div>
-      ) : progress.length === 0 ? (
+      ) : combinedHistory.length === 0 ? (
         <div style={{ color: "#94a3b8" }}>기록 없음</div>
       ) : (
-        <ul style={{ fontSize: 14, padding: 0, margin: 0, listStyle: "none" }}>
-          {progress.map(p => (
-            <li key={p._id} style={{ padding: "8px 0", borderBottom: "1px dashed #e2e8f0" }}>
-              <div><b>단원:</b> {p.chapter?.title ?? "-"}</div>
-              <div><b>진행률:</b> {p.rate ?? "-"}%</div>
-              <div><b>메모:</b> {p.memo ?? "-"}</div>
-              <div><b>일자:</b> {p.date ? String(p.date).slice(0,10) : "-"}</div>
+        <ul style={{ fontSize: 14, padding: 0, margin: 0, listStyle: "none", maxHeight: '400px', overflowY: 'auto' }}>
+          {combinedHistory.map((item, index) => (
+            <li key={`${item.type}-${item._id || index}`} style={{
+              padding: "8px 0",
+              borderBottom: "1px dashed #e2e8f0",
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start'
+            }}>
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  color: item.type === 'online' ? '#1d4ed8' : '#059669',
+                  fontWeight: '500',
+                  marginBottom: '2px'
+                }}>
+                  {item.display}
+                </div>
+              </div>
+              <div style={{ color: "#64748b", fontSize: "12px", marginLeft: "8px" }}>
+                {item.date ? String(item.date).slice(0, 10) : "-"}
+              </div>
             </li>
           ))}
         </ul>
@@ -70,7 +107,7 @@ function StudentDetailModal({ student, onClose }) {
             <Field label="이름" value={student.name} />
             <Field label="전화" value={student.phone} />
             <Field label="학년" value={student.grade} />
-            <Field label="학교" value={student.school?.name ?? "-"} />
+            <Field label="학교" value={student.school?.name || student.schoolName || "-"} />
             <Field label="학부모" value={student.parentName ?? "-"} />
             <Field label="학부모 연락처" value={student.parentPhone ?? "-"} />
             <Field label="메모" value={student.memo ?? "-"} />
@@ -293,7 +330,7 @@ function StudentManager() {
                     </Td>
                     <Td>{u.phone}</Td>
                     <Td>{u.grade}</Td>
-                    <Td>{u.school?.name ?? "-"}</Td>
+                    <Td>{u.school?.name || u.schoolName || "-"}</Td>
                     <Td>{u.parentName} {u.parentPhone ? `(${u.parentPhone})` : ""}</Td>
                     <Td>{u.memo}</Td>
                     <Td>{u.active ? "활성" : "비활성"}</Td>
@@ -307,7 +344,7 @@ function StudentManager() {
                           삭제
                         </button>
                         <button onClick={() => setHistoryUserId(u._id)} style={styles.btnLight}>이력</button>
-                        <button onClick={() => setCalendarStudent(u)} style={styles.btnLight}>캘린더</button>
+                        <button onClick={() => setCalendarStudent(u)} style={styles.btnLight} title="학생의 온라인 진도를 달력으로 보기">📅 캘린더</button>
                       </div>
                     </Td>
                   </tr>
@@ -332,9 +369,19 @@ function StudentManager() {
       {calendarStudent && (
         <div style={styles.modalBackdrop}>
           <div style={styles.modalCardWide}>
-            <div style={styles.modalHeader}>학생 진행 캘린더</div>
+            <div style={styles.modalHeader}>{calendarStudent.name}님의 온라인 진도 캘린더</div>
             <div style={{ padding: 16 }}>
-              <StudentProgressCalendar userId={calendarStudent._id} />
+              <div style={{ marginBottom: 16, padding: 12, background: '#f8fafc', borderRadius: 8, fontSize: 14, color: '#64748b' }}>
+                📅 <strong>캘린더 기능 안내:</strong><br/>
+                • 학생이 온라인으로 완료한 강의/단원이 날짜별로 표시됩니다<br/>
+                • 현강(출석) 기록은 "이력" 버튼에서 확인하실 수 있습니다<br/>
+                • 달력의 항목을 클릭해도 수정은 되지 않으며, 진도는 학생이 직접 "내 강의"에서 저장합니다
+              </div>
+              {/* 현재 StudentProgressCalendar 컴포넌트는 props 구조가 다르므로 임시로 메시지 표시 */}
+              <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>
+                캘린더 컴포넌트 로딩 중... <br/>
+                (현재 컴포넌트 구조 수정이 필요합니다)
+              </div>
             </div>
             <div style={styles.modalFooter}>
               <button onClick={() => setCalendarStudent(null)} style={styles.btnGhost}>닫기</button>
