@@ -204,12 +204,11 @@ export default function AdminDashboardTabs() {
       const baseTabs = [
         { key: "report", label: "일일 리포트" },
         { key: "counsel", label: "상담·프로필·수업형태" },
-        { key: "users", label: "계정 관리" },
+        { key: "users", label: "사용자 관리" },
         { key: "attendance", label: "출결 관리" },
         { key: "progress", label: "진도 관리" },
         { key: "subjects", label: "과목·단원" },
         { key: "students", label: "학생 정보" },
-        { key: "teachers", label: "강사 관리" },
         { key: "schools", label: "학교 관리" },
         { key: "periods", label: "학교 일정/학기" },
         { key: "promo", label: "공지 · 팝업 배너" },
@@ -306,16 +305,25 @@ export default function AdminDashboardTabs() {
           </div>
         )}
 
-        {/* 출결 관리 */}
-        {/* 계정 관리 */}
+        {/* 사용자 관리 (계정 관리 + 강사 관리 통합) */}
         {tab === "users" && (
-          <SectionCard
-            title="계정 관리"
-            subtitle="관리자·강사 계정 생성 및 활성화 상태 변경"
-            actions={<span className="adm-pill">계정</span>}
-          >
-            <AdminUserManager />
-          </SectionCard>
+          <div className="adm-section-gap">
+            <SectionCard
+              title="계정 관리"
+              subtitle="관리자·강사 계정 생성 및 활성화 상태 변경"
+              actions={<span className="adm-pill">계정</span>}
+            >
+              <AdminUserManager />
+            </SectionCard>
+
+            <SectionCard
+              title="강사 프로필 관리"
+              subtitle="강사 정보, 경력, 사진 등 프로필 관리"
+              actions={<span className="adm-pill">프로필</span>}
+            >
+              <TeacherProfileManager />
+            </SectionCard>
+          </div>
         )}
         {tab === "attendance" && (
           <SectionCard title="출결 관리" subtitle="출석/지각/조퇴 등 출결 상태 관리">
@@ -369,16 +377,6 @@ export default function AdminDashboardTabs() {
           </SectionCard>
         )}
 
-        {/* 강사 관리 */}
-        {tab === "teachers" && (
-          <SectionCard
-            title="강사 프로필 관리"
-            subtitle="강사 정보, 경력, 사진 등 프로필 관리"
-            actions={<span className="adm-pill">관리</span>}
-          >
-            <TeacherProfileManager />
-          </SectionCard>
-        )}
 
         {/* 학교 관리 */}
         {tab === "schools" && (
