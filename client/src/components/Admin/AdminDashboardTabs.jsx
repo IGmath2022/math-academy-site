@@ -210,7 +210,6 @@ export default function AdminDashboardTabs() {
         { key: "subjects", label: "과목·단원" },
         { key: "students", label: "학생 정보" },
         { key: "schools", label: "학교 관리" },
-        { key: "periods", label: "학교 일정/학기" },
         { key: "promo", label: "공지 · 팝업 배너" },
         { key: "content", label: "콘텐츠 관리" },
         { key: "cron", label: "자동 작업(크론)" },
@@ -378,26 +377,25 @@ export default function AdminDashboardTabs() {
         )}
 
 
-        {/* 학교 관리 */}
+        {/* 학교 관리 (학교 정보 + 학교 일정/학기 통합) */}
         {tab === "schools" && (
-          <SectionCard
-            title="학교 관리"
-            subtitle="학교 추가/삭제 및 목록 관리"
-            actions={<span className="adm-pill">데이터</span>}
-          >
-            <SchoolManager />
-          </SectionCard>
-        )}
+          <div className="adm-section-gap">
+            <SectionCard
+              title="학교 관리"
+              subtitle="학교 추가/삭제 및 목록 관리"
+              actions={<span className="adm-pill">데이터</span>}
+            >
+              <SchoolManager />
+            </SectionCard>
 
-        {/* 학교 일정/학기 */}
-        {tab === "periods" && (
-          <SectionCard
-            title="학교 일정 · 학기 기간"
-            subtitle="방학/학사일정 등 기간 관리"
-            actions={<span className="adm-pill">일정</span>}
-          >
-            <SchoolPeriodManager />
-          </SectionCard>
+            <SectionCard
+              title="학교 일정 · 학기 기간"
+              subtitle="방학/학사일정 등 기간 관리"
+              actions={<span className="adm-pill">일정</span>}
+            >
+              <SchoolPeriodManager />
+            </SectionCard>
+          </div>
         )}
 
         {/* 공지 · 팝업 배너 */}
@@ -408,17 +406,22 @@ export default function AdminDashboardTabs() {
             </SectionCard>
 
             <SectionCard
+              title="블로그 연동 설정"
+              subtitle="네이버 블로그 새글을 공지사항 영역에 표시하는 기능 토글"
+              actions={<span className="adm-pill">공지연동</span>}
+            >
+              <BlogSettingSwitch />
+            </SectionCard>
+
+            <SectionCard
               title="메인 팝업 배너"
               subtitle="이미지 업로드(Cloudflare 연결) + 텍스트/링크/표시여부"
+              actions={<span className="adm-pill">팝업</span>}
             >
               {/* PopupBannerAdmin 자체 UI가 3개 배너를 관리한다면 한 번만 렌더 */}
               <div className="adm-grid">
                 <PopupBannerAdmin />
               </div>
-            </SectionCard>
-
-            <SectionCard title="홍보/블로그 스위치" subtitle="공개 영역 표시 토글">
-              <BlogSettingSwitch />
             </SectionCard>
           </div>
         )}
