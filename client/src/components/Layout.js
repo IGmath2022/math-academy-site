@@ -1,6 +1,6 @@
 // client/src/components/Layout.js
 import React, { useEffect } from "react";
-import NavBar from "./NavBar";
+import ResponsiveNavBar from "./ResponsiveNavBar";
 import FloatingContact from "./FloatingContact";
 import { Outlet } from "react-router-dom";
 import { ensureThemeOnFirstPaint } from "../utils/sitePublic";
@@ -25,7 +25,7 @@ function Layout({ hideNavBar }) {
 
   return (
     <>
-      {!hideNavBar && <NavBar />}
+      {!hideNavBar && <ResponsiveNavBar />}
       <div>
         <Outlet />
       </div>

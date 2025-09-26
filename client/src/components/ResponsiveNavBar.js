@@ -274,6 +274,68 @@ function ResponsiveNavBar() {
                   로그인
                 </Link>
               )}
+
+              {/* 소셜 미디어 링크 */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                marginTop: '20px',
+                paddingTop: '20px',
+                borderTop: '1px solid rgba(255,255,255,0.3)'
+              }}>
+                <a
+                  href="https://blog.naver.com/igmath2022"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    color: 'white',
+                    background: '#03c75a',
+                    borderRadius: '8px',
+                    padding: '12px 16px',
+                    fontWeight: 'bold',
+                    textDecoration: 'none',
+                    textAlign: 'center',
+                    fontSize: '16px'
+                  }}
+                >
+                  네이버블로그
+                </a>
+                <a
+                  href="https://www.youtube.com/@%EC%86%A1%EC%9D%B8%EA%B7%9C-m1r"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    color: 'white',
+                    background: '#ff0000',
+                    borderRadius: '8px',
+                    padding: '12px 16px',
+                    fontWeight: 'bold',
+                    textDecoration: 'none',
+                    textAlign: 'center',
+                    fontSize: '16px'
+                  }}
+                >
+                  유튜브
+                </a>
+                <a
+                  href="https://pf.kakao.com/_dSHvxj"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    color: '#333',
+                    background: '#FEE500',
+                    borderRadius: '8px',
+                    padding: '12px 16px',
+                    fontWeight: 'bold',
+                    textDecoration: 'none',
+                    textAlign: 'center',
+                    fontSize: '16px'
+                  }}
+                >
+                  카카오문의
+                </a>
+              </div>
             </div>
           </div>
         )}
@@ -340,6 +402,59 @@ function ResponsiveNavBar() {
             로그인
           </Link>
         )}
+
+        {/* 데스크톱 소셜 미디어 링크 */}
+        <a
+          href="https://blog.naver.com/igmath2022"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            color: 'white',
+            background: '#03c75a',
+            borderRadius: '12px',
+            padding: '3px 12px',
+            fontWeight: 'bold',
+            textDecoration: 'none',
+            marginLeft: '8px',
+            fontSize: '14px'
+          }}
+        >
+          네이버블로그
+        </a>
+        <a
+          href="https://www.youtube.com/@%EC%86%A1%EC%9D%B8%EA%B7%9C-m1r"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            color: 'white',
+            background: '#ff0000',
+            borderRadius: '12px',
+            padding: '3px 12px',
+            fontWeight: 'bold',
+            textDecoration: 'none',
+            marginLeft: '8px',
+            fontSize: '14px'
+          }}
+        >
+          유튜브
+        </a>
+        <a
+          href="https://pf.kakao.com/_dSHvxj"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            color: '#333',
+            background: '#FEE500',
+            borderRadius: '12px',
+            padding: '3px 12px',
+            fontWeight: 'bold',
+            textDecoration: 'none',
+            marginLeft: '8px',
+            fontSize: '14px'
+          }}
+        >
+          카카오문의
+        </a>
       </div>
     </nav>
   );

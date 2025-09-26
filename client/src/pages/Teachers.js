@@ -2,11 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_URL } from '../api';
+import { useIsMobile } from '../hooks/useMediaQuery';
 
 const Teachers = () => {
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     loadTeachers();
@@ -33,45 +35,41 @@ const Teachers = () => {
   const contentStyle = {
     maxWidth: '1200px',
     margin: '0 auto',
-    padding: '40px 20px'
+    padding: isMobile ? '20px 16px' : '40px 20px'
   };
 
   const headerStyle = {
     textAlign: 'center',
-    marginBottom: '50px'
+    marginBottom: isMobile ? '30px' : '50px'
   };
 
   const titleStyle = {
-    fontSize: '2.5rem',
+    fontSize: isMobile ? '2rem' : '2.5rem',
     fontWeight: 'bold',
     color: '#1a202c',
     marginBottom: '16px'
   };
 
   const subtitleStyle = {
-    fontSize: '1.1rem',
+    fontSize: isMobile ? '1rem' : '1.1rem',
     color: '#64748b',
     lineHeight: '1.6'
   };
 
   const gridStyle = {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
-    gap: '30px',
-    marginTop: '40px'
+    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(350px, 1fr))',
+    gap: isMobile ? '20px' : '30px',
+    marginTop: isMobile ? '20px' : '40px'
   };
 
   const cardStyle = {
     background: 'white',
-    borderRadius: '16px',
-    padding: '30px',
+    borderRadius: isMobile ? '12px' : '16px',
+    padding: isMobile ? '20px' : '30px',
     boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
     border: '1px solid #e2e8f0',
-    transition: 'all 0.3s ease',
-    ':hover': {
-      transform: 'translateY(-4px)',
-      boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)'
-    }
+    transition: 'all 0.3s ease'
   };
 
   const imageContainerStyle = {
@@ -81,8 +79,8 @@ const Teachers = () => {
   };
 
   const imageStyle = {
-    width: '120px',
-    height: '120px',
+    width: isMobile ? '100px' : '120px',
+    height: isMobile ? '100px' : '120px',
     borderRadius: '50%',
     objectFit: 'cover',
     border: '4px solid #f1f5f9',
@@ -90,20 +88,20 @@ const Teachers = () => {
   };
 
   const placeholderImageStyle = {
-    width: '120px',
-    height: '120px',
+    width: isMobile ? '100px' : '120px',
+    height: isMobile ? '100px' : '120px',
     borderRadius: '50%',
     backgroundColor: '#e2e8f0',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '2.5rem',
+    fontSize: isMobile ? '2rem' : '2.5rem',
     color: '#64748b',
     border: '4px solid #f1f5f9'
   };
 
   const nameStyle = {
-    fontSize: '1.5rem',
+    fontSize: isMobile ? '1.3rem' : '1.5rem',
     fontWeight: 'bold',
     color: '#1a202c',
     textAlign: 'center',
@@ -112,22 +110,22 @@ const Teachers = () => {
 
   const subjectsStyle = {
     textAlign: 'center',
-    marginBottom: '20px'
+    marginBottom: isMobile ? '16px' : '20px'
   };
 
   const subjectTagStyle = {
     display: 'inline-block',
     background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
     color: 'white',
-    padding: '4px 12px',
+    padding: isMobile ? '3px 10px' : '4px 12px',
     borderRadius: '16px',
-    fontSize: '0.85rem',
+    fontSize: isMobile ? '0.8rem' : '0.85rem',
     fontWeight: '500',
     margin: '0 4px 4px 0'
   };
 
   const sectionStyle = {
-    marginBottom: '16px'
+    marginBottom: isMobile ? '12px' : '16px'
   };
 
   const sectionTitleStyle = {
@@ -208,7 +206,18 @@ const Teachers = () => {
         ) : (
           <div style={gridStyle}>
             {teachers.map((teacher) => (
-              <div key={teacher._id} style={cardStyle}>
+              <div
+                key={teacher._id}
+                style={cardStyle}
+                onMouseEnter={!isMobile ? (e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 8px 30px rgba(0, 0, 0, 0.12)';
+                } : undefined}
+                onMouseLeave={!isMobile ? (e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.08)';
+                } : undefined}
+              >
                 {/* 프로필 이미지 */}
                 <div style={imageContainerStyle}>
                   {teacher.profileImage ? (
