@@ -11,6 +11,7 @@ const DEFAULT_PUBLIC = {
   menu_materials_on: true,
   menu_contact_on: true,
   menu_news_on: true,
+  menu_teachers_on: false,
   site_theme_color: '#2d4373',
   site_theme_mode: 'light',
   default_class_name: 'IG Math',
@@ -46,6 +47,7 @@ const SUPER_BOOL_KEYS = [
   'menu_materials_on',
   'menu_contact_on',
   'menu_news_on',
+  'menu_teachers_on',
   'blog_show'
 ];
 
