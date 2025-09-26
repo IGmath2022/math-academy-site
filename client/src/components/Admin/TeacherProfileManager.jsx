@@ -13,6 +13,11 @@ const TeacherProfileManager = () => {
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState('');
 
+  // 새 강사 계정 생성 관련 state
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createForm, setCreateForm] = useState({ name: '', email: '', password: '' });
+  const [creating, setCreating] = useState(false);
+
   const auth = useMemo(() => {
     const token = localStorage.getItem('token');
     return { headers: { Authorization: token ? `Bearer ${token}` : undefined } };
@@ -117,6 +122,41 @@ const TeacherProfileManager = () => {
     }
   };
 
+  const handleCreateTeacher = async () => {
+    if (!createForm.name || !createForm.email || !createForm.password) {
+      setMessage('모든 필드를 입력해주세요.');
+      return;
+    }
+
+    setCreating(true);
+    setMessage('');
+
+    try {
+      const response = await axios.post(
+        `${API_URL}/api/admin/users`,
+        {
+          name: createForm.name,
+          email: createForm.email,
+          password: createForm.password,
+          role: 'teacher'
+        },
+        auth
+      );
+
+      setMessage('강사 계정이 생성되었습니다.');
+      setCreateForm({ name: '', email: '', password: '' });
+      setShowCreateForm(false);
+
+      // 강사 목록 새로고침
+      await loadTeachers();
+    } catch (error) {
+      console.error('강사 계정 생성 실패:', error);
+      setMessage(error.response?.data?.message || '강사 계정 생성에 실패했습니다.');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const handleImageUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -203,7 +243,91 @@ const TeacherProfileManager = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '20px' }}>
         {/* 강사 목록 */}
         <div>
-          <h3 style={{ marginBottom: '15px' }}>강사 목록</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+            <h3 style={{ margin: 0 }}>강사 목록</h3>
+            <button
+              onClick={() => setShowCreateForm(!showCreateForm)}
+              style={{
+                padding: '6px 12px',
+                backgroundColor: '#28a745',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '12px'
+              }}
+            >
+              + 새 강사 추가
+            </button>
+          </div>
+
+          {/* 강사 계정 생성 폼 */}
+          {showCreateForm && (
+            <div style={{
+              padding: '15px',
+              backgroundColor: '#f8f9fa',
+              border: '1px solid #dee2e6',
+              borderRadius: '4px',
+              marginBottom: '15px'
+            }}>
+              <h4 style={{ margin: '0 0 10px 0', fontSize: '14px' }}>새 강사 계정 생성</h4>
+              <div style={{ display: 'grid', gap: '8px' }}>
+                <input
+                  type="text"
+                  placeholder="이름"
+                  value={createForm.name}
+                  onChange={(e) => setCreateForm(prev => ({ ...prev, name: e.target.value }))}
+                  style={{ ...inputStyle, fontSize: '12px', padding: '6px 8px' }}
+                />
+                <input
+                  type="email"
+                  placeholder="이메일"
+                  value={createForm.email}
+                  onChange={(e) => setCreateForm(prev => ({ ...prev, email: e.target.value }))}
+                  style={{ ...inputStyle, fontSize: '12px', padding: '6px 8px' }}
+                />
+                <input
+                  type="password"
+                  placeholder="비밀번호"
+                  value={createForm.password}
+                  onChange={(e) => setCreateForm(prev => ({ ...prev, password: e.target.value }))}
+                  style={{ ...inputStyle, fontSize: '12px', padding: '6px 8px' }}
+                />
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => setShowCreateForm(false)}
+                    style={{
+                      padding: '6px 12px',
+                      backgroundColor: '#6c757d',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '12px'
+                    }}
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleCreateTeacher}
+                    disabled={creating}
+                    style={{
+                      padding: '6px 12px',
+                      backgroundColor: creating ? '#ccc' : '#007bff',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: creating ? 'not-allowed' : 'pointer',
+                      fontSize: '12px'
+                    }}
+                  >
+                    {creating ? '생성 중...' : '생성'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div style={{ border: '1px solid #ddd', borderRadius: '4px', maxHeight: '400px', overflowY: 'auto' }}>
             {teachers.map(teacher => (
               <div
@@ -221,6 +345,12 @@ const TeacherProfileManager = () => {
                 <div style={{ fontSize: '12px', color: '#666' }}>{teacher.email}</div>
               </div>
             ))}
+            {teachers.length === 0 && (
+              <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
+                등록된 강사가 없습니다.<br />
+                "새 강사 추가" 버튼을 클릭해서 강사를 추가해보세요.
+              </div>
+            )}
           </div>
         </div>
 
