@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_URL } from '../api';
-import NavBar from '../components/NavBar';
 
 const Teachers = () => {
   const [teachers, setTeachers] = useState([]);
@@ -170,7 +169,6 @@ const Teachers = () => {
   if (loading) {
     return (
       <div style={containerStyle}>
-        <NavBar />
         <div style={contentStyle}>
           <div style={loadingStyle}>
             강사진 정보를 불러오는 중...
@@ -183,7 +181,6 @@ const Teachers = () => {
   if (error) {
     return (
       <div style={containerStyle}>
-        <NavBar />
         <div style={contentStyle}>
           <div style={errorStyle}>
             {error}
@@ -195,7 +192,6 @@ const Teachers = () => {
 
   return (
     <div style={containerStyle}>
-      <NavBar />
       <div style={contentStyle}>
         <div style={headerStyle}>
           <h1 style={titleStyle}>강사진 소개</h1>

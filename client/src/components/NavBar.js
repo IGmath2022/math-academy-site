@@ -56,22 +56,23 @@ function NavBar() {
 
   return (
     <nav style={{
-      display: "flex", flexWrap: "wrap", justifyContent: "space-between",
+      display: "flex", justifyContent: "space-between",
       alignItems: "center", background: primaryColor, padding: "10px 4vw",
-      marginBottom: 24, position: "sticky", top: 0, zIndex: 100
+      marginBottom: 24, position: "sticky", top: 0, zIndex: 100,
+      minHeight: "60px"
     }}>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "nowrap", overflow: "visible" }}>
         {showHome && (
-          <Link style={{ color: "white", fontWeight: "bold", fontSize: 20, textDecoration: "none" }} to="/">{academyName}</Link>
+          <Link style={{ color: "white", fontWeight: "bold", fontSize: 20, textDecoration: "none", whiteSpace: "nowrap" }} to="/">{academyName}</Link>
         )}
-        {showBlog && <Link style={{ color: "white", textDecoration: "none" }} to="/news">공지사항</Link>}
-        {showContact && <Link to="/contact" style={{ color: "#fff", textDecoration: "none" }}>상담문의</Link>}
-        {showBlog && <Link to="/blog" style={{ color: "#fff", textDecoration: "none" }}>블로그최신글</Link>}
-        {showMaterials && <Link style={{ color: "white", textDecoration: "none" }} to="/materials">자료실</Link>}
-        {showTeachers && <Link style={{ color: "white", textDecoration: "none" }} to="/teachers">강사진</Link>}
+        {showBlog && <Link style={{ color: "white", textDecoration: "none", whiteSpace: "nowrap" }} to="/news">공지사항</Link>}
+        {showContact && <Link to="/contact" style={{ color: "#fff", textDecoration: "none", whiteSpace: "nowrap" }}>상담문의</Link>}
+        {showBlog && <Link to="/blog" style={{ color: "#fff", textDecoration: "none", whiteSpace: "nowrap" }}>블로그최신글</Link>}
+        {showMaterials && <Link style={{ color: "white", textDecoration: "none", whiteSpace: "nowrap" }} to="/materials">자료실</Link>}
+        {showTeachers && <Link style={{ color: "white", textDecoration: "none", whiteSpace: "nowrap" }} to="/teachers">강사진</Link>}
       </div>
 
-      <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
         {(role === "admin" || role === "super") && (
           <Link style={{ color: "white", textDecoration: "none" }} to="/dashboard">관리자 대시보드</Link>
         )}
