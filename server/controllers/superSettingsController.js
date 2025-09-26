@@ -96,7 +96,7 @@ exports.getSiteSettings = async (_req, res) => {
 exports.saveSiteSettings = async (req, res) => {
   try {
     const {
-      menu_home_on, menu_blog_on, menu_materials_on, menu_contact_on, menu_news_on,
+      menu_home_on, menu_blog_on, menu_materials_on, menu_contact_on, menu_news_on, menu_teachers_on,
       site_theme_color, site_theme_mode,
       home_sections,
       hero_title, hero_subtitle, hero_logo_url,
@@ -144,6 +144,7 @@ exports.saveSiteSettings = async (req, res) => {
     addBool('menu_materials_on', menu_materials_on);
     addBool('menu_contact_on', menu_contact_on);
     addBool('menu_news_on', menu_news_on);
+    addBool('menu_teachers_on', menu_teachers_on);
 
     addColor('site_theme_color', site_theme_color, DEFAULT_THEME_COLOR);
     const themeMode = sanitizeText(site_theme_mode === 'dark' ? 'dark' : 'light', 'light');
