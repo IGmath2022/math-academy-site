@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_URL } from '../../api';
 
 const CurriculumManager = () => {
   const [curricula, setCurricula] = useState([]);
@@ -31,13 +32,29 @@ const CurriculumManager = () => {
     fetchCurricula();
   }, []);
 
+  // 에러/성공 메시지 자동 제거
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(''), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(''), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
+
   const fetchCurricula = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get('/api/curriculum');
-      setCurricula(response.data);
+      const response = await axios.get(`${API_URL}/api/curriculum`);
+      setCurricula(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
-      setError('교육과정 조회 실패: ' + err.response?.data?.message || err.message);
+      setError('교육과정 조회 실패: ' + (err.response?.data?.message || err.message));
+      setCurricula([]); // 에러 시 빈 배열로 설정
     } finally {
       setIsLoading(false);
     }
@@ -219,7 +236,7 @@ const CurriculumManager = () => {
                 </tr>
               </thead>
               <tbody>
-                {curricula.map((curriculum) => (
+                {Array.isArray(curricula) && curricula.map((curriculum) => (
                   <tr key={curriculum._id}>
                     <td style={{ padding: '10px', border: '1px solid #ddd' }}>{curriculum.courseId}</td>
                     <td style={{ padding: '10px', border: '1px solid #ddd' }}>{curriculum.courseName}</td>
@@ -258,6 +275,13 @@ const CurriculumManager = () => {
                     </td>
                   </tr>
                 ))}
+                {!Array.isArray(curricula) || curricula.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>
+                      등록된 교육과정이 없습니다.
+                    </td>
+                  </tr>
+                ) : null}
               </tbody>
             </table>
           </div>
