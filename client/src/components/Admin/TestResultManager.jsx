@@ -17,6 +17,11 @@ const TestResultManager = () => {
   const [timeSpent, setTimeSpent] = useState(60);
   const [notes, setNotes] = useState('');
 
+  // 기존 결과 관리
+  const [existingResults, setExistingResults] = useState([]);
+  const [editingResult, setEditingResult] = useState(null);
+  const [showExistingResults, setShowExistingResults] = useState(false);
+
   const withAuth = () => ({ headers: { Authorization: `Bearer ${getToken()}` } });
 
   const handle401 = (err) => {
@@ -44,6 +49,17 @@ const TestResultManager = () => {
       console.error('데이터 로드 실패:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 기존 테스트 결과 로드
+  const loadExistingResults = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/api/tests/results`, withAuth());
+      setExistingResults(response.data);
+    } catch (err) {
+      if (handle401(err)) return;
+      console.error('기존 결과 로드 실패:', err);
     }
   };
 
@@ -171,9 +187,99 @@ const TestResultManager = () => {
 
   return (
     <div style={commonStyles.container}>
-      {/* 테스트 및 학생 선택 */}
-      <div style={commonStyles.card}>
-        <h4 style={{ marginTop: 0 }}>테스트 및 학생 선택</h4>
+      {/* 상단 버튼 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h3 style={{ margin: 0 }}>테스트 성적 관리</h3>
+        <button
+          style={{
+            ...commonStyles.button,
+            background: showExistingResults ? '#64748b' : '#3b82f6',
+            color: 'white'
+          }}
+          onClick={() => {
+            setShowExistingResults(!showExistingResults);
+            if (!showExistingResults) {
+              loadExistingResults();
+            }
+          }}
+        >
+          {showExistingResults ? '새 성적 입력' : '기존 결과 보기'}
+        </button>
+      </div>
+
+      {/* 기존 결과 목록 */}
+      {showExistingResults ? (
+        <div style={commonStyles.card}>
+          <h4 style={{ marginTop: 0 }}>기존 테스트 결과 ({existingResults.length}개)</h4>
+          <div style={{ maxHeight: 500, overflowY: 'auto' }}>
+            {existingResults.map((result, index) => (
+              <div key={result._id} style={{
+                display: 'grid',
+                gridTemplateColumns: 'auto 1fr auto auto auto',
+                gap: 12,
+                alignItems: 'center',
+                padding: 12,
+                margin: '8px 0',
+                background: '#f8fafc',
+                borderRadius: 8,
+                border: '1px solid #e2e8f0'
+              }}>
+                <span style={{ fontSize: 12, color: '#64748b' }}>
+                  {new Date(result.testDate).toLocaleDateString()}
+                </span>
+                <div>
+                  <div style={{ fontWeight: 600 }}>{result.studentId?.name || '알 수 없음'}</div>
+                  <div style={{ fontSize: 12, color: '#64748b' }}>
+                    {result.testTemplateId?.name || '삭제된 테스트'}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontWeight: 600 }}>
+                    {result.totalScore}/{result.totalPossibleScore}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#64748b' }}>
+                    {Math.round((result.totalScore / result.totalPossibleScore) * 100)}%
+                  </div>
+                </div>
+                <button
+                  style={{
+                    ...commonStyles.button,
+                    background: '#f59e0b',
+                    color: 'white',
+                    fontSize: 12
+                  }}
+                  onClick={() => {
+                    // TODO: 수정 기능 구현
+                    alert('수정 기능은 추후 구현 예정입니다.');
+                  }}
+                >
+                  수정
+                </button>
+                <button
+                  style={{
+                    ...commonStyles.button,
+                    background: '#ef4444',
+                    color: 'white',
+                    fontSize: 12
+                  }}
+                  onClick={() => {
+                    if (confirm('정말 삭제하시겠습니까?')) {
+                      // TODO: 삭제 기능 구현
+                      alert('삭제 기능은 추후 구현 예정입니다.');
+                    }
+                  }}
+                >
+                  삭제
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* 테스트 및 학생 선택 */}
+          <div style={commonStyles.card}>
+            <h4 style={{ marginTop: 0 }}>테스트 및 학생 선택</h4>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 12 }}>
           <div>
@@ -227,11 +333,10 @@ const TestResultManager = () => {
             </div>
           </div>
         )}
-      </div>
 
-      {/* 답안 입력 */}
-      {selectedTemplate && selectedStudent && (
-        <div style={commonStyles.card}>
+          {/* 답안 입력 */}
+          {selectedTemplate && selectedStudent && (
+          <div style={commonStyles.card}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <h4 style={{ margin: 0 }}>답안 입력</h4>
             <div style={{ fontSize: 14, color: '#2563eb', fontWeight: 600 }}>
@@ -338,7 +443,9 @@ const TestResultManager = () => {
               {saving ? '저장 중...' : '성적 저장'}
             </button>
           </div>
-        </div>
+          </div>
+          )}
+        </>
       )}
     </div>
   );

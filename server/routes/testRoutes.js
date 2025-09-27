@@ -171,6 +171,21 @@ router.post('/results', isAdmin, async (req, res) => {
   }
 });
 
+// 전체 테스트 결과 조회 (관리자용)
+router.get('/results', isAdmin, async (req, res) => {
+  try {
+    const results = await TestResult.find()
+      .populate('studentId', 'name grade')
+      .populate('testTemplateId', 'name subject courseId')
+      .sort({ testDate: -1 })
+      .limit(100); // 최근 100개만
+
+    res.json(results);
+  } catch (error) {
+    res.status(500).json({ message: '테스트 결과 조회 실패', error: error.message });
+  }
+});
+
 // 학생별 테스트 결과 조회
 router.get('/results/student/:studentId', isAuthenticated, async (req, res) => {
   try {
