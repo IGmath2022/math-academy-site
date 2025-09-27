@@ -10,6 +10,92 @@ import { API_URL } from '../../api';
  *  - 기능/로직/엔드포인트/모달/검색/필터는 기존 그대로
  *  ─────────────────────────────────────────────────────────── */
 
+function StudentCalendarView({ userId }) {
+  const [progress, setProgress] = useState([]);
+  const [attendance, setAttendance] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [chaptersMap, setChaptersMap] = useState({});
+
+  const fetchCalendarData = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const tokenHdr = { headers: { Authorization: `Bearer ${token}` } };
+
+      // 1) 온라인 진도 (인강) 가져오기
+      const progressRes = await axios.get(`${API_URL}/api/progress`, tokenHdr);
+      const allProgress = progressRes.data || [];
+      const myProgress = allProgress.filter(p => String(p.userId) === String(userId));
+
+      // 2) 현강 데이터 가져오기 - 최근 90일간의 일일리포트 데이터
+      const recentDates = [];
+      for (let i = 0; i < 90; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        recentDates.push(date.toISOString().slice(0, 10));
+      }
+
+      const attendanceData = [];
+      await Promise.all(
+        recentDates.map(async (date) => {
+          try {
+            const { data } = await axios.get(`${API_URL}/api/admin/lessons/detail`, {
+              params: { studentId: userId, date },
+              ...tokenHdr,
+            });
+            if (data && Object.keys(data).length > 0) {
+              attendanceData.push({
+                date,
+                course: data.course || "",
+                content: data.content || "",
+                homework: data.homework || "",
+                planNext: data.planNext || data.nextPlan || "",
+                teacher: data.teacher || data.teacherName || "",
+              });
+            }
+          } catch (e) {
+            // 데이터가 없는 날은 무시
+          }
+        })
+      );
+
+      // 3) 챕터 맵 생성 (온라인 진도용)
+      const chapters = {};
+      myProgress.forEach(p => {
+        if (p.chapterId && typeof p.chapterId === 'object') {
+          chapters[p.chapterId._id] = p.chapterId;
+        } else if (p.chapter) {
+          chapters[p.chapterId || 'unknown'] = p.chapter;
+        }
+      });
+
+      setProgress(myProgress);
+      setAttendance(attendanceData);
+      setChaptersMap(chapters);
+    } catch (e) {
+      if (process.env.NODE_ENV !== "production") {
+        console.error("캘린더 데이터 조회 실패:", e);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchCalendarData(); }, [userId]);
+
+  if (loading) {
+    return <div style={{ textAlign: 'center', padding: 20, color: '#64748b' }}>캘린더 데이터를 불러오는 중...</div>;
+  }
+
+  return (
+    <StudentProgressCalendar
+      progressList={progress}
+      chaptersMap={chaptersMap}
+      attendanceList={attendance}
+    />
+  );
+}
+
 function StudentProgressHistory({ userId, onClose }) {
   const [progress, setProgress] = useState([]);
   const [attendance, setAttendance] = useState([]);
@@ -19,19 +105,47 @@ function StudentProgressHistory({ userId, onClose }) {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
+      const tokenHdr = { headers: { Authorization: `Bearer ${token}` } };
 
-      // 온라인 진도와 출석 기록을 동시에 가져오기
-      const [progressRes, attendanceRes] = await Promise.all([
-        axios.get(`${API_URL}/api/progress?userId=${userId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        axios.get(`${API_URL}/api/attendance?userId=${userId}`, {
-          headers: { Authorization: `Bearer ${token}` }
+      // 1) 온라인 진도 (인강) 가져오기
+      const progressRes = await axios.get(`${API_URL}/api/progress`, tokenHdr);
+      const allProgress = progressRes.data || [];
+      const myProgress = allProgress.filter(p => String(p.userId) === String(userId));
+
+      // 2) 현강 데이터 가져오기 - 최근 30일간의 일일리포트 데이터
+      const recentDates = [];
+      for (let i = 0; i < 30; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        recentDates.push(date.toISOString().slice(0, 10));
+      }
+
+      const attendanceData = [];
+      await Promise.all(
+        recentDates.map(async (date) => {
+          try {
+            const { data } = await axios.get(`${API_URL}/api/admin/lessons/detail`, {
+              params: { studentId: userId, date },
+              ...tokenHdr,
+            });
+            if (data && Object.keys(data).length > 0) {
+              attendanceData.push({
+                date,
+                course: data.course || "",
+                content: data.content || "",
+                homework: data.homework || "",
+                planNext: data.planNext || data.nextPlan || "",
+                teacher: data.teacher || data.teacherName || "",
+              });
+            }
+          } catch (e) {
+            // 데이터가 없는 날은 무시
+          }
         })
-      ]);
+      );
 
-      setProgress(progressRes.data || []);
-      setAttendance(attendanceRes.data || []);
+      setProgress(myProgress);
+      setAttendance(attendanceData);
     } catch (e) {
       if (process.env.NODE_ENV !== "production") {
         // eslint-disable-next-line no-console
@@ -44,18 +158,21 @@ function StudentProgressHistory({ userId, onClose }) {
 
   useEffect(() => { fetchData(); }, [userId]);
 
-  // 온라인 진도와 출석 기록을 날짜순으로 정렬하여 통합
-  const combinedHistory = [...progress.map(p => ({
-    ...p,
-    type: 'online',
-    date: p.date,
-    display: `온라인: ${p.chapter?.title || '-'} (${p.rate || '-'}%) ${p.memo ? '- ' + p.memo : ''}`
-  })), ...attendance.map(a => ({
-    ...a,
-    type: 'attendance',
-    date: a.date,
-    display: `현강: ${a.type === 'in' ? '입실' : '퇴실'} ${a.time} ${a.memo ? '- ' + a.memo : ''}`
-  }))].sort((a, b) => new Date(b.date) - new Date(a.date));
+  // 온라인 진도와 현강 기록을 날짜순으로 정렬하여 통합
+  const combinedHistory = [
+    ...progress.map(p => ({
+      ...p,
+      type: 'online',
+      date: p.date,
+      display: `인강: ${p.chapterId?.name || p.chapter?.title || '-'} ${p.memo ? '- ' + p.memo : ''}`
+    })),
+    ...attendance.map(a => ({
+      ...a,
+      type: 'attendance',
+      date: a.date,
+      display: `현강: ${a.course || '수업'} ${a.content ? '- ' + a.content : ''} ${a.teacher ? '(' + a.teacher + ')' : ''}`
+    }))
+  ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
   return (
     <div style={{ padding: 16 }}>
@@ -369,19 +486,15 @@ function StudentManager() {
       {calendarStudent && (
         <div style={styles.modalBackdrop}>
           <div style={styles.modalCardWide}>
-            <div style={styles.modalHeader}>{calendarStudent.name}님의 온라인 진도 캘린더</div>
+            <div style={styles.modalHeader}>{calendarStudent.name}님의 진도 캘린더 (인강 + 현강)</div>
             <div style={{ padding: 16 }}>
               <div style={{ marginBottom: 16, padding: 12, background: '#f8fafc', borderRadius: 8, fontSize: 14, color: '#64748b' }}>
                 📅 <strong>캘린더 기능 안내:</strong><br/>
-                • 학생이 온라인으로 완료한 강의/단원이 날짜별로 표시됩니다<br/>
-                • 현강(출석) 기록은 "이력" 버튼에서 확인하실 수 있습니다<br/>
+                • <span style={{ color: "#1d4ed8", fontWeight: 'bold' }}>인강</span>: 학생이 온라인으로 완료한 강의/단원<br/>
+                • <span style={{ color: "#059669", fontWeight: 'bold' }}>현강</span>: 현장 수업 기록<br/>
                 • 달력의 항목을 클릭해도 수정은 되지 않으며, 진도는 학생이 직접 "내 강의"에서 저장합니다
               </div>
-              {/* 현재 StudentProgressCalendar 컴포넌트는 props 구조가 다르므로 임시로 메시지 표시 */}
-              <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>
-                캘린더 컴포넌트 로딩 중... <br/>
-                (현재 컴포넌트 구조 수정이 필요합니다)
-              </div>
+              <StudentCalendarView userId={calendarStudent._id} />
             </div>
             <div style={styles.modalFooter}>
               <button onClick={() => setCalendarStudent(null)} style={styles.btnGhost}>닫기</button>
