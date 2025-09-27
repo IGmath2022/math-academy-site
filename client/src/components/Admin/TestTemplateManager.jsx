@@ -286,7 +286,7 @@ const TestTemplateManager = () => {
           </div>
 
           {/* 문항별 상세 설정 */}
-          {formData.questions.length > 0 && (
+          {formData.totalQuestions > 0 && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '16px 0 8px 0' }}>
                 <h5 style={{ margin: 0, color: '#1e293b' }}>문항별 상세 설정</h5>
@@ -320,7 +320,8 @@ const TestTemplateManager = () => {
 
                 {/* 문항 목록 */}
                 <div style={{ maxHeight: 300, overflowY: 'auto', padding: 8 }}>
-                  {formData.questions.map((q, index) => (
+                  {formData.questions && formData.questions.length > 0 ? (
+                    formData.questions.map((q, index) => (
                   <div key={index} style={{
                     display: 'grid',
                     gridTemplateColumns: 'auto 1fr 1fr 1fr 1fr',
@@ -375,7 +376,17 @@ const TestTemplateManager = () => {
                       onChange={(e) => updateQuestion(index, 'points', parseInt(e.target.value) || 1)}
                     />
                     </div>
-                  ))}
+                  ))
+                  ) : (
+                    <div style={{
+                      textAlign: 'center',
+                      padding: 20,
+                      color: '#64748b',
+                      fontSize: 14
+                    }}>
+                      총 문항수를 입력하면 문항별 설정이 생성됩니다.
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
