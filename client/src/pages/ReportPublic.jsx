@@ -26,13 +26,13 @@ function fmtHM(min) {
 }
 
 // 숙련도 레벨 계산
-function getProficiencyLevel(correctRate, totalAttempts) {
-  if (totalAttempts < 3) return { level: "부족", color: "#94a3b8", description: "데이터 부족" };
+function getProficiencyLevel(accuracy, totalQuestions) {
+  if (totalQuestions < 3) return { level: "부족", color: "#94a3b8", description: "데이터 부족" };
 
-  if (correctRate >= 0.9) return { level: "잘 안다", color: "#059669", description: "매우 우수" };
-  if (correctRate >= 0.7) return { level: "좋음", color: "#10b981", description: "우수" };
-  if (correctRate >= 0.5) return { level: "보통", color: "#f59e0b", description: "보통" };
-  if (correctRate >= 0.3) return { level: "미흡", color: "#f97316", description: "개선 필요" };
+  if (accuracy >= 90) return { level: "잘 안다", color: "#059669", description: "매우 우수" };
+  if (accuracy >= 70) return { level: "좋음", color: "#10b981", description: "우수" };
+  if (accuracy >= 50) return { level: "보통", color: "#f59e0b", description: "보통" };
+  if (accuracy >= 30) return { level: "미흡", color: "#f97316", description: "개선 필요" };
   return { level: "많이 미흡", color: "#dc2626", description: "집중 보완 필요" };
 }
 
@@ -87,8 +87,7 @@ function AnalysisDisplay({ analysisData, testResults }) {
           <h4 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>단원별 학습 분석</h4>
           <div style={{ display: "grid", gap: 8 }}>
             {analysis.chapterAnalysis.slice(0, 10).map((chapter, index) => {
-              const correctRate = chapter.totalAttempts > 0 ? chapter.correctCount / chapter.totalAttempts : 0;
-              const proficiency = getProficiencyLevel(correctRate, chapter.totalAttempts);
+              const proficiency = getProficiencyLevel(chapter.accuracy, chapter.totalQuestions);
 
               return (
                 <div key={index} style={{
@@ -102,11 +101,11 @@ function AnalysisDisplay({ analysisData, testResults }) {
                   <div>
                     <div style={{ fontWeight: 500 }}>{chapter.chapterName}</div>
                     <div style={{ fontSize: 12, color: "#64748b" }}>
-                      {chapter.correctCount}/{chapter.totalAttempts} 정답
+                      {chapter.correctAnswers}/{chapter.totalQuestions} 정답
                     </div>
                   </div>
                   <div style={{ fontSize: 14, fontWeight: "bold", marginRight: 12 }}>
-                    {Math.round(correctRate * 100)}%
+                    {chapter.accuracy}%
                   </div>
                   <div style={{
                     padding: "4px 8px",
@@ -136,8 +135,7 @@ function AnalysisDisplay({ analysisData, testResults }) {
           <h4 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>유형별 학습 분석</h4>
           <div style={{ display: "grid", gap: 8 }}>
             {analysis.typeAnalysis.slice(0, 10).map((type, index) => {
-              const correctRate = type.totalAttempts > 0 ? type.correctCount / type.totalAttempts : 0;
-              const proficiency = getProficiencyLevel(correctRate, type.totalAttempts);
+              const proficiency = getProficiencyLevel(type.accuracy, type.totalQuestions);
 
               return (
                 <div key={index} style={{
@@ -151,11 +149,11 @@ function AnalysisDisplay({ analysisData, testResults }) {
                   <div>
                     <div style={{ fontWeight: 500 }}>{type.typeName}</div>
                     <div style={{ fontSize: 12, color: "#64748b" }}>
-                      {type.chapterName} • {type.correctCount}/{type.totalAttempts} 정답
+                      {type.chapterName} • {type.correctAnswers}/{type.totalQuestions} 정답
                     </div>
                   </div>
                   <div style={{ fontSize: 14, fontWeight: "bold", marginRight: 12 }}>
-                    {Math.round(correctRate * 100)}%
+                    {type.accuracy}%
                   </div>
                   <div style={{
                     padding: "4px 8px",
@@ -185,8 +183,7 @@ function AnalysisDisplay({ analysisData, testResults }) {
           <h4 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>난이도별 학습 분석</h4>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
             {analysis.difficultyAnalysis.map((difficulty, index) => {
-              const correctRate = difficulty.totalAttempts > 0 ? difficulty.correctCount / difficulty.totalAttempts : 0;
-              const proficiency = getProficiencyLevel(correctRate, difficulty.totalAttempts);
+              const proficiency = getProficiencyLevel(difficulty.accuracy, difficulty.totalQuestions);
 
               return (
                 <div key={index} style={{
@@ -199,10 +196,10 @@ function AnalysisDisplay({ analysisData, testResults }) {
                     {difficulty.difficulty}급 문제
                   </div>
                   <div style={{ fontSize: 24, fontWeight: "bold", color: proficiency.color, marginBottom: 4 }}>
-                    {Math.round(correctRate * 100)}%
+                    {difficulty.accuracy}%
                   </div>
                   <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8 }}>
-                    {difficulty.correctCount}/{difficulty.totalAttempts} 정답
+                    {difficulty.correctAnswers}/{difficulty.totalQuestions} 정답
                   </div>
                   <div style={{
                     padding: "4px 8px",

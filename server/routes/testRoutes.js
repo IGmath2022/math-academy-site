@@ -144,6 +144,7 @@ router.post('/results', isAdmin, async (req, res) => {
 
     // 학생 분석 데이터 업데이트 (비동기 처리)
     try {
+      console.log('분석 데이터 업데이트 시작:', { studentId, testTemplateId, totalScore });
       await AnalysisService.updateStudentAnalysis({
         studentId,
         testTemplateId,
@@ -151,6 +152,7 @@ router.post('/results', isAdmin, async (req, res) => {
         totalPossibleScore,
         answers
       });
+      console.log('분석 데이터 업데이트 완료');
     } catch (analysisError) {
       console.error('분석 데이터 업데이트 실패:', analysisError);
       // 분석 실패해도 테스트 결과 저장은 성공으로 처리
