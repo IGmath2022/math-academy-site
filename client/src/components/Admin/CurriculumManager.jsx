@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_URL } from '../../api';
+import { getToken, clearAuth } from '../../utils/auth';
+import { useNavigate } from 'react-router-dom';
 
 const CurriculumManager = () => {
+  const navigate = useNavigate();
   const [curricula, setCurricula] = useState([]);
   const [selectedCurriculum, setSelectedCurriculum] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -28,6 +31,19 @@ const CurriculumManager = () => {
   });
   const [typeForm, setTypeForm] = useState({ typeId: '', typeName: '' });
 
+  // 인증 헤더
+  const withAuth = () => ({ headers: { Authorization: `Bearer ${getToken()}` } });
+
+  // 401 에러 처리
+  const handle401 = (err) => {
+    if (err?.response?.status === 401) {
+      clearAuth();
+      navigate('/login');
+      return true;
+    }
+    return false;
+  };
+
   useEffect(() => {
     fetchCurricula();
   }, []);
@@ -50,9 +66,10 @@ const CurriculumManager = () => {
   const fetchCurricula = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/api/curriculum`);
+      const response = await axios.get(`${API_URL}/api/curriculum`, withAuth());
       setCurricula(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
+      if (handle401(err)) return;
       setError('교육과정 조회 실패: ' + (err.response?.data?.message || err.message));
       setCurricula([]); // 에러 시 빈 배열로 설정
     } finally {
@@ -67,17 +84,18 @@ const CurriculumManager = () => {
     try {
       if (selectedCurriculum) {
         // 수정
-        await axios.put(`/api/curriculum/${selectedCurriculum.courseId}`, formData);
+        await axios.put(`${API_URL}/api/curriculum/${selectedCurriculum.courseId}`, formData, withAuth());
         setSuccess('교육과정이 성공적으로 수정되었습니다.');
       } else {
         // 생성
-        await axios.post('/api/curriculum', formData);
+        await axios.post(`${API_URL}/api/curriculum`, formData, withAuth());
         setSuccess('교육과정이 성공적으로 생성되었습니다.');
       }
 
       resetForm();
       fetchCurricula();
     } catch (err) {
+      if (handle401(err)) return;
       setError('저장 실패: ' + err.response?.data?.message || err.message);
     } finally {
       setIsLoading(false);
@@ -100,10 +118,11 @@ const CurriculumManager = () => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
 
     try {
-      await axios.delete(`/api/curriculum/${courseId}`);
+      await axios.delete(`${API_URL}/api/curriculum/${courseId}`, withAuth());
       setSuccess('교육과정이 삭제되었습니다.');
       fetchCurricula();
     } catch (err) {
+      if (handle401(err)) return;
       setError('삭제 실패: ' + err.response?.data?.message || err.message);
     }
   };
