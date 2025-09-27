@@ -242,37 +242,47 @@ const TestResultManager = () => {
             {selectedTemplate.questions.map((question, index) => (
               <div key={question.questionNumber} style={{
                 display: 'grid',
-                gridTemplateColumns: 'auto 1fr auto auto auto auto',
-                gap: 8,
+                gridTemplateColumns: 'auto 1fr auto',
+                gap: 12,
                 alignItems: 'center',
-                padding: 8,
+                padding: 12,
                 background: answers[index]?.isCorrect ? '#f0fdf4' : '#fff',
-                border: '1px solid #f1f5f9',
-                borderRadius: 6
+                border: answers[index]?.isCorrect ? '1px solid #bbf7d0' : '1px solid #f1f5f9',
+                borderRadius: 8
               }}>
-                <span style={{ fontSize: 12, fontWeight: 600, minWidth: 30 }}>
+                <span style={{ fontSize: 14, fontWeight: 600, minWidth: 40 }}>
                   {question.questionNumber}번
                 </span>
 
-                <div style={{ fontSize: 11, color: '#64748b' }}>
-                  {question.chapter} • {question.questionType} • {question.difficulty}급 ({question.points}점)
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 2 }}>
+                    {question.chapter} • {question.questionType}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#64748b' }}>
+                    {question.difficulty}급 • {question.points}점
+                  </div>
                 </div>
 
-                <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  padding: '8px 12px',
+                  background: answers[index]?.isCorrect ? '#22c55e' : '#f1f5f9',
+                  color: answers[index]?.isCorrect ? 'white' : '#64748b',
+                  borderRadius: 6,
+                  transition: 'all 0.2s'
+                }}>
                   <input
                     type="checkbox"
                     checked={answers[index]?.isCorrect || false}
                     onChange={(e) => updateAnswer(question.questionNumber, 'isCorrect', e.target.checked)}
+                    style={{ margin: 0 }}
                   />
-                  정답
+                  {answers[index]?.isCorrect ? '정답' : '오답'}
                 </label>
-
-                <input
-                  style={{ ...commonStyles.input, fontSize: 11, width: 80 }}
-                  placeholder="학생답안"
-                  value={answers[index]?.studentAnswer || ''}
-                  onChange={(e) => updateAnswer(question.questionNumber, 'studentAnswer', e.target.value)}
-                />
               </div>
             ))}
           </div>

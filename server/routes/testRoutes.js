@@ -134,8 +134,8 @@ router.post('/results', isAdmin, async (req, res) => {
       totalPossibleScore,
       answers,
       difficultyStats,
-      chapterStats,
-      typeStats,
+      chapterStats: Object.fromEntries(chapterStats),
+      typeStats: Object.fromEntries(typeStats),
       timeSpent,
       notes
     });
