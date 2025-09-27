@@ -33,45 +33,121 @@ function StudentProgressCalendar({ progressList, chaptersMap, attendanceList = [
   });
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <style>
+        {`
+          .react-calendar {
+            width: 100% !important;
+            max-width: none !important;
+            font-family: inherit !important;
+            border: 1px solid #e8edf3 !important;
+            border-radius: 12px !important;
+            background: white !important;
+          }
+          .react-calendar__tile {
+            height: 80px !important;
+            max-height: 80px !important;
+            padding: 4px !important;
+            position: relative !important;
+            vertical-align: top !important;
+            overflow: hidden !important;
+            border: 1px solid #f1f5f9 !important;
+          }
+          .react-calendar__tile:hover {
+            background-color: #f8fafc !important;
+          }
+          .react-calendar__tile--active {
+            background: #e0f2fe !important;
+            color: #0c4a6e !important;
+          }
+          .react-calendar__tile--now {
+            background: #fef3c7 !important;
+            color: #92400e !important;
+          }
+          .react-calendar__month-view__days__day--weekend {
+            color: #dc2626 !important;
+          }
+          .calendar-event-container {
+            position: absolute;
+            top: 18px;
+            left: 2px;
+            right: 2px;
+            bottom: 2px;
+            overflow: hidden;
+          }
+          .calendar-event-item {
+            font-size: 8px;
+            line-height: 1.1;
+            margin-bottom: 1px;
+            padding: 1px 2px;
+            border-radius: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            background: rgba(255, 255, 255, 0.9);
+          }
+          .calendar-event-online {
+            border-left: 2px solid #1d4ed8;
+            color: #1d4ed8 !important;
+          }
+          .calendar-event-attendance {
+            border-left: 2px solid #059669;
+            color: #059669 !important;
+          }
+          .calendar-more-indicator {
+            font-size: 7px;
+            color: #64748b;
+            text-align: center;
+            background: rgba(100, 116, 139, 0.1);
+            border-radius: 2px;
+            padding: 1px;
+          }
+        `}
+      </style>
       <Calendar
         tileContent={({ date }) => {
           const d = date.toISOString().slice(0, 10);
           const events = eventsByDate[d];
-          if (!events) return null;
+          if (!events || events.length === 0) return null;
+
+          const maxVisible = 3; // 최대 3개까지만 표시
+          const visibleEvents = events.slice(0, maxVisible);
+          const remainingCount = events.length - maxVisible;
 
           return (
-            <ul style={{ margin: 0, padding: 0, fontSize: 10, lineHeight: 1.2 }}>
-              {events.map((event, i) => (
-                <li key={i} style={{
-                  color: event.color,
-                  marginBottom: 1,
-                  listStyle: 'none'
-                }}>
-                  <div style={{ fontWeight: '600' }}>
-                    {event.type === 'online' ? '인강' : '현강'}: {event.title}
-                  </div>
-                  {event.memo && (
-                    <div style={{ color: "#666", fontSize: 9 }}>
-                      {event.memo}
-                    </div>
-                  )}
-                  {event.teacher && (
-                    <div style={{ color: "#666", fontSize: 9 }}>
-                      ({event.teacher})
-                    </div>
-                  )}
-                </li>
+            <div className="calendar-event-container">
+              {visibleEvents.map((event, i) => (
+                <div
+                  key={i}
+                  className={`calendar-event-item ${event.type === 'online' ? 'calendar-event-online' : 'calendar-event-attendance'}`}
+                  title={`${event.type === 'online' ? '인강' : '현강'}: ${event.title}${event.memo ? ' - ' + event.memo : ''}${event.teacher ? ' (' + event.teacher + ')' : ''}`}
+                >
+                  {event.type === 'online' ? '인' : '현'}: {event.title.length > 8 ? event.title.substring(0, 8) + '...' : event.title}
+                </div>
               ))}
-            </ul>
+              {remainingCount > 0 && (
+                <div className="calendar-more-indicator">
+                  +{remainingCount}개 더
+                </div>
+              )}
+            </div>
           );
         }}
       />
-      <div style={{ marginTop: 18, fontSize: 13, color: "#888" }}>
-        ● <span style={{ color: "#1d4ed8", fontWeight: 'bold' }}>인강</span>: 온라인 진도 완료 기록<br />
-        ● <span style={{ color: "#059669", fontWeight: 'bold' }}>현강</span>: 현장 수업 기록<br />
-        ● 달력에 표시된 항목을 눌러도 기록 수정은 되지 않습니다.<br />
-        ● 진도 기록은 "내 강의"에서 저장하세요.
+      <div style={{
+        marginTop: 16,
+        padding: 12,
+        background: '#f8fafc',
+        borderRadius: 8,
+        fontSize: 12,
+        color: "#64748b",
+        lineHeight: 1.4
+      }}>
+        <div style={{ fontWeight: 'bold', marginBottom: 8, color: '#374151' }}>📅 캘린더 사용법</div>
+        ● <span style={{ color: "#1d4ed8", fontWeight: 'bold' }}>인</span>: 온라인 진도 완료 기록<br />
+        ● <span style={{ color: "#059669", fontWeight: 'bold' }}>현</span>: 현장 수업 기록<br />
+        ● 날짜 위에 마우스를 올리면 전체 내용을 볼 수 있습니다<br />
+        ● 항목이 많은 날은 "+N개 더"로 표시됩니다
       </div>
     </div>
   );

@@ -487,14 +487,30 @@ function StudentManager() {
         <div style={styles.modalBackdrop}>
           <div style={styles.modalCardWide}>
             <div style={styles.modalHeader}>{calendarStudent.name}님의 진도 캘린더 (인강 + 현강)</div>
-            <div style={{ padding: 16 }}>
-              <div style={{ marginBottom: 16, padding: 12, background: '#f8fafc', borderRadius: 8, fontSize: 14, color: '#64748b' }}>
+            <div style={{
+              padding: 16,
+              flex: 1,
+              overflow: "auto",
+              display: "flex",
+              flexDirection: "column"
+            }}>
+              <div style={{
+                marginBottom: 16,
+                padding: 12,
+                background: '#f8fafc',
+                borderRadius: 8,
+                fontSize: 14,
+                color: '#64748b',
+                flexShrink: 0
+              }}>
                 📅 <strong>캘린더 기능 안내:</strong><br/>
                 • <span style={{ color: "#1d4ed8", fontWeight: 'bold' }}>인강</span>: 학생이 온라인으로 완료한 강의/단원<br/>
                 • <span style={{ color: "#059669", fontWeight: 'bold' }}>현강</span>: 현장 수업 기록<br/>
                 • 달력의 항목을 클릭해도 수정은 되지 않으며, 진도는 학생이 직접 "내 강의"에서 저장합니다
               </div>
-              <StudentCalendarView userId={calendarStudent._id} />
+              <div style={{ flex: 1, minHeight: 0 }}>
+                <StudentCalendarView userId={calendarStudent._id} />
+              </div>
             </div>
             <div style={styles.modalFooter}>
               <button onClick={() => setCalendarStudent(null)} style={styles.btnGhost}>닫기</button>
@@ -570,9 +586,9 @@ const styles = {
   btnGhost: { padding: "8px 12px", background: "#f3f4f6", color: "#111827", border: "1px solid #e5e7eb", borderRadius: 10, cursor: "pointer" },
   modalBackdrop: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.38)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 },
   modalCard: { width: 640, maxWidth: "92%", background: "#fff", borderRadius: 12, border: "1px solid #e8edf7", boxShadow: "0 10px 26px rgba(28,39,60,.18)" },
-  modalCardWide: { width: 820, maxWidth: "96%", background: "#fff", borderRadius: 12, border: "1px solid #e8edf7", boxShadow: "0 10px 26px rgba(28,39,60,.18)" },
+  modalCardWide: { width: 900, maxWidth: "98%", maxHeight: "90vh", background: "#fff", borderRadius: 12, border: "1px solid #e8edf7", boxShadow: "0 10px 26px rgba(28,39,60,.18)", overflow: "hidden", display: "flex", flexDirection: "column" },
   modalHeader: { padding: "12px 14px", borderBottom: "1px solid #eef2fb", fontWeight: 700 },
-  modalFooter: { padding: "10px 14px", borderTop: "1px solid #eef2fb", textAlign: "right" }
+  modalFooter: { padding: "10px 14px", borderTop: "1px solid #eef2fb", textAlign: "right", flexShrink: 0 }
 };
 
 export default StudentManager;
