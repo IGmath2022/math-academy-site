@@ -68,13 +68,15 @@ const TestTemplateManager = () => {
   // 문항 정보 생성/업데이트
   const generateQuestions = (count) => {
     const questions = [];
+    const pointsPerQuestion = Math.round(formData.totalPoints / count);
+
     for (let i = 1; i <= count; i++) {
       questions.push({
         questionNumber: i,
         difficulty: '중',
         chapter: '',
-        questionType: '계산',
-        points: Math.round(formData.totalPoints / count)
+        questionType: '',
+        points: pointsPerQuestion
       });
     }
     setFormData(prev => ({ ...prev, questions }));
@@ -86,7 +88,21 @@ const TestTemplateManager = () => {
     setFormData(prev => ({ ...prev, totalQuestions: count }));
     if (count > 0) {
       generateQuestions(count);
+    } else {
+      setFormData(prev => ({ ...prev, questions: [] }));
     }
+  };
+
+  // 총 배점 변경 시 문항별 배점 재계산
+  const handleTotalPointsChange = (value) => {
+    const totalPoints = parseInt(value) || 100;
+    setFormData(prev => {
+      const newQuestions = prev.questions.map(q => ({
+        ...q,
+        points: Math.round(totalPoints / prev.totalQuestions) || 1
+      }));
+      return { ...prev, totalPoints, questions: newQuestions };
+    });
   };
 
   // 문항별 정보 업데이트
@@ -265,16 +281,46 @@ const TestTemplateManager = () => {
               type="number"
               placeholder="총 배점"
               value={formData.totalPoints}
-              onChange={(e) => setFormData(prev => ({ ...prev, totalPoints: parseInt(e.target.value) || 100 }))}
+              onChange={(e) => handleTotalPointsChange(e.target.value)}
             />
           </div>
 
           {/* 문항별 상세 설정 */}
           {formData.questions.length > 0 && (
             <div>
-              <h5>문항별 설정</h5>
-              <div style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 6, padding: 8 }}>
-                {formData.questions.map((q, index) => (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '16px 0 8px 0' }}>
+                <h5 style={{ margin: 0, color: '#1e293b' }}>문항별 상세 설정</h5>
+                <span style={{ fontSize: 14, color: '#64748b' }}>
+                  총 배점: {formData.questions.reduce((sum, q) => sum + (q.points || 0), 0)}점
+                </span>
+              </div>
+              <div style={{
+                border: '1px solid #e2e8f0',
+                borderRadius: 8,
+                overflow: 'hidden',
+                backgroundColor: '#f8fafc'
+              }}>
+                {/* 헤더 */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'auto 1fr 1fr 1fr 1fr',
+                  gap: 8,
+                  padding: '12px 8px',
+                  backgroundColor: '#e2e8f0',
+                  fontWeight: 600,
+                  fontSize: 12,
+                  color: '#374151'
+                }}>
+                  <span>문항</span>
+                  <span>난이도</span>
+                  <span>단원</span>
+                  <span>유형</span>
+                  <span>배점</span>
+                </div>
+
+                {/* 문항 목록 */}
+                <div style={{ maxHeight: 300, overflowY: 'auto', padding: 8 }}>
+                  {formData.questions.map((q, index) => (
                   <div key={index} style={{
                     display: 'grid',
                     gridTemplateColumns: 'auto 1fr 1fr 1fr 1fr',
@@ -328,8 +374,9 @@ const TestTemplateManager = () => {
                       value={q.points}
                       onChange={(e) => updateQuestion(index, 'points', parseInt(e.target.value) || 1)}
                     />
-                  </div>
-                ))}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
