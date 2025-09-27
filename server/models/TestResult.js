@@ -24,18 +24,12 @@ const TestResultSchema = new mongoose.Schema({
     easy: { correct: { type: Number, default: 0 }, total: { type: Number, default: 0 } }
   },
   chapterStats: {
-    type: Map,
-    of: {
-      correct: { type: Number, default: 0 },
-      total: { type: Number, default: 0 }
-    }
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
   }, // 단원별 통계
   typeStats: {
-    type: Map,
-    of: {
-      correct: { type: Number, default: 0 },
-      total: { type: Number, default: 0 }
-    }
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
   }, // 유형별 통계
 
   // 추가 정보

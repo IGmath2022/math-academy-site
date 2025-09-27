@@ -120,8 +120,6 @@ const TestResultManager = () => {
 
     } catch (err) {
       if (handle401(err)) return;
-      console.error('저장 실패 상세:', err);
-      console.error('응답 데이터:', err.response?.data);
       const errorMsg = err.response?.data?.error || err.response?.data?.message || err.message;
       alert('저장 실패: ' + errorMsg);
     } finally {
