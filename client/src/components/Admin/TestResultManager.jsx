@@ -17,10 +17,9 @@ const TestResultManager = () => {
   const [timeSpent, setTimeSpent] = useState(60);
   const [notes, setNotes] = useState('');
 
-  // 기존 결과 관리 (향후 사용 예정)
-  // const [existingResults, setExistingResults] = useState([]);
-  // const [editingResult, setEditingResult] = useState(null);
-  // const [showExistingResults, setShowExistingResults] = useState(false);
+  // 기존 결과 관리
+  const [existingResults, setExistingResults] = useState([]);
+  const [showExistingResults, setShowExistingResults] = useState(false);
 
   const withAuth = () => ({ headers: { Authorization: `Bearer ${getToken()}` } });
 
@@ -52,16 +51,18 @@ const TestResultManager = () => {
     }
   };
 
-  // 기존 테스트 결과 로드 (향후 사용 예정)
-  // const loadExistingResults = async () => {
-  //   try {
-  //     const response = await axios.get(`${API_URL}/api/tests/results`, withAuth());
-  //     setExistingResults(response.data);
-  //   } catch (err) {
-  //     if (handle401(err)) return;
-  //     console.error('기존 결과 로드 실패:', err);
-  //   }
-  // };
+  // 기존 테스트 결과 로드
+  const loadExistingResults = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/api/tests/results`, withAuth());
+      setExistingResults(response.data);
+      console.log('로드된 결과 수:', response.data.length);
+    } catch (err) {
+      if (handle401(err)) return;
+      console.error('기존 결과 로드 실패:', err);
+      alert('기존 결과 로드 실패: ' + (err.response?.data?.message || err.message));
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -123,9 +124,10 @@ const TestResultManager = () => {
         notes
       };
 
-      await axios.post(`${API_URL}/api/tests/results`, resultData, withAuth());
+      const response = await axios.post(`${API_URL}/api/tests/results`, resultData, withAuth());
 
-      alert('성적이 저장되었습니다.');
+      alert(`성적이 저장되었습니다! (ID: ${response.data._id})`);
+      console.log('저장된 결과:', response.data);
 
       // 폼 리셋
       setSelectedTemplate(null);
@@ -187,172 +189,248 @@ const TestResultManager = () => {
 
   return (
     <div style={commonStyles.container}>
-      {/* 테스트 및 학생 선택 */}
-      <div style={commonStyles.card}>
-        <h4 style={{ marginTop: 0 }}>테스트 및 학생 선택</h4>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 12 }}>
-          <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
-              테스트 선택
-            </label>
-            <select
-              style={commonStyles.select}
-              value={selectedTemplate?._id || ''}
-              onChange={(e) => {
-                const template = templates.find(t => t._id === e.target.value);
-                handleTemplateSelect(template);
-              }}
-            >
-              <option value="">테스트를 선택하세요</option>
-              {templates.map(template => (
-                <option key={template._id} value={template._id}>
-                  {template.name} ({template.subject})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
-              학생 선택
-            </label>
-            <select
-              style={commonStyles.select}
-              value={selectedStudent?._id || ''}
-              onChange={(e) => {
-                const student = students.find(s => s._id === e.target.value);
-                setSelectedStudent(student);
-              }}
-            >
-              <option value="">학생을 선택하세요</option>
-              {students.map(student => (
-                <option key={student._id} value={student._id}>
-                  {student.name} {student.grade ? `(${student.grade})` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {selectedTemplate && selectedStudent && (
-          <div style={{ marginTop: 16, padding: 12, background: '#f8fafc', borderRadius: 8 }}>
-            <strong>{selectedStudent.name}</strong>님의 <strong>{selectedTemplate.name}</strong> 성적 입력
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-              총 {selectedTemplate.totalQuestions}문항 • {selectedTemplate.totalPoints}점 만점
-            </div>
-          </div>
-        )}
+      {/* 상단 헤더와 버튼 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h3 style={{ margin: 0 }}>테스트 성적 관리</h3>
+        <button
+          style={{
+            ...commonStyles.button,
+            background: showExistingResults ? '#64748b' : '#3b82f6',
+            color: 'white'
+          }}
+          onClick={() => {
+            setShowExistingResults(!showExistingResults);
+            if (!showExistingResults) {
+              loadExistingResults();
+            }
+          }}
+        >
+          {showExistingResults ? '새 성적 입력' : '저장된 결과 보기'}
+        </button>
       </div>
 
-      {/* 답안 입력 */}
-      {selectedTemplate && selectedStudent && (
+      {/* 저장된 결과 목록 */}
+      {showExistingResults && (
         <div style={commonStyles.card}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h4 style={{ margin: 0 }}>답안 입력</h4>
-            <div style={{ fontSize: 14, color: '#2563eb', fontWeight: 600 }}>
-              현재 점수: {calculateScore()} / {selectedTemplate.totalPoints}점
+          <h4 style={{ marginTop: 0 }}>저장된 테스트 결과 ({existingResults.length}개)</h4>
+          {existingResults.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>
+              저장된 테스트 결과가 없습니다.
             </div>
-          </div>
-
-          <div style={{ display: 'grid', gap: 8, maxHeight: 400, overflowY: 'auto', padding: 8, border: '1px solid #e2e8f0', borderRadius: 8 }}>
-            {selectedTemplate.questions.map((question, index) => (
-              <div key={question.questionNumber} style={{
-                display: 'grid',
-                gridTemplateColumns: 'auto 1fr auto',
-                gap: 12,
-                alignItems: 'center',
-                padding: 12,
-                background: answers[index]?.isCorrect ? '#f0fdf4' : '#fff',
-                border: answers[index]?.isCorrect ? '1px solid #bbf7d0' : '1px solid #f1f5f9',
-                borderRadius: 8
-              }}>
-                <span style={{ fontSize: 14, fontWeight: 600, minWidth: 40 }}>
-                  {question.questionNumber}번
-                </span>
-
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 2 }}>
-                    {question.chapter} • {question.questionType}
+          ) : (
+            <div style={{ maxHeight: 500, overflowY: 'auto' }}>
+              {existingResults.map((result, index) => (
+                <div key={result._id} style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'auto 1fr auto auto',
+                  gap: 12,
+                  alignItems: 'center',
+                  padding: 12,
+                  margin: '8px 0',
+                  background: '#f8fafc',
+                  borderRadius: 8,
+                  border: '1px solid #e2e8f0'
+                }}>
+                  <span style={{ fontSize: 12, color: '#64748b' }}>
+                    {new Date(result.testDate).toLocaleDateString()}
+                  </span>
+                  <div>
+                    <div style={{ fontWeight: 600 }}>
+                      {result.studentId?.name || '알 수 없음'} - {result.testTemplateId?.name || '삭제된 테스트'}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#64748b' }}>
+                      {result.timeSpent}분 소요 {result.notes && `• ${result.notes}`}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 12, color: '#64748b' }}>
-                    {question.difficulty}급 • {question.points}점
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontWeight: 600, fontSize: 18, color: '#2563eb' }}>
+                      {result.totalScore}/{result.totalPossibleScore}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#64748b' }}>
+                      {Math.round((result.totalScore / result.totalPossibleScore) * 100)}%
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 11, color: '#64748b' }}>
+                    ID: {result._id.slice(-6)}
                   </div>
                 </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  fontSize: 14,
-                  cursor: 'pointer',
-                  padding: '8px 12px',
-                  background: answers[index]?.isCorrect ? '#22c55e' : '#f1f5f9',
-                  color: answers[index]?.isCorrect ? 'white' : '#64748b',
-                  borderRadius: 6,
-                  transition: 'all 0.2s'
-                }}>
-                  <input
-                    type="checkbox"
-                    checked={answers[index]?.isCorrect || false}
-                    onChange={(e) => updateAnswer(question.questionNumber, 'isCorrect', e.target.checked)}
-                    style={{ margin: 0 }}
-                  />
-                  {answers[index]?.isCorrect ? '정답' : '오답'}
+      {/* 새 성적 입력 폼 */}
+      {!showExistingResults && (
+        <div>
+          {/* 테스트 및 학생 선택 */}
+          <div style={commonStyles.card}>
+            <h4 style={{ marginTop: 0 }}>테스트 및 학생 선택</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 12 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+                  테스트 선택
                 </label>
+                <select
+                  style={commonStyles.select}
+                  value={selectedTemplate?._id || ''}
+                  onChange={(e) => {
+                    const template = templates.find(t => t._id === e.target.value);
+                    handleTemplateSelect(template);
+                  }}
+                >
+                  <option value="">테스트를 선택하세요</option>
+                  {templates.map(template => (
+                    <option key={template._id} value={template._id}>
+                      {template.name} ({template.subject})
+                    </option>
+                  ))}
+                </select>
               </div>
-            ))}
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+                  학생 선택
+                </label>
+                <select
+                  style={commonStyles.select}
+                  value={selectedStudent?._id || ''}
+                  onChange={(e) => {
+                    const student = students.find(s => s._id === e.target.value);
+                    setSelectedStudent(student);
+                  }}
+                >
+                  <option value="">학생을 선택하세요</option>
+                  {students.map(student => (
+                    <option key={student._id} value={student._id}>
+                      {student.name} {student.grade ? `(${student.grade})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {selectedTemplate && selectedStudent && (
+              <div style={{ marginTop: 16, padding: 12, background: '#f8fafc', borderRadius: 8 }}>
+                <strong>{selectedStudent.name}</strong>님의 <strong>{selectedTemplate.name}</strong> 성적 입력
+                <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+                  총 {selectedTemplate.totalQuestions}문항 • {selectedTemplate.totalPoints}점 만점
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* 추가 정보 입력 */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 12, marginTop: 16 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
-                소요 시간 (분)
-              </label>
-              <input
-                style={{ ...commonStyles.input, width: 80 }}
-                type="number"
-                value={timeSpent}
-                onChange={(e) => setTimeSpent(parseInt(e.target.value) || 0)}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
-                메모
-              </label>
-              <input
-                style={commonStyles.input}
-                placeholder="추가 메모나 특이사항"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
-            </div>
-          </div>
+          {/* 답안 입력 */}
+          {selectedTemplate && selectedStudent && (
+            <div style={commonStyles.card}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <h4 style={{ margin: 0 }}>답안 입력</h4>
+                <div style={{ fontSize: 14, color: '#2563eb', fontWeight: 600 }}>
+                  현재 점수: {calculateScore()} / {selectedTemplate.totalPoints}점
+                </div>
+              </div>
 
-          <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
-            <button
-              style={{ ...commonStyles.button, ...commonStyles.secondaryButton }}
-              onClick={() => {
-                setSelectedTemplate(null);
-                setSelectedStudent(null);
-                setAnswers([]);
-              }}
-            >
-              취소
-            </button>
-            <button
-              style={{
-                ...commonStyles.button,
-                ...commonStyles.primaryButton,
-                opacity: saving ? 0.7 : 1,
-                cursor: saving ? 'not-allowed' : 'pointer'
-              }}
-              onClick={saveResult}
-              disabled={saving}
-            >
-              {saving ? '저장 중...' : '성적 저장'}
-            </button>
-          </div>
+              <div style={{ display: 'grid', gap: 8, maxHeight: 400, overflowY: 'auto', padding: 8, border: '1px solid #e2e8f0', borderRadius: 8 }}>
+                {selectedTemplate.questions.map((question, index) => (
+                  <div key={question.questionNumber} style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'auto 1fr auto',
+                    gap: 12,
+                    alignItems: 'center',
+                    padding: 12,
+                    background: answers[index]?.isCorrect ? '#f0fdf4' : '#fff',
+                    border: answers[index]?.isCorrect ? '1px solid #bbf7d0' : '1px solid #f1f5f9',
+                    borderRadius: 8
+                  }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, minWidth: 40 }}>
+                      {question.questionNumber}번
+                    </span>
+
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 2 }}>
+                        {question.chapter} • {question.questionType}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#64748b' }}>
+                        {question.difficulty}급 • {question.points}점
+                      </div>
+                    </div>
+
+                    <label style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      fontSize: 14,
+                      cursor: 'pointer',
+                      padding: '8px 12px',
+                      background: answers[index]?.isCorrect ? '#22c55e' : '#f1f5f9',
+                      color: answers[index]?.isCorrect ? 'white' : '#64748b',
+                      borderRadius: 6,
+                      transition: 'all 0.2s'
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={answers[index]?.isCorrect || false}
+                        onChange={(e) => updateAnswer(question.questionNumber, 'isCorrect', e.target.checked)}
+                        style={{ margin: 0 }}
+                      />
+                      {answers[index]?.isCorrect ? '정답' : '오답'}
+                    </label>
+                  </div>
+                ))}
+              </div>
+
+              {/* 추가 정보 입력 */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 12, marginTop: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+                    소요 시간 (분)
+                  </label>
+                  <input
+                    style={{ ...commonStyles.input, width: 80 }}
+                    type="number"
+                    value={timeSpent}
+                    onChange={(e) => setTimeSpent(parseInt(e.target.value) || 0)}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+                    메모
+                  </label>
+                  <input
+                    style={commonStyles.input}
+                    placeholder="추가 메모나 특이사항"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
+                <button
+                  style={{ ...commonStyles.button, ...commonStyles.secondaryButton }}
+                  onClick={() => {
+                    setSelectedTemplate(null);
+                    setSelectedStudent(null);
+                    setAnswers([]);
+                  }}
+                >
+                  취소
+                </button>
+                <button
+                  style={{
+                    ...commonStyles.button,
+                    ...commonStyles.primaryButton,
+                    opacity: saving ? 0.7 : 1,
+                    cursor: saving ? 'not-allowed' : 'pointer'
+                  }}
+                  onClick={saveResult}
+                  disabled={saving}
+                >
+                  {saving ? '저장 중...' : '성적 저장'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
