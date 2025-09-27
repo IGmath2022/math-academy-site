@@ -255,6 +255,10 @@ function StudentManager() {
   const [showInactive, setShowInactive] = useState(false);
   const [q, setQ] = useState("");
 
+  // 페이지네이션 상태
+  const [currentPage, setCurrentPage] = useState(1);
+  const studentsPerPage = 10;
+
   // 폼 상태 (기존 필드/로직/엔드포인트 동일)
   const [form, setForm] = useState({
     name: "",
@@ -297,7 +301,10 @@ function StudentManager() {
   };
 
   useEffect(() => { fetchSchools(); fetchChapters(); }, []);
-  useEffect(() => { fetchStudents(); }, [q, showInactive]);
+  useEffect(() => {
+    fetchStudents();
+    setCurrentPage(1); // 검색/필터 변경 시 첫 페이지로
+  }, [q, showInactive]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -385,91 +392,177 @@ function StudentManager() {
         </label>
       </div>
 
-      {/* 입력 + 목록 2단 카드 */}
-      <div style={styles.cols}>
-        {/* 입력 카드 */}
-        <div style={styles.card}>
-          <SectionTitle title="학생 추가 / 수정" />
-          <div style={styles.formGrid}>
-            <input name="name" placeholder="이름" value={form.name} onChange={handleChange} style={styles.input} />
-            <input name="phone" placeholder="전화번호" value={form.phone} onChange={handleChange} style={styles.input} />
-            <input name="grade" placeholder="학년" value={form.grade} onChange={handleChange} style={styles.input} />
-            <select name="schoolId" value={form.schoolId} onChange={handleChange} style={styles.input}>
-              <option value="">학교 선택</option>
-              {schools.map((s) => (
-                <option key={s._id} value={s._id}>{s.name}</option>
-              ))}
-            </select>
-            <input name="parentName" placeholder="학부모 성함" value={form.parentName} onChange={handleChange} style={styles.input} />
-            <input name="parentPhone" placeholder="학부모 연락처" value={form.parentPhone} onChange={handleChange} style={styles.input} />
-            <input name="memo" placeholder="메모" value={form.memo} onChange={handleChange} style={{ ...styles.input, gridColumn: "span 2" }} />
-            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <input type="checkbox" name="active" checked={form.active} onChange={handleChange} /> 활성
-            </label>
-          </div>
+      {/* 학생 추가/수정 카드 */}
+      <div style={styles.card}>
+        <SectionTitle title="학생 추가 / 수정" />
+        <div style={styles.formGridExpanded}>
+          <input name="name" placeholder="이름" value={form.name} onChange={handleChange} style={styles.input} />
+          <input name="phone" placeholder="전화번호" value={form.phone} onChange={handleChange} style={styles.input} />
+          <input name="grade" placeholder="학년" value={form.grade} onChange={handleChange} style={styles.input} />
+          <select name="schoolId" value={form.schoolId} onChange={handleChange} style={styles.input}>
+            <option value="">학교 선택</option>
+            {schools.map((s) => (
+              <option key={s._id} value={s._id}>{s.name}</option>
+            ))}
+          </select>
+          <input name="parentName" placeholder="학부모 성함" value={form.parentName} onChange={handleChange} style={styles.input} />
+          <input name="parentPhone" placeholder="학부모 연락처" value={form.parentPhone} onChange={handleChange} style={styles.input} />
+          <input name="memo" placeholder="메모" value={form.memo} onChange={handleChange} style={{ ...styles.input, gridColumn: "span 2" }} />
+          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input type="checkbox" name="active" checked={form.active} onChange={handleChange} /> 활성
+          </label>
+        </div>
 
-          <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-            {editingId ? (
-              <>
-                <button onClick={handleUpdate} style={styles.btnPrimary}>저장</button>
-                <button onClick={resetForm} style={styles.btnGhost}>취소</button>
-              </>
-            ) : (
-              <button onClick={handleAdd} style={styles.btnSuccess}>추가</button>
-            )}
+        <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+          {editingId ? (
+            <>
+              <button onClick={handleUpdate} style={styles.btnPrimary}>저장</button>
+              <button onClick={resetForm} style={styles.btnGhost}>취소</button>
+            </>
+          ) : (
+            <button onClick={handleAdd} style={styles.btnSuccess}>추가</button>
+          )}
+        </div>
+      </div>
+
+      {/* 학생 목록 카드 */}
+      <div style={styles.card}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <SectionTitle title={`학생 목록 (${students.length}명)`} />
+          <div style={{ fontSize: 13, color: "#64748b" }}>
+            페이지당 {studentsPerPage}명씩 표시
           </div>
         </div>
 
-        {/* 목록 카드 */}
-        <div style={styles.card}>
-          <SectionTitle title={`학생 목록 (${students.length})`} />
-          <div style={{ border: "1px solid #eef2fb", borderRadius: 12, overflow: "hidden" }}>
-            <table width="100%" style={{ borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ background: "#f8fafd" }}>
-                  <Th>이름</Th>
-                  <Th>전화</Th>
-                  <Th>학년</Th>
-                  <Th>학교</Th>
-                  <Th>학부모</Th>
-                  <Th>메모</Th>
-                  <Th>상태</Th>
-                  <Th>관리</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {students.map((u) => (
-                  <tr key={u._id} style={{ borderBottom: "1px solid #f4f6fd" }}>
-                    <Td>
-                      <button onClick={() => setDetailTarget(u)} style={styles.linkButton}>
-                        {u.name}
+        {(() => {
+          // 페이지네이션 로직
+          const totalPages = Math.ceil(students.length / studentsPerPage);
+          const startIndex = (currentPage - 1) * studentsPerPage;
+          const endIndex = startIndex + studentsPerPage;
+          const currentStudents = students.slice(startIndex, endIndex);
+
+          return (
+            <>
+              <div style={{ border: "1px solid #eef2fb", borderRadius: 12, overflow: "hidden" }}>
+                <table width="100%" style={{ borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ background: "#f8fafd" }}>
+                      <Th>이름</Th>
+                      <Th>전화</Th>
+                      <Th>학년</Th>
+                      <Th>학교</Th>
+                      <Th>학부모</Th>
+                      <Th>메모</Th>
+                      <Th>상태</Th>
+                      <Th>관리</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentStudents.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} style={{ textAlign: "center", padding: 20, color: "#64748b" }}>
+                          등록된 학생이 없습니다.
+                        </td>
+                      </tr>
+                    ) : (
+                      currentStudents.map((u) => (
+                        <tr key={u._id} style={{ borderBottom: "1px solid #f4f6fd" }}>
+                          <Td>
+                            <button onClick={() => setDetailTarget(u)} style={styles.linkButton}>
+                              {u.name}
+                            </button>
+                          </Td>
+                          <Td>{u.phone}</Td>
+                          <Td>{u.grade}</Td>
+                          <Td>{u.school?.name || u.schoolName || "-"}</Td>
+                          <Td>{u.parentName} {u.parentPhone ? `(${u.parentPhone})` : ""}</Td>
+                          <Td>{u.memo}</Td>
+                          <Td>{u.active ? "활성" : "비활성"}</Td>
+                          <Td>
+                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                              <button onClick={() => handleEdit(u)} style={styles.btnLight}>수정</button>
+                              <button
+                                onClick={() => { if (window.confirm("정말 삭제하시겠습니까?")) handleDelete(u); }}
+                                style={styles.btnDanger}
+                              >
+                                삭제
+                              </button>
+                              <button onClick={() => setHistoryUserId(u._id)} style={styles.btnLight}>이력</button>
+                              <button onClick={() => setCalendarStudent(u)} style={styles.btnLight} title="학생의 온라인 진도를 달력으로 보기">📅</button>
+                            </div>
+                          </Td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* 페이지네이션 */}
+              {totalPages > 1 && (
+                <div style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  gap: 8,
+                  marginTop: 16,
+                  padding: 16,
+                  background: "#f8fafc",
+                  borderRadius: 12
+                }}>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    style={{
+                      ...styles.btnLight,
+                      opacity: currentPage === 1 ? 0.5 : 1,
+                      cursor: currentPage === 1 ? "not-allowed" : "pointer"
+                    }}
+                  >
+                    ◀ 이전
+                  </button>
+
+                  <div style={{ display: "flex", gap: 4 }}>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        style={{
+                          ...styles.btnLight,
+                          ...(page === currentPage ? {
+                            background: "#2563eb",
+                            color: "white",
+                            borderColor: "#2563eb"
+                          } : {}),
+                          minWidth: 36,
+                          height: 36
+                        }}
+                      >
+                        {page}
                       </button>
-                    </Td>
-                    <Td>{u.phone}</Td>
-                    <Td>{u.grade}</Td>
-                    <Td>{u.school?.name || u.schoolName || "-"}</Td>
-                    <Td>{u.parentName} {u.parentPhone ? `(${u.parentPhone})` : ""}</Td>
-                    <Td>{u.memo}</Td>
-                    <Td>{u.active ? "활성" : "비활성"}</Td>
-                    <Td>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <button onClick={() => handleEdit(u)} style={styles.btnLight}>수정</button>
-                        <button
-                          onClick={() => { if (window.confirm("정말 삭제하시겠습니까?")) handleDelete(u); }}
-                          style={styles.btnDanger}
-                        >
-                          삭제
-                        </button>
-                        <button onClick={() => setHistoryUserId(u._id)} style={styles.btnLight}>이력</button>
-                        <button onClick={() => setCalendarStudent(u)} style={styles.btnLight} title="학생의 온라인 진도를 달력으로 보기">📅 캘린더</button>
-                      </div>
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    style={{
+                      ...styles.btnLight,
+                      opacity: currentPage === totalPages ? 0.5 : 1,
+                      cursor: currentPage === totalPages ? "not-allowed" : "pointer"
+                    }}
+                  >
+                    다음 ▶
+                  </button>
+
+                  <div style={{ marginLeft: 16, fontSize: 13, color: "#64748b" }}>
+                    {startIndex + 1}-{Math.min(endIndex, students.length)} / {students.length}명
+                  </div>
+                </div>
+              )}
+            </>
+          );
+        })()}
       </div>
 
       {/* 모달들 (기존 로직 동일) */}
@@ -568,6 +661,11 @@ const styles = {
     display: "grid",
     gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
     gap: 10
+  },
+  formGridExpanded: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, minmax(180px, 1fr))",
+    gap: 14
   },
   input: {
     padding: "10px 12px",

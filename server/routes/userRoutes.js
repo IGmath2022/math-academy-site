@@ -62,15 +62,23 @@ router.put('/:id', isAdmin, async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: "사용자 없음" });
-    const { name, email, schoolId, parentPhone } = req.body;
+    const { name, email, phone, grade, schoolId, parentName, parentPhone, memo, active } = req.body;
+
     if (schoolId) {
       const school = await School.findById(schoolId);
       if (!school) return res.status(400).json({ message: "해당 학교 없음" });
       user.schoolId = schoolId;
     }
-    if (name) user.name = name;
-    if (email) user.email = email;
-    if (parentPhone !== undefined) user.parentPhone = parentPhone; // ★ 추가/수정
+
+    if (name !== undefined) user.name = name;
+    if (email !== undefined) user.email = email;
+    if (phone !== undefined) user.phone = phone;
+    if (grade !== undefined) user.grade = grade;
+    if (parentName !== undefined) user.parentName = parentName;
+    if (parentPhone !== undefined) user.parentPhone = parentPhone;
+    if (memo !== undefined) user.memo = memo;
+    if (active !== undefined) user.active = active;
+
     await user.save();
     res.json(user);
   } catch (e) {
