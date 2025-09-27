@@ -40,6 +40,13 @@ import SiteContentManager from "./SiteContentManager";
 // ── (신규) 강사 프로필 관리
 import TeacherProfileManager from "./TeacherProfileManager";
 
+// ── (신규) 테스트 관리
+import TestTemplateManager from "./TestTemplateManager";
+import TestResultManager from "./TestResultManager";
+
+// ── (신규) 교육과정 관리
+import CurriculumManager from "./CurriculumManager";
+
 // 인증 유틸
 import { getRole } from "../../utils/auth";
 
@@ -208,10 +215,12 @@ export default function AdminDashboardTabs() {
         { key: "attendance", label: "출결 관리" },
         { key: "progress", label: "진도 관리" },
         { key: "subjects", label: "과목·단원" },
+        { key: "curriculum", label: "교육과정 관리" },
         { key: "students", label: "학생 정보" },
         { key: "schools", label: "학교 관리" },
         { key: "promo", label: "공지 · 팝업 배너" },
         { key: "content", label: "콘텐츠 관리" },
+        { key: "tests", label: "테스트 관리" },
         { key: "cron", label: "자동 작업(크론)" },
       ];
 
@@ -347,6 +356,17 @@ export default function AdminDashboardTabs() {
           </div>
         )}
 
+        {/* 교육과정 관리 */}
+        {tab === "curriculum" && (
+          <SectionCard
+            title="교육과정 관리"
+            subtitle="과정별/단원별/유형별 분류 체계 관리 - 테스트 생성 시 활용"
+            actions={<span className="adm-pill">교육과정</span>}
+          >
+            <CurriculumManager />
+          </SectionCard>
+        )}
+
         {/* 학생 정보 */}
         {tab === "students" && (
           <SectionCard
@@ -417,6 +437,27 @@ export default function AdminDashboardTabs() {
           >
             <SiteContentManager />
           </SectionCard>
+        )}
+
+        {/* 테스트 관리 */}
+        {tab === "tests" && (
+          <div className="adm-section-gap">
+            <SectionCard
+              title="테스트 템플릿 관리"
+              subtitle="테스트 생성, 문항별 난이도/단원/유형 설정"
+              actions={<span className="adm-pill">템플릿</span>}
+            >
+              <TestTemplateManager />
+            </SectionCard>
+
+            <SectionCard
+              title="성적 입력"
+              subtitle="학생별 테스트 결과 입력 및 분석 데이터 생성"
+              actions={<span className="adm-pill">성적</span>}
+            >
+              <TestResultManager />
+            </SectionCard>
+          </div>
         )}
 
         {/* (신규) 자동 작업(크론) */}

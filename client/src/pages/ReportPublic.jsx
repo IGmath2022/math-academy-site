@@ -29,6 +29,9 @@ export default function ReportPublic() {
   const { code } = useParams();
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
+  const [activeTab, setActiveTab] = useState("report");
+  const [testResults, setTestResults] = useState([]);
+  const [loadingTests, setLoadingTests] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -44,6 +47,29 @@ export default function ReportPublic() {
       mounted = false;
     };
   }, [code]);
+
+  // 테스트 결과 로드
+  const loadTestResults = async () => {
+    if (loadingTests || testResults.length > 0) return;
+
+    try {
+      setLoadingTests(true);
+      const { data } = await axios.get(`${API_URL}/api/tests/results/public/${code}`);
+      setTestResults(data);
+    } catch (error) {
+      console.error('테스트 결과 로드 실패:', error);
+    } finally {
+      setLoadingTests(false);
+    }
+  };
+
+  // 테스트 탭 클릭 시 데이터 로드
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (tab === "tests") {
+      loadTestResults();
+    }
+  };
 
   if (err) return <div style={{ maxWidth: 920, margin: "32px auto", padding: 16 }}>{err}</div>;
   if (!data) return <div style={{ maxWidth: 920, margin: "32px auto", padding: 16 }}>불러오는 중…</div>;
@@ -86,7 +112,7 @@ export default function ReportPublic() {
             }}
           >
             <div style={{ color: "#5a6", fontSize: 14, fontWeight: 700 }}>
-              IG수학학원 데일리 리포트
+              IG수학학원 개인 리포트
             </div>
             <div style={{ fontSize: 26, fontWeight: 800, margin: "6px 0 2px" }}>
               {student?.name || "학생"} 학생
@@ -94,15 +120,54 @@ export default function ReportPublic() {
             <div style={{ color: "#6a7" }}>{(log?.course || "-")} · {dateLabel}</div>
           </div>
 
-          {/* 본문 그리드 */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 18,
-              padding: "18px 26px",
-            }}
-          >
+          {/* 탭 네비게이션 */}
+          <div style={{
+            display: "flex",
+            borderBottom: "1px solid #e5ecff",
+            background: "#f9fbff"
+          }}>
+            <button
+              style={{
+                padding: "12px 24px",
+                border: "none",
+                background: activeTab === "report" ? "#fff" : "transparent",
+                color: activeTab === "report" ? "#2563eb" : "#64748b",
+                fontWeight: activeTab === "report" ? 700 : 500,
+                cursor: "pointer",
+                borderBottom: activeTab === "report" ? "2px solid #2563eb" : "2px solid transparent",
+                borderRadius: "0"
+              }}
+              onClick={() => handleTabChange("report")}
+            >
+              일일 리포트
+            </button>
+            <button
+              style={{
+                padding: "12px 24px",
+                border: "none",
+                background: activeTab === "tests" ? "#fff" : "transparent",
+                color: activeTab === "tests" ? "#2563eb" : "#64748b",
+                fontWeight: activeTab === "tests" ? 700 : 500,
+                cursor: "pointer",
+                borderBottom: activeTab === "tests" ? "2px solid #2563eb" : "2px solid transparent",
+                borderRadius: "0"
+              }}
+              onClick={() => handleTabChange("tests")}
+            >
+              테스트 성적
+            </button>
+          </div>
+
+          {/* 탭 내용 */}
+          {activeTab === "report" && (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 18,
+                padding: "18px 26px",
+              }}
+            >
             <div>
               <Section title="과정" body={fmtNewline(log?.course)} />
               <Section title="교재" body={fmtNewline(log?.book)} />
@@ -144,19 +209,42 @@ export default function ReportPublic() {
               {/* ✅ 다음 수업 계획 (planNext/nextPlan 호환) */}
               <Section title="다음 수업 계획" body={fmtNewline(nextPlan)} />
             </div>
-          </div>
+            </div>
+          )}
+
+          {/* 테스트 성적 탭 */}
+          {activeTab === "tests" && (
+            <div style={{ padding: "18px 26px" }}>
+              {loadingTests ? (
+                <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>
+                  테스트 결과를 불러오는 중...
+                </div>
+              ) : testResults.length === 0 ? (
+                <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>
+                  등록된 테스트 결과가 없습니다.
+                </div>
+              ) : (
+                <div style={{ display: "grid", gap: 16 }}>
+                  {testResults.map((result, index) => (
+                    <TestResultCard key={result._id} result={result} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* 누적 5회 요약 */}
-        <div
-          style={{
-            background: "#fff",
-            borderRadius: 18,
-            boxShadow: "0 6px 20px #0001",
-            overflow: "hidden",
-            marginBottom: 18,
-          }}
-        >
+        {/* 누적 5회 요약 - 일일 리포트 탭에만 표시 */}
+        {activeTab === "report" && (
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 18,
+              boxShadow: "0 6px 20px #0001",
+              overflow: "hidden",
+              marginBottom: 18,
+            }}
+          >
           <div
             style={{
               padding: "22px 26px",
@@ -218,10 +306,11 @@ export default function ReportPublic() {
               </tbody>
             </table>
           </div>
-        </div>
+          </div>
+        )}
 
-        {/* (선택) 프로필·로드맵 */}
-        {profile?.publicOn && (
+        {/* (선택) 프로필·로드맵 - 일일 리포트 탭에만 표시 */}
+        {activeTab === "report" && profile?.publicOn && (
           <div style={card}>
             <div style={hd}>
               <div style={tit}>프로필 & 로드맵</div>
@@ -263,8 +352,8 @@ export default function ReportPublic() {
           </div>
         )}
 
-        {/* (선택) 최근 상담 3건 */}
-        {!!(counsels || []).length && (
+        {/* (선택) 최근 상담 3건 - 일일 리포트 탭에만 표시 */}
+        {activeTab === "report" && !!(counsels || []).length && (
           <div style={card}>
             <div style={hd}>
               <div style={tit}>최근 상담 메모</div>
@@ -354,3 +443,115 @@ const tag = {
   marginBottom: 6,
   fontSize: 12,
 };
+
+// 테스트 결과 카드 컴포넌트
+function TestResultCard({ result }) {
+  const { testTemplateId, totalScore, totalPossibleScore, testDate, difficultyStats, timeSpent } = result;
+  const scorePercentage = Math.round((totalScore / totalPossibleScore) * 100);
+
+  const getGradeColor = (percentage) => {
+    if (percentage >= 90) return "#10b981";
+    if (percentage >= 80) return "#3b82f6";
+    if (percentage >= 70) return "#f59e0b";
+    if (percentage >= 60) return "#ef4444";
+    return "#6b7280";
+  };
+
+  const getGradeText = (percentage) => {
+    if (percentage >= 90) return "A";
+    if (percentage >= 80) return "B";
+    if (percentage >= 70) return "C";
+    if (percentage >= 60) return "D";
+    return "F";
+  };
+
+  return (
+    <div style={{
+      background: "#fff",
+      border: "1px solid #e2e8f0",
+      borderRadius: 12,
+      padding: 20,
+      boxShadow: "0 2px 8px rgba(0,0,0,0.04)"
+    }}>
+      {/* 헤더 */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+        <div>
+          <h4 style={{ margin: "0 0 4px 0", fontSize: 18, fontWeight: 700, color: "#1e293b" }}>
+            {testTemplateId?.name || "테스트"}
+          </h4>
+          <div style={{ fontSize: 14, color: "#64748b" }}>
+            {testTemplateId?.subject} • {new Date(testDate).toLocaleDateString()}
+          </div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div style={{
+            fontSize: 24,
+            fontWeight: 800,
+            color: getGradeColor(scorePercentage),
+            marginBottom: 2
+          }}>
+            {getGradeText(scorePercentage)}
+          </div>
+          <div style={{ fontSize: 14, color: "#64748b" }}>
+            {totalScore}/{totalPossibleScore}점 ({scorePercentage}%)
+          </div>
+        </div>
+      </div>
+
+      {/* 점수 바 */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{
+          width: "100%",
+          height: 8,
+          background: "#f1f5f9",
+          borderRadius: 4,
+          overflow: "hidden"
+        }}>
+          <div style={{
+            width: `${scorePercentage}%`,
+            height: "100%",
+            background: getGradeColor(scorePercentage),
+            borderRadius: 4,
+            transition: "width 0.3s ease"
+          }} />
+        </div>
+      </div>
+
+      {/* 난이도별 분석 */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
+        {[
+          { key: "easy", label: "하급", color: "#10b981" },
+          { key: "medium", label: "중급", color: "#3b82f6" },
+          { key: "hard", label: "상급", color: "#ef4444" }
+        ].map(({ key, label, color }) => {
+          const stat = difficultyStats?.[key];
+          const percentage = stat?.total > 0 ? Math.round((stat.correct / stat.total) * 100) : 0;
+
+          return (
+            <div key={key} style={{
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
+              borderRadius: 8,
+              padding: 12,
+              textAlign: "center"
+            }}>
+              <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>{label}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color, marginBottom: 2 }}>
+                {percentage}%
+              </div>
+              <div style={{ fontSize: 11, color: "#94a3b8" }}>
+                {stat?.correct || 0}/{stat?.total || 0}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* 추가 정보 */}
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#64748b" }}>
+        <span>총 {testTemplateId?.totalQuestions || 0}문항</span>
+        {timeSpent && <span>소요시간: {timeSpent}분</span>}
+      </div>
+    </div>
+  );
+}
