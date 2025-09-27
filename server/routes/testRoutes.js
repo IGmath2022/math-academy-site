@@ -244,6 +244,98 @@ router.get('/results/public/:reportCode', async (req, res) => {
   }
 });
 
+// 공개 링크용 학생 분석 데이터 조회
+router.get('/analysis/public/:reportCode', async (req, res) => {
+  try {
+    // 리포트 코드는 LessonLog의 _id입니다
+    const LessonLog = require('../models/LessonLog');
+    const lessonLog = await LessonLog.findById(req.params.reportCode);
+
+    if (!lessonLog || !lessonLog.studentId) {
+      return res.status(404).json({ message: '리포트를 찾을 수 없습니다' });
+    }
+
+    // 해당 학생의 분석 데이터 조회
+    const analysisData = await AnalysisService.getStudentAnalysis(lessonLog.studentId);
+
+    // 약점 분석도 추가
+    const weaknessData = await Promise.all(
+      analysisData.map(async (analysis) => {
+        try {
+          return await AnalysisService.getWeaknessAnalysis(lessonLog.studentId, analysis.courseId);
+        } catch (error) {
+          console.error('약점 분석 조회 실패:', error);
+          return null;
+        }
+      })
+    );
+
+    console.log(`학생 분석 데이터 조회: 학생 ${lessonLog.studentId}, 분석 ${analysisData.length}개`);
+
+    res.json({
+      analysis: analysisData,
+      weakness: weaknessData.filter(w => w !== null)
+    });
+  } catch (error) {
+    console.error('학생 분석 데이터 조회 오류:', error);
+    res.status(500).json({ message: '분석 데이터 조회 실패', error: error.message });
+  }
+});
+
+// 공개 링크용 테스트 통계 조회
+router.get('/statistics/public/:reportCode/:testTemplateId', async (req, res) => {
+  try {
+    // 리포트 코드는 LessonLog의 _id입니다
+    const LessonLog = require('../models/LessonLog');
+    const lessonLog = await LessonLog.findById(req.params.reportCode);
+
+    if (!lessonLog || !lessonLog.studentId) {
+      return res.status(404).json({ message: '리포트를 찾을 수 없습니다' });
+    }
+
+    const { testTemplateId } = req.params;
+
+    // 테스트 통계 조회
+    const statistics = await TestStatisticsService.getTestStatistics(testTemplateId);
+    if (!statistics) {
+      return res.status(404).json({ message: '테스트 통계를 찾을 수 없습니다' });
+    }
+
+    // 해당 학생의 해당 테스트 결과 조회
+    const studentResult = await TestResult.findOne({
+      studentId: lessonLog.studentId,
+      testTemplateId: testTemplateId
+    }).populate('testTemplateId', 'name subject');
+
+    // 상대적 위치 계산
+    let percentile = null;
+    if (studentResult && statistics.scoreDistribution) {
+      const studentScore = studentResult.totalScore;
+      let lowerCount = 0;
+
+      Object.entries(statistics.scoreDistribution).forEach(([range, count]) => {
+        const [min] = range.split('-').map(Number);
+        if (min < studentScore) {
+          lowerCount += count;
+        }
+      });
+
+      percentile = Math.round((lowerCount / statistics.totalAttempts) * 100);
+    }
+
+    console.log(`테스트 통계 조회: 학생 ${lessonLog.studentId}, 테스트 ${testTemplateId}`);
+
+    res.json({
+      statistics,
+      studentResult,
+      percentile
+    });
+  } catch (error) {
+    console.error('테스트 통계 조회 오류:', error);
+    res.status(500).json({ message: '테스트 통계 조회 실패', error: error.message });
+  }
+});
+
 // 학생 분석 데이터 조회
 router.get('/analysis/student/:studentId', isAuthenticated, async (req, res) => {
   try {

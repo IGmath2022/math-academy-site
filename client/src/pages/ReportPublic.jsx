@@ -25,6 +25,205 @@ function fmtHM(min) {
   return `${m}분`;
 }
 
+// 숙련도 레벨 계산
+function getProficiencyLevel(correctRate, totalAttempts) {
+  if (totalAttempts < 3) return { level: "부족", color: "#94a3b8", description: "데이터 부족" };
+
+  if (correctRate >= 0.9) return { level: "잘 안다", color: "#059669", description: "매우 우수" };
+  if (correctRate >= 0.7) return { level: "좋음", color: "#10b981", description: "우수" };
+  if (correctRate >= 0.5) return { level: "보통", color: "#f59e0b", description: "보통" };
+  if (correctRate >= 0.3) return { level: "미흡", color: "#f97316", description: "개선 필요" };
+  return { level: "많이 미흡", color: "#dc2626", description: "집중 보완 필요" };
+}
+
+// 분석 표시 컴포넌트
+function AnalysisDisplay({ analysisData, testResults }) {
+  if (!analysisData || analysisData.analysis.length === 0) {
+    return (
+      <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>
+        아직 분석할 수 있는 테스트 결과가 없습니다.
+      </div>
+    );
+  }
+
+  const analysis = analysisData.analysis[0]; // 첫 번째 분석 데이터 사용
+
+  return (
+    <div style={{ display: "grid", gap: 16 }}>
+      {/* 전체 요약 */}
+      <div style={{
+        background: "#f8fafc",
+        border: "1px solid #e2e8f0",
+        borderRadius: 12,
+        padding: 20
+      }}>
+        <h4 style={{ margin: "0 0 12px 0", color: "#1e293b" }}>전체 학습 현황</h4>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 12 }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 24, fontWeight: "bold", color: "#2563eb" }}>{analysis.totalTests}</div>
+            <div style={{ fontSize: 12, color: "#64748b" }}>응시한 테스트</div>
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 24, fontWeight: "bold", color: "#2563eb" }}>{analysis.totalQuestions}</div>
+            <div style={{ fontSize: 12, color: "#64748b" }}>총 문제 수</div>
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 24, fontWeight: "bold", color: "#059669" }}>
+              {Math.round((analysis.totalCorrect / analysis.totalQuestions) * 100)}%
+            </div>
+            <div style={{ fontSize: 12, color: "#64748b" }}>전체 정답률</div>
+          </div>
+        </div>
+      </div>
+
+      {/* 단원별 분석 */}
+      {analysis.chapterAnalysis && analysis.chapterAnalysis.length > 0 && (
+        <div style={{
+          background: "white",
+          border: "1px solid #e2e8f0",
+          borderRadius: 12,
+          padding: 20
+        }}>
+          <h4 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>단원별 학습 분석</h4>
+          <div style={{ display: "grid", gap: 8 }}>
+            {analysis.chapterAnalysis.slice(0, 10).map((chapter, index) => {
+              const correctRate = chapter.totalAttempts > 0 ? chapter.correctCount / chapter.totalAttempts : 0;
+              const proficiency = getProficiencyLevel(correctRate, chapter.totalAttempts);
+
+              return (
+                <div key={index} style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr auto auto",
+                  alignItems: "center",
+                  padding: "8px 12px",
+                  background: "#f8fafc",
+                  borderRadius: 8
+                }}>
+                  <div>
+                    <div style={{ fontWeight: 500 }}>{chapter.chapterName}</div>
+                    <div style={{ fontSize: 12, color: "#64748b" }}>
+                      {chapter.correctCount}/{chapter.totalAttempts} 정답
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: "bold", marginRight: 12 }}>
+                    {Math.round(correctRate * 100)}%
+                  </div>
+                  <div style={{
+                    padding: "4px 8px",
+                    borderRadius: 4,
+                    fontSize: 12,
+                    fontWeight: "bold",
+                    color: "white",
+                    background: proficiency.color
+                  }}>
+                    {proficiency.level}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 유형별 분석 */}
+      {analysis.typeAnalysis && analysis.typeAnalysis.length > 0 && (
+        <div style={{
+          background: "white",
+          border: "1px solid #e2e8f0",
+          borderRadius: 12,
+          padding: 20
+        }}>
+          <h4 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>유형별 학습 분석</h4>
+          <div style={{ display: "grid", gap: 8 }}>
+            {analysis.typeAnalysis.slice(0, 10).map((type, index) => {
+              const correctRate = type.totalAttempts > 0 ? type.correctCount / type.totalAttempts : 0;
+              const proficiency = getProficiencyLevel(correctRate, type.totalAttempts);
+
+              return (
+                <div key={index} style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr auto auto",
+                  alignItems: "center",
+                  padding: "8px 12px",
+                  background: "#f8fafc",
+                  borderRadius: 8
+                }}>
+                  <div>
+                    <div style={{ fontWeight: 500 }}>{type.typeName}</div>
+                    <div style={{ fontSize: 12, color: "#64748b" }}>
+                      {type.chapterName} • {type.correctCount}/{type.totalAttempts} 정답
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: "bold", marginRight: 12 }}>
+                    {Math.round(correctRate * 100)}%
+                  </div>
+                  <div style={{
+                    padding: "4px 8px",
+                    borderRadius: 4,
+                    fontSize: 12,
+                    fontWeight: "bold",
+                    color: "white",
+                    background: proficiency.color
+                  }}>
+                    {proficiency.level}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 난이도별 분석 */}
+      {analysis.difficultyAnalysis && analysis.difficultyAnalysis.length > 0 && (
+        <div style={{
+          background: "white",
+          border: "1px solid #e2e8f0",
+          borderRadius: 12,
+          padding: 20
+        }}>
+          <h4 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>난이도별 학습 분석</h4>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+            {analysis.difficultyAnalysis.map((difficulty, index) => {
+              const correctRate = difficulty.totalAttempts > 0 ? difficulty.correctCount / difficulty.totalAttempts : 0;
+              const proficiency = getProficiencyLevel(correctRate, difficulty.totalAttempts);
+
+              return (
+                <div key={index} style={{
+                  padding: 16,
+                  background: "#f8fafc",
+                  borderRadius: 8,
+                  textAlign: "center"
+                }}>
+                  <div style={{ fontSize: 16, fontWeight: "bold", marginBottom: 8 }}>
+                    {difficulty.difficulty}급 문제
+                  </div>
+                  <div style={{ fontSize: 24, fontWeight: "bold", color: proficiency.color, marginBottom: 4 }}>
+                    {Math.round(correctRate * 100)}%
+                  </div>
+                  <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8 }}>
+                    {difficulty.correctCount}/{difficulty.totalAttempts} 정답
+                  </div>
+                  <div style={{
+                    padding: "4px 8px",
+                    borderRadius: 4,
+                    fontSize: 12,
+                    fontWeight: "bold",
+                    color: "white",
+                    background: proficiency.color
+                  }}>
+                    {proficiency.level}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ReportPublic() {
   const { code } = useParams();
   const [data, setData] = useState(null);
@@ -32,6 +231,8 @@ export default function ReportPublic() {
   const [activeTab, setActiveTab] = useState("report");
   const [testResults, setTestResults] = useState([]);
   const [loadingTests, setLoadingTests] = useState(false);
+  const [analysisData, setAnalysisData] = useState(null);
+  const [loadingAnalysis, setLoadingAnalysis] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -63,11 +264,28 @@ export default function ReportPublic() {
     }
   };
 
-  // 테스트 탭 클릭 시 데이터 로드
+  // 분석 데이터 로드
+  const loadAnalysisData = async () => {
+    if (loadingAnalysis || analysisData) return;
+
+    try {
+      setLoadingAnalysis(true);
+      const { data } = await axios.get(`${API_URL}/api/tests/analysis/public/${code}`);
+      setAnalysisData(data);
+    } catch (error) {
+      console.error('분석 데이터 로드 실패:', error);
+    } finally {
+      setLoadingAnalysis(false);
+    }
+  };
+
+  // 탭 클릭 시 데이터 로드
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     if (tab === "tests") {
       loadTestResults();
+    } else if (tab === "analysis") {
+      loadAnalysisData();
     }
   };
 
@@ -156,6 +374,21 @@ export default function ReportPublic() {
             >
               테스트 성적
             </button>
+            <button
+              style={{
+                padding: "12px 24px",
+                border: "none",
+                background: activeTab === "analysis" ? "#fff" : "transparent",
+                color: activeTab === "analysis" ? "#2563eb" : "#64748b",
+                fontWeight: activeTab === "analysis" ? 700 : 500,
+                cursor: "pointer",
+                borderBottom: activeTab === "analysis" ? "2px solid #2563eb" : "2px solid transparent",
+                borderRadius: "0"
+              }}
+              onClick={() => handleTabChange("analysis")}
+            >
+              학습 분석
+            </button>
           </div>
 
           {/* 탭 내용 */}
@@ -229,6 +462,23 @@ export default function ReportPublic() {
                     <TestResultCard key={result._id} result={result} />
                   ))}
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* 학습 분석 탭 */}
+          {activeTab === "analysis" && (
+            <div style={{ padding: "18px 26px" }}>
+              {loadingAnalysis ? (
+                <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>
+                  분석 데이터를 불러오는 중...
+                </div>
+              ) : !analysisData ? (
+                <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>
+                  분석 데이터가 없습니다.
+                </div>
+              ) : (
+                <AnalysisDisplay analysisData={analysisData} testResults={testResults} />
               )}
             </div>
           )}
