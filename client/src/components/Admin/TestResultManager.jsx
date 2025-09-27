@@ -17,10 +17,10 @@ const TestResultManager = () => {
   const [timeSpent, setTimeSpent] = useState(60);
   const [notes, setNotes] = useState('');
 
-  // 기존 결과 관리
-  const [existingResults, setExistingResults] = useState([]);
-  const [editingResult, setEditingResult] = useState(null);
-  const [showExistingResults, setShowExistingResults] = useState(false);
+  // 기존 결과 관리 (향후 사용 예정)
+  // const [existingResults, setExistingResults] = useState([]);
+  // const [editingResult, setEditingResult] = useState(null);
+  // const [showExistingResults, setShowExistingResults] = useState(false);
 
   const withAuth = () => ({ headers: { Authorization: `Bearer ${getToken()}` } });
 
@@ -52,16 +52,16 @@ const TestResultManager = () => {
     }
   };
 
-  // 기존 테스트 결과 로드
-  const loadExistingResults = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/api/tests/results`, withAuth());
-      setExistingResults(response.data);
-    } catch (err) {
-      if (handle401(err)) return;
-      console.error('기존 결과 로드 실패:', err);
-    }
-  };
+  // 기존 테스트 결과 로드 (향후 사용 예정)
+  // const loadExistingResults = async () => {
+  //   try {
+  //     const response = await axios.get(`${API_URL}/api/tests/results`, withAuth());
+  //     setExistingResults(response.data);
+  //   } catch (err) {
+  //     if (handle401(err)) return;
+  //     console.error('기존 결과 로드 실패:', err);
+  //   }
+  // };
 
   useEffect(() => {
     loadData();
@@ -242,10 +242,11 @@ const TestResultManager = () => {
             </div>
           </div>
         )}
+      </div>
 
-          {/* 답안 입력 */}
-          {selectedTemplate && selectedStudent && (
-          <div style={commonStyles.card}>
+      {/* 답안 입력 */}
+      {selectedTemplate && selectedStudent && (
+        <div style={commonStyles.card}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <h4 style={{ margin: 0 }}>답안 입력</h4>
             <div style={{ fontSize: 14, color: '#2563eb', fontWeight: 600 }}>
