@@ -234,14 +234,8 @@ router.get('/results/public/:reportCode', async (req, res) => {
       .limit(10)
       .lean(); // lean()을 사용하여 Map 필드를 일반 객체로 변환
 
-    // Map 필드를 일반 객체로 변환
-    const convertedResults = results.map(result => ({
-      ...result,
-      chapterStats: result.chapterStats ? Object.fromEntries(result.chapterStats) : {},
-      typeStats: result.typeStats ? Object.fromEntries(result.typeStats) : {}
-    }));
-
-    res.json(convertedResults);
+    // 결과 반환 (lean()으로 이미 일반 객체로 변환됨)
+    res.json(results);
   } catch (error) {
     console.error('테스트 결과 조회 오류:', error);
     res.status(500).json({ message: '테스트 결과 조회 실패', error: error.message });
@@ -386,6 +380,90 @@ router.get('/statistics/dashboard/:courseId', isAuthenticated, async (req, res) 
     res.json(dashboard);
   } catch (error) {
     res.status(500).json({ message: '대시보드 데이터 조회 실패', error: error.message });
+  }
+});
+
+// 테스트 결과 수정
+router.put('/results/:id', isAdmin, async (req, res) => {
+  try {
+    const { totalScore, totalPossibleScore, answers, timeSpent, notes } = req.body;
+
+    const result = await TestResult.findById(req.params.id);
+    if (!result) {
+      return res.status(404).json({ message: '테스트 결과를 찾을 수 없습니다' });
+    }
+
+    // 테스트 템플릿 정보 가져오기 (분석 데이터 재계산용)
+    const template = await TestTemplate.findById(result.testTemplateId);
+    if (!template) {
+      return res.status(404).json({ message: '테스트 템플릿을 찾을 수 없습니다' });
+    }
+
+    // 분석 데이터 자동 재계산
+    const difficultyStats = { hard: { correct: 0, total: 0 }, medium: { correct: 0, total: 0 }, easy: { correct: 0, total: 0 } };
+    const chapterStats = new Map();
+    const typeStats = new Map();
+
+    answers.forEach(answer => {
+      const question = template.questions.find(q => q.questionNumber === answer.questionNumber);
+      if (question) {
+        // 난이도별 통계
+        const diffKey = question.difficulty === '상' ? 'hard' : question.difficulty === '중' ? 'medium' : 'easy';
+        difficultyStats[diffKey].total++;
+        if (answer.isCorrect) difficultyStats[diffKey].correct++;
+
+        // 단원별 통계
+        const chapterKey = question.chapter;
+        if (!chapterStats.has(chapterKey)) {
+          chapterStats.set(chapterKey, { correct: 0, total: 0 });
+        }
+        chapterStats.get(chapterKey).total++;
+        if (answer.isCorrect) chapterStats.get(chapterKey).correct++;
+
+        // 유형별 통계
+        const typeKey = question.questionType;
+        if (!typeStats.has(typeKey)) {
+          typeStats.set(typeKey, { correct: 0, total: 0 });
+        }
+        typeStats.get(typeKey).total++;
+        if (answer.isCorrect) typeStats.get(typeKey).correct++;
+      }
+    });
+
+    // 결과 업데이트
+    const updatedResult = await TestResult.findByIdAndUpdate(
+      req.params.id,
+      {
+        totalScore,
+        totalPossibleScore,
+        answers,
+        difficultyStats,
+        chapterStats: Object.fromEntries(chapterStats),
+        typeStats: Object.fromEntries(typeStats),
+        timeSpent,
+        notes
+      },
+      { new: true }
+    ).populate('studentId', 'name').populate('testTemplateId', 'name');
+
+    res.json(updatedResult);
+  } catch (error) {
+    console.error('테스트 결과 수정 실패:', error);
+    res.status(500).json({ message: '테스트 결과 수정 실패', error: error.message });
+  }
+});
+
+// 테스트 결과 삭제
+router.delete('/results/:id', isAdmin, async (req, res) => {
+  try {
+    const result = await TestResult.findByIdAndDelete(req.params.id);
+    if (!result) {
+      return res.status(404).json({ message: '테스트 결과를 찾을 수 없습니다' });
+    }
+    res.json({ message: '테스트 결과가 삭제되었습니다', deletedId: req.params.id });
+  } catch (error) {
+    console.error('테스트 결과 삭제 실패:', error);
+    res.status(500).json({ message: '테스트 결과 삭제 실패', error: error.message });
   }
 });
 

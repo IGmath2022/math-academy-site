@@ -20,6 +20,7 @@ const TestResultManager = () => {
   // 기존 결과 관리
   const [existingResults, setExistingResults] = useState([]);
   const [showExistingResults, setShowExistingResults] = useState(false);
+  const [editingResult, setEditingResult] = useState(null);
 
   const withAuth = () => ({ headers: { Authorization: `Bearer ${getToken()}` } });
 
@@ -103,7 +104,7 @@ const TestResultManager = () => {
     return totalScore;
   };
 
-  // 성적 저장
+  // 성적 저장 또는 수정
   const saveResult = async () => {
     try {
       if (!selectedTemplate || !selectedStudent) {
@@ -124,9 +125,17 @@ const TestResultManager = () => {
         notes
       };
 
-      const response = await axios.post(`${API_URL}/api/tests/results`, resultData, withAuth());
+      let response;
+      if (editingResult) {
+        // 수정
+        response = await axios.put(`${API_URL}/api/tests/results/${editingResult._id}`, resultData, withAuth());
+        alert(`성적이 수정되었습니다! (ID: ${response.data._id})`);
+      } else {
+        // 새로 저장
+        response = await axios.post(`${API_URL}/api/tests/results`, resultData, withAuth());
+        alert(`성적이 저장되었습니다! (ID: ${response.data._id})`);
+      }
 
-      alert(`성적이 저장되었습니다! (ID: ${response.data._id})`);
       console.log('저장된 결과:', response.data);
 
       // 폼 리셋
@@ -135,14 +144,56 @@ const TestResultManager = () => {
       setAnswers([]);
       setTimeSpent(60);
       setNotes('');
+      setEditingResult(null);
+
+      // 기존 결과 목록 새로고침
+      if (showExistingResults) {
+        loadExistingResults();
+      }
 
     } catch (err) {
       if (handle401(err)) return;
       const errorMsg = err.response?.data?.error || err.response?.data?.message || err.message;
-      alert('저장 실패: ' + errorMsg);
+      alert(`${editingResult ? '수정' : '저장'} 실패: ` + errorMsg);
     } finally {
       setSaving(false);
     }
+  };
+
+  // 결과 삭제
+  const deleteResult = async (resultId) => {
+    if (!window.confirm('이 테스트 결과를 삭제하시겠습니까?')) {
+      return;
+    }
+
+    try {
+      await axios.delete(`${API_URL}/api/tests/results/${resultId}`, withAuth());
+      alert('테스트 결과가 삭제되었습니다.');
+      loadExistingResults(); // 목록 새로고침
+    } catch (err) {
+      if (handle401(err)) return;
+      alert('삭제 실패: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  // 결과 수정 시작
+  const startEditResult = (result) => {
+    // 템플릿과 학생 정보를 찾아서 설정
+    const template = templates.find(t => t._id === result.testTemplateId._id);
+    const student = students.find(s => s._id === result.studentId._id);
+
+    if (!template || !student) {
+      alert('템플릿 또는 학생 정보를 찾을 수 없습니다.');
+      return;
+    }
+
+    setSelectedTemplate(template);
+    setSelectedStudent(student);
+    setAnswers(result.answers);
+    setTimeSpent(result.timeSpent);
+    setNotes(result.notes);
+    setEditingResult(result);
+    setShowExistingResults(false); // 입력 폼으로 전환
   };
 
   const commonStyles = {
@@ -191,7 +242,9 @@ const TestResultManager = () => {
     <div style={commonStyles.container}>
       {/* 상단 헤더와 버튼 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h3 style={{ margin: 0 }}>테스트 성적 관리</h3>
+        <h3 style={{ margin: 0 }}>
+          테스트 성적 관리 {editingResult && <span style={{ color: '#e11d48' }}>(수정 중)</span>}
+        </h3>
         <button
           style={{
             ...commonStyles.button,
@@ -202,10 +255,20 @@ const TestResultManager = () => {
             setShowExistingResults(!showExistingResults);
             if (!showExistingResults) {
               loadExistingResults();
+            } else {
+              // 수정 중이면 취소
+              if (editingResult) {
+                setEditingResult(null);
+                setSelectedTemplate(null);
+                setSelectedStudent(null);
+                setAnswers([]);
+                setTimeSpent(60);
+                setNotes('');
+              }
             }
           }}
         >
-          {showExistingResults ? '새 성적 입력' : '저장된 결과 보기'}
+          {showExistingResults ? (editingResult ? '수정 취소' : '새 성적 입력') : '저장된 결과 보기'}
         </button>
       </div>
 
@@ -250,8 +313,33 @@ const TestResultManager = () => {
                       {Math.round((result.totalScore / result.totalPossibleScore) * 100)}%
                     </div>
                   </div>
-                  <div style={{ fontSize: 11, color: '#64748b' }}>
-                    ID: {result._id.slice(-6)}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <button
+                      style={{
+                        ...commonStyles.button,
+                        ...commonStyles.secondaryButton,
+                        padding: '4px 8px',
+                        fontSize: 11
+                      }}
+                      onClick={() => startEditResult(result)}
+                    >
+                      수정
+                    </button>
+                    <button
+                      style={{
+                        ...commonStyles.button,
+                        background: '#dc2626',
+                        color: 'white',
+                        padding: '4px 8px',
+                        fontSize: 11
+                      }}
+                      onClick={() => deleteResult(result._id)}
+                    >
+                      삭제
+                    </button>
+                    <div style={{ fontSize: 10, color: '#94a3b8', textAlign: 'center' }}>
+                      ID: {result._id.slice(-6)}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -426,7 +514,7 @@ const TestResultManager = () => {
                   onClick={saveResult}
                   disabled={saving}
                 >
-                  {saving ? '저장 중...' : '성적 저장'}
+                  {saving ? (editingResult ? '수정 중...' : '저장 중...') : (editingResult ? '성적 수정' : '성적 저장')}
                 </button>
               </div>
             </div>
