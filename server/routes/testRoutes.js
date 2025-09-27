@@ -219,20 +219,22 @@ router.get('/results/:id', isAuthenticated, async (req, res) => {
 // 공개 링크용 학생 테스트 결과 조회 (특정 리포트 코드로)
 router.get('/results/public/:reportCode', async (req, res) => {
   try {
-    // 먼저 리포트 코드로 학생 정보 찾기
-    const Report = require('../models/Report');
-    const report = await Report.findById(req.params.reportCode);
+    // 리포트 코드는 LessonLog의 _id입니다
+    const LessonLog = require('../models/LessonLog');
+    const lessonLog = await LessonLog.findById(req.params.reportCode);
 
-    if (!report || !report.student) {
+    if (!lessonLog || !lessonLog.studentId) {
       return res.status(404).json({ message: '리포트를 찾을 수 없습니다' });
     }
 
     // 해당 학생의 테스트 결과들 조회
-    const results = await TestResult.find({ studentId: report.student })
+    const results = await TestResult.find({ studentId: lessonLog.studentId })
       .populate('testTemplateId', 'name subject totalQuestions totalPoints')
       .sort({ testDate: -1 })
       .limit(10)
       .lean(); // lean()을 사용하여 Map 필드를 일반 객체로 변환
+
+    console.log(`테스트 결과 조회: 학생 ${lessonLog.studentId}, 결과 ${results.length}개`);
 
     // 결과 반환 (lean()으로 이미 일반 객체로 변환됨)
     res.json(results);
