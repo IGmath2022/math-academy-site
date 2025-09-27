@@ -140,10 +140,15 @@ router.post('/results', isAdmin, async (req, res) => {
       notes
     });
 
+    console.log('테스트 결과 저장 시도:', testResult);
     await testResult.save();
+    console.log('테스트 결과 저장 성공');
 
+    // 임시로 분석/통계 업데이트 비활성화 (디버깅용)
+    /*
     // 학생 분석 데이터 업데이트 (비동기 처리)
     try {
+      console.log('학생 분석 업데이트 시작');
       await AnalysisService.updateStudentAnalysis({
         studentId,
         testTemplateId,
@@ -151,6 +156,7 @@ router.post('/results', isAdmin, async (req, res) => {
         totalPossibleScore,
         answers
       });
+      console.log('학생 분석 업데이트 완료');
     } catch (analysisError) {
       console.error('분석 데이터 업데이트 실패:', analysisError);
       // 분석 실패해도 테스트 결과 저장은 성공으로 처리
@@ -163,9 +169,12 @@ router.post('/results', isAdmin, async (req, res) => {
       console.error('테스트 통계 업데이트 실패:', statisticsError);
       // 통계 실패해도 테스트 결과 저장은 성공으로 처리
     }
+    */
 
     res.status(201).json(testResult);
   } catch (error) {
+    console.error('테스트 결과 저장 중 에러:', error);
+    console.error('에러 스택:', error.stack);
     res.status(500).json({ message: '테스트 결과 저장 실패', error: error.message });
   }
 });
