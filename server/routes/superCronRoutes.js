@@ -53,4 +53,30 @@ router.post('/cron/run-now', /*requireAdmin,*/ async (req, res) => {
   }
 });
 
+// Reset lastRunKeys for a specific date
+router.post('/cron/reset-run-keys', /*requireAdmin,*/ async (req, res) => {
+  try {
+    const { date, type } = req.body || {};
+    const current = await getSettings(Setting, { useCache: false });
+
+    if (date && type) {
+      // 특정 날짜와 타입의 runKey 제거
+      const runKey = `${date}@${type}`;
+      const newLastRunKeys = { ...(current.lastRunKeys || {}) };
+      delete newLastRunKeys[type];
+
+      const updated = await updateSettings(Setting, { lastRunKeys: newLastRunKeys }, { updatedBy: 'admin' });
+      console.log(`[resetRunKeys] ${runKey} 제거됨`);
+      res.json({ message: `${runKey} 제거됨`, settings: updated });
+    } else {
+      // 모든 lastRunKeys 초기화
+      const updated = await updateSettings(Setting, { lastRunKeys: {} }, { updatedBy: 'admin' });
+      console.log('[resetRunKeys] 모든 lastRunKeys 초기화됨');
+      res.json({ message: '모든 lastRunKeys 초기화됨', settings: updated });
+    }
+  } catch (e) {
+    res.status(500).json({ message: e.message || 'reset failed' });
+  }
+});
+
 module.exports = router;
