@@ -238,7 +238,17 @@ mongoose.connect(MONGO_URI, { autoIndex: true })
       } catch (e) { console.error('[cron:autoLeave]', e); }
     }, { timezone: s.timezone || 'Asia/Seoul' });
 
-    cron.schedule(s.autoReportCron, async () => {
+    // 크론 스케줄링 with 강화된 로깅
+    console.log('[cron] 크론 등록 시작. 표현식:', s.autoReportCron);
+
+    // 크론 표현식 검증
+    if (!cron.validate(s.autoReportCron)) {
+      console.error('[cron] ERROR: 유효하지 않은 크론 표현식:', s.autoReportCron);
+      return;
+    }
+    console.log('[cron] 크론 표현식 검증 완료');
+
+    const cronJob = cron.schedule(s.autoReportCron, async () => {
       console.log('[CRON TRIGGERED] 크론이 실행되었습니다!', new Date().toLocaleString('ko-KR', {timeZone: 'Asia/Seoul'}));
       try {
         const current = await getSettings(Setting);
@@ -253,7 +263,18 @@ mongoose.connect(MONGO_URI, { autoIndex: true })
       } catch (e) {
         console.error('[cron:dailyReport] 오류:', e);
       }
-    }, { timezone: s.timezone || 'Asia/Seoul' });
+    }, {
+      scheduled: true,
+      timezone: s.timezone || 'Asia/Seoul'
+    });
+
+    console.log('[cron] 크론 작업 등록 완료. 활성 상태:', cronJob.getStatus());
+
+    // 매분마다 현재 시간 출력 (테스트용)
+    cron.schedule('* * * * *', () => {
+      const now = new Date().toLocaleString('ko-KR', {timeZone: 'Asia/Seoul'});
+      console.log('[cron:heartbeat]', now);
+    }, { timezone: 'Asia/Seoul' });
 
     console.log('[cron] scheduled from DB settings');
     console.log('[cron] autoReportCron:', s.autoReportCron);
