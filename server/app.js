@@ -228,47 +228,77 @@ mongoose.connect(MONGO_URI, { autoIndex: true })
 
     const Services = buildServicesAdapter();
 
-    cron.schedule(s.autoLeaveCron, async () => {
-      try {
-        const current = await getSettings(Setting);
-        if (!current.autoLeaveEnabled) return;
-        console.log('[cron:autoLeave] 자동하원 작업 시작');
-        const result = await runAutoLeave({ Setting, Services });
-        console.log('[cron:autoLeave] 완료:', result);
-      } catch (e) { console.error('[cron:autoLeave]', e); }
-    }, { timezone: s.timezone || 'Asia/Seoul' });
+    // 동적 크론 관리를 위한 변수
+    let autoLeaveCronJob = null;
+    let dailyReportCronJob = null;
 
-    // 크론 스케줄링 with 강화된 로깅
-    console.log('[cron] 크론 등록 시작. 표현식:', s.autoReportCron);
+    // 크론 업데이트 함수
+    const updateCronJobs = async () => {
+      const current = await getSettings(Setting, { useCache: false });
 
-    // 크론 표현식 검증
-    if (!cron.validate(s.autoReportCron)) {
-      console.error('[cron] ERROR: 유효하지 않은 크론 표현식:', s.autoReportCron);
-      return;
-    }
-    console.log('[cron] 크론 표현식 검증 완료');
-
-    const cronJob = cron.schedule(s.autoReportCron, async () => {
-      console.log('[CRON TRIGGERED] 크론이 실행되었습니다!', new Date().toLocaleString('ko-KR', {timeZone: 'Asia/Seoul'}));
-      try {
-        const current = await getSettings(Setting);
-        console.log('[cron:dailyReport] autoReportEnabled:', current.autoReportEnabled);
-        if (!current.autoReportEnabled) {
-          console.log('[cron:dailyReport] 자동 발송이 비활성화되어 종료');
-          return;
-        }
-        console.log('[cron:dailyReport] 일일리포트 발송 작업 시작');
-        const result = await runDailyReport({ Setting, Services });
-        console.log('[cron:dailyReport] 완료:', result);
-      } catch (e) {
-        console.error('[cron:dailyReport] 오류:', e);
+      // 기존 크론 작업 정리
+      if (autoLeaveCronJob) {
+        autoLeaveCronJob.destroy();
+        autoLeaveCronJob = null;
       }
-    }, {
-      scheduled: true,
-      timezone: s.timezone || 'Asia/Seoul'
-    });
+      if (dailyReportCronJob) {
+        dailyReportCronJob.destroy();
+        dailyReportCronJob = null;
+      }
 
-    console.log('[cron] 크론 작업 등록 완료. 활성 상태:', cronJob.getStatus());
+      console.log('[cron] 크론 작업 업데이트 중...');
+      console.log('[cron] autoLeaveCron:', current.autoLeaveCron);
+      console.log('[cron] autoReportCron:', current.autoReportCron);
+      console.log('[cron] timezone:', current.timezone);
+
+      // 자동하원 크론 등록
+      if (cron.validate(current.autoLeaveCron)) {
+        autoLeaveCronJob = cron.schedule(current.autoLeaveCron, async () => {
+          try {
+            const settings = await getSettings(Setting);
+            if (!settings.autoLeaveEnabled) return;
+            console.log('[cron:autoLeave] 자동하원 작업 시작');
+            const result = await runAutoLeave({ Setting, Services });
+            console.log('[cron:autoLeave] 완료:', result);
+          } catch (e) { console.error('[cron:autoLeave]', e); }
+        }, { timezone: current.timezone || 'Asia/Seoul' });
+        console.log('[cron] 자동하원 크론 등록 완료');
+      } else {
+        console.error('[cron] 유효하지 않은 자동하원 크론 표현식:', current.autoLeaveCron);
+      }
+
+      // 일일리포트 크론 등록
+      if (cron.validate(current.autoReportCron)) {
+        dailyReportCronJob = cron.schedule(current.autoReportCron, async () => {
+          console.log('[CRON TRIGGERED] 일일리포트 크론이 실행되었습니다!', new Date().toLocaleString('ko-KR', {timeZone: current.timezone || 'Asia/Seoul'}));
+          try {
+            const settings = await getSettings(Setting);
+            console.log('[cron:dailyReport] autoReportEnabled:', settings.autoReportEnabled);
+            if (!settings.autoReportEnabled) {
+              console.log('[cron:dailyReport] 자동 발송이 비활성화되어 종료');
+              return;
+            }
+            console.log('[cron:dailyReport] 일일리포트 발송 작업 시작');
+            const result = await runDailyReport({ Setting, Services });
+            console.log('[cron:dailyReport] 완료:', result);
+          } catch (e) {
+            console.error('[cron:dailyReport] 오류:', e);
+          }
+        }, {
+          scheduled: true,
+          timezone: current.timezone || 'Asia/Seoul'
+        });
+        console.log('[cron] 일일리포트 크론 등록 완료');
+      } else {
+        console.error('[cron] 유효하지 않은 일일리포트 크론 표현식:', current.autoReportCron);
+      }
+    };
+
+    // 초기 크론 설정
+    await updateCronJobs();
+
+    // 크론 설정이 변경될 때마다 업데이트하기 위한 글로벌 함수 등록
+    global.updateCronJobs = updateCronJobs;
 
     // 매분마다 현재 시간 출력 (테스트용)
     cron.schedule('* * * * *', () => {
@@ -276,27 +306,6 @@ mongoose.connect(MONGO_URI, { autoIndex: true })
       console.log('[cron:heartbeat]', now);
     }, { timezone: 'Asia/Seoul' });
 
-    // 테스트: 다음 분에 일일리포트 크론과 동일한 로직 실행
-    const testMinute = (new Date().getMinutes() + 1) % 60;
-    const testCron = `${testMinute} * * * *`;
-    console.log('[cron] 테스트 크론 생성:', testCron);
-
-    cron.schedule(testCron, async () => {
-      console.log('[TEST CRON TRIGGERED] 테스트 크론이 실행되었습니다!', new Date().toLocaleString('ko-KR', {timeZone: 'Asia/Seoul'}));
-      try {
-        const current = await getSettings(Setting);
-        console.log('[test:dailyReport] autoReportEnabled:', current.autoReportEnabled);
-        if (!current.autoReportEnabled) {
-          console.log('[test:dailyReport] 자동 발송이 비활성화되어 종료');
-          return;
-        }
-        console.log('[test:dailyReport] 일일리포트 발송 작업 시작 (force: true)');
-        const result = await runDailyReport({ Setting, Services, force: true });
-        console.log('[test:dailyReport] 완료:', result);
-      } catch (e) {
-        console.error('[test:dailyReport] 오류:', e);
-      }
-    }, { timezone: 'Asia/Seoul' });
 
     console.log('[cron] scheduled from DB settings');
     console.log('[cron] autoReportCron:', s.autoReportCron);

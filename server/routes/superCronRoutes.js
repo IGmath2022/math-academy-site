@@ -21,6 +21,17 @@ router.get('/cron-settings', /*requireAdmin,*/ async (req, res) => {
 router.put('/cron-settings', /*requireAdmin,*/ async (req, res) => {
   try {
     const next = await updateSettings(Setting, req.body, { updatedBy: req.user?._id || 'admin' });
+
+    // 크론 설정이 변경되면 실행 중인 크론 작업들을 업데이트
+    if (global.updateCronJobs) {
+      try {
+        await global.updateCronJobs();
+        console.log('[superCronRoutes] 크론 작업이 업데이트되었습니다.');
+      } catch (e) {
+        console.error('[superCronRoutes] 크론 업데이트 실패:', e);
+      }
+    }
+
     res.json(next);
   } catch (e) {
     res.status(400).json({ message: e.message || 'Invalid settings' });
