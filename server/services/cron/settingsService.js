@@ -137,6 +137,11 @@ async function setLock(Setting, lockUntil) {
   _cacheAt = Date.now();
 }
 
+function clearCache() {
+  _cache = null;
+  _cacheAt = 0;
+}
+
 module.exports = {
   DEFAULTS,
   seedFromEnvIfEmpty,
@@ -144,4 +149,5 @@ module.exports = {
   updateSettings,
   withRunKey,
   setLock,
+  clearCache,
 };

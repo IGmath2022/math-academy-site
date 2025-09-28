@@ -76,7 +76,7 @@ mongoose.set('strictQuery', false);
  * A안: DB Settings 기반 크론 구성
  * ========================= */
 const Setting = require('./models/Setting');
-const { seedFromEnvIfEmpty, getSettings } = require('./services/cron/settingsService');
+const { seedFromEnvIfEmpty, getSettings, clearCache } = require('./services/cron/settingsService');
 const { runAutoLeave } = require('./services/cron/jobs/autoLeaveJob');
 const { runDailyReport } = require('./services/cron/jobs/dailyReportJob');
 const superCronRoutes = require('./routes/superCronRoutes');
@@ -218,6 +218,8 @@ mongoose.connect(MONGO_URI, { autoIndex: true })
 
     await seedFromEnvIfEmpty(Setting, process.env);
 
+    // 캐시 클리어 후 최신 설정 로드
+    clearCache();
     const s = await getSettings(Setting, { useCache: false });
     // 실제 비즈니스 로직 어댑터 - 전용 servicesAdapter 모듈 사용
     const buildServicesAdapter = () => {
@@ -237,16 +239,26 @@ mongoose.connect(MONGO_URI, { autoIndex: true })
     }, { timezone: s.timezone || 'Asia/Seoul' });
 
     cron.schedule(s.autoReportCron, async () => {
+      console.log('[CRON TRIGGERED] 크론이 실행되었습니다!', new Date().toLocaleString('ko-KR', {timeZone: 'Asia/Seoul'}));
       try {
         const current = await getSettings(Setting);
-        if (!current.autoReportEnabled) return;
+        console.log('[cron:dailyReport] autoReportEnabled:', current.autoReportEnabled);
+        if (!current.autoReportEnabled) {
+          console.log('[cron:dailyReport] 자동 발송이 비활성화되어 종료');
+          return;
+        }
         console.log('[cron:dailyReport] 일일리포트 발송 작업 시작');
         const result = await runDailyReport({ Setting, Services });
         console.log('[cron:dailyReport] 완료:', result);
-      } catch (e) { console.error('[cron:dailyReport]', e); }
+      } catch (e) {
+        console.error('[cron:dailyReport] 오류:', e);
+      }
     }, { timezone: s.timezone || 'Asia/Seoul' });
 
     console.log('[cron] scheduled from DB settings');
+    console.log('[cron] autoReportCron:', s.autoReportCron);
+    console.log('[cron] autoReportEnabled:', s.autoReportEnabled);
+    console.log('[cron] timezone:', s.timezone || 'Asia/Seoul');
 
     // 전역 에러 핸들러
     app.use((err, req, res, next) => {
