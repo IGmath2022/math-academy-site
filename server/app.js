@@ -290,8 +290,8 @@ mongoose.connect(MONGO_URI, { autoIndex: true })
           console.log('[test:dailyReport] 자동 발송이 비활성화되어 종료');
           return;
         }
-        console.log('[test:dailyReport] 일일리포트 발송 작업 시작');
-        const result = await runDailyReport({ Setting, Services });
+        console.log('[test:dailyReport] 일일리포트 발송 작업 시작 (force: true)');
+        const result = await runDailyReport({ Setting, Services, force: true });
         console.log('[test:dailyReport] 완료:', result);
       } catch (e) {
         console.error('[test:dailyReport] 오류:', e);
