@@ -276,6 +276,28 @@ mongoose.connect(MONGO_URI, { autoIndex: true })
       console.log('[cron:heartbeat]', now);
     }, { timezone: 'Asia/Seoul' });
 
+    // 테스트: 다음 분에 일일리포트 크론과 동일한 로직 실행
+    const testMinute = (new Date().getMinutes() + 1) % 60;
+    const testCron = `${testMinute} * * * *`;
+    console.log('[cron] 테스트 크론 생성:', testCron);
+
+    cron.schedule(testCron, async () => {
+      console.log('[TEST CRON TRIGGERED] 테스트 크론이 실행되었습니다!', new Date().toLocaleString('ko-KR', {timeZone: 'Asia/Seoul'}));
+      try {
+        const current = await getSettings(Setting);
+        console.log('[test:dailyReport] autoReportEnabled:', current.autoReportEnabled);
+        if (!current.autoReportEnabled) {
+          console.log('[test:dailyReport] 자동 발송이 비활성화되어 종료');
+          return;
+        }
+        console.log('[test:dailyReport] 일일리포트 발송 작업 시작');
+        const result = await runDailyReport({ Setting, Services });
+        console.log('[test:dailyReport] 완료:', result);
+      } catch (e) {
+        console.error('[test:dailyReport] 오류:', e);
+      }
+    }, { timezone: 'Asia/Seoul' });
+
     console.log('[cron] scheduled from DB settings');
     console.log('[cron] autoReportCron:', s.autoReportCron);
     console.log('[cron] autoReportEnabled:', s.autoReportEnabled);
