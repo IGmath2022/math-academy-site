@@ -247,6 +247,49 @@ router.get('/results/public/:reportCode', async (req, res) => {
 });
 
 // 공개 링크용 학생 분석 데이터 조회
+// Public: student analysis summary list
+router.get('/analysis/public/:reportCode/summary', async (req, res) => {
+  try {
+    const LessonLog = require('../models/LessonLog');
+    const lessonLog = await LessonLog.findById(req.params.reportCode);
+
+    if (!lessonLog || !lessonLog.studentId) {
+      return res.status(404).json({ message: 'Report link not found.' });
+    }
+
+    const summaries = await AnalysisService.getStudentAnalysisSummary(lessonLog.studentId);
+    res.json({ summaries });
+  } catch (error) {
+    console.error('Public student analysis summary failed:', error);
+    res.status(500).json({ message: 'Failed to load analysis summary', error: error.message });
+  }
+});
+
+// Public: student analysis detail per course
+router.get('/analysis/public/:reportCode/course/:courseId', async (req, res) => {
+  try {
+    const LessonLog = require('../models/LessonLog');
+    const { reportCode, courseId } = req.params;
+    const lessonLog = await LessonLog.findById(reportCode);
+
+    if (!lessonLog || !lessonLog.studentId) {
+      return res.status(404).json({ message: 'Report link not found.' });
+    }
+
+    const analysis = await AnalysisService.getStudentAnalysisDetail(lessonLog.studentId, courseId);
+    if (!analysis) {
+      return res.status(404).json({ message: 'Analysis data not found.' });
+    }
+
+    const weakness = await AnalysisService.getWeaknessAnalysis(lessonLog.studentId, courseId);
+
+    res.json({ analysis, weakness });
+  } catch (error) {
+    console.error('Public student analysis detail failed:', error);
+    res.status(500).json({ message: 'Failed to load analysis data', error: error.message });
+  }
+});
+
 router.get('/analysis/public/:reportCode', async (req, res) => {
   try {
     // 리포트 코드는 LessonLog의 _id입니다

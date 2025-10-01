@@ -19,7 +19,10 @@
       "Bash(PORT=3001 npm start)",
       "Read(//d/**)",
       "Bash(git add:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(xcopy:*)",
+      "Bash(robocopy:*)",
+      "Bash(jobs)"
     ],
     "deny": [],
     "ask": []

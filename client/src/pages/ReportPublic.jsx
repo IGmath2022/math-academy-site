@@ -37,186 +37,382 @@ function getProficiencyLevel(accuracy, totalQuestions) {
 }
 
 // 분석 표시 컴포넌트
-function AnalysisDisplay({ analysisData, testResults }) {
-  if (!analysisData || analysisData.analysis.length === 0) {
+// ?? ?? ?? ? ?? ??
+function AnalysisSummaryCard({ summary, isActive, onSelect }) {
+  const recentScore = summary?.recentScore || null;
+  const recentDate = recentScore?.testDate ? new Date(recentScore.testDate).toLocaleDateString() : null;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(summary.courseId)}
+      style={{
+        border: isActive ? "2px solid #2563eb" : "1px solid #e2e8f0",
+        background: isActive ? "#eff6ff" : "#fff",
+        borderRadius: 12,
+        padding: 16,
+        cursor: "pointer",
+        textAlign: "left",
+        boxShadow: isActive ? "0 8px 20px rgba(37, 99, 235, 0.12)" : "0 4px 12px rgba(15, 23, 42, 0.08)",
+        display: "grid",
+        gap: 10,
+        transition: "all 0.2s ease",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#1e293b" }}>{summary.courseName || summary.courseId || "??"}</div>
+          <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+            {(summary.totalTests ?? 0)}? ? {(summary.totalQuestions ?? 0)}??
+          </div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontSize: 12, color: "#64748b" }}>???</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: "#2563eb" }}>
+            {summary.overallAccuracy != null ? `${summary.overallAccuracy}%` : "-"}
+          </div>
+        </div>
+      </div>
+      {recentScore ? (
+        <div style={{ fontSize: 12, color: "#64748b" }}>
+          ?? ??: {recentScore.testName || "-"}
+          {" "}?{" "}
+          {recentDate || "-"}
+          {" "}?{" "}
+          {recentScore.accuracy != null ? `${recentScore.accuracy}%` : "-"}
+        </div>
+      ) : (
+        <div style={{ fontSize: 12, color: "#94a3b8" }}>?? ?? ??? ????.</div>
+      )}
+      {summary.lastUpdated && (
+        <div style={{ fontSize: 11, color: "#94a3b8" }}>
+          ????: {new Date(summary.lastUpdated).toLocaleDateString()}
+        </div>
+      )}
+    </button>
+  );
+}
+
+function CourseAnalysisPanel({ analysis, weakness }) {
+  if (!analysis) {
     return (
-      <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>
-        아직 분석할 수 있는 테스트 결과가 없습니다.
+      <div style={{ textAlign: "center", padding: 32, color: "#64748b", background: "#f8fafc", borderRadius: 12 }}>
+        ?? ???? ?? ? ????.
       </div>
     );
   }
 
-  const analysis = analysisData.analysis[0]; // 첫 번째 분석 데이터 사용
+  const overallAccuracy =
+    analysis.overallAccuracy != null
+      ? analysis.overallAccuracy
+      : analysis.totalQuestions > 0
+        ? Math.round((analysis.totalCorrect / analysis.totalQuestions) * 100)
+        : 0;
+
+  const recentScores = Array.isArray(analysis.recentScores) ? analysis.recentScores : [];
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
-      {/* 전체 요약 */}
-      <div style={{
-        background: "#f8fafc",
-        border: "1px solid #e2e8f0",
-        borderRadius: 12,
-        padding: 20
-      }}>
-        <h4 style={{ margin: "0 0 12px 0", color: "#1e293b" }}>전체 학습 현황</h4>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 12 }}>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 24, fontWeight: "bold", color: "#2563eb" }}>{analysis.totalTests}</div>
-            <div style={{ fontSize: 12, color: "#64748b" }}>응시한 테스트</div>
-          </div>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 24, fontWeight: "bold", color: "#2563eb" }}>{analysis.totalQuestions}</div>
-            <div style={{ fontSize: 12, color: "#64748b" }}>총 문제 수</div>
-          </div>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 24, fontWeight: "bold", color: "#059669" }}>
-              {Math.round((analysis.totalCorrect / analysis.totalQuestions) * 100)}%
+      <div
+        style={{
+          background: "linear-gradient(135deg, #4f46e5 0%, #2563eb 100%)",
+          color: "white",
+          padding: 24,
+          borderRadius: 12,
+          boxShadow: "0 12px 30px rgba(37, 99, 235, 0.25)",
+          display: "grid",
+          gap: 16,
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+          <div>
+            <div style={{ fontSize: 13, opacity: 0.85 }}>?? ??</div>
+            <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>
+              {analysis.courseName || analysis.courseId || "??"}
             </div>
-            <div style={{ fontSize: 12, color: "#64748b" }}>전체 정답률</div>
           </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 13, opacity: 0.85 }}>?? ???</div>
+            <div style={{ fontSize: 32, fontWeight: 800 }}>{overallAccuracy}%</div>
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 12, opacity: 0.85 }}>? ??</div>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>{analysis.totalTests || 0}?</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 12, opacity: 0.85 }}>? ??</div>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>{analysis.totalQuestions || 0}??</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 12, opacity: 0.85 }}>?? ?</div>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>{analysis.totalCorrect || 0}?</div>
+          </div>
+          {analysis.lastUpdated && (
+            <div>
+              <div style={{ fontSize: 12, opacity: 0.85 }}>??? ????</div>
+              <div style={{ fontSize: 20, fontWeight: 700 }}>
+                {new Date(analysis.lastUpdated).toLocaleDateString()}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* 단원별 분석 */}
-      {analysis.chapterAnalysis && analysis.chapterAnalysis.length > 0 && (
-        <div style={{
-          background: "white",
-          border: "1px solid #e2e8f0",
-          borderRadius: 12,
-          padding: 20
-        }}>
-          <h4 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>단원별 학습 분석</h4>
+      {analysis.chapterAnalysis?.length ? (
+        <div
+          style={{
+            background: "white",
+            border: "1px solid #e2e8f0",
+            borderRadius: 12,
+            padding: 20,
+            boxShadow: "0 4px 12px rgba(15, 23, 42, 0.05)",
+          }}
+        >
+          <h3 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>??? ?? ??</h3>
           <div style={{ display: "grid", gap: 8 }}>
-            {analysis.chapterAnalysis.slice(0, 10).map((chapter, index) => {
-              const proficiency = getProficiencyLevel(chapter.accuracy, chapter.totalQuestions);
-
+            {analysis.chapterAnalysis.slice(0, 8).map((chapter, index) => {
+              const info = getProficiencyLevel(chapter.accuracy, chapter.totalQuestions);
               return (
-                <div key={index} style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr auto auto",
-                  alignItems: "center",
-                  padding: "8px 12px",
-                  background: "#f8fafc",
-                  borderRadius: 8
-                }}>
+                <div
+                  key={index}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr auto auto",
+                    alignItems: "center",
+                    padding: "10px 12px",
+                    background: "#f8fafc",
+                    borderRadius: 8,
+                  }}
+                >
                   <div>
-                    <div style={{ fontWeight: 500 }}>{chapter.chapterName}</div>
+                    <div style={{ fontWeight: 600 }}>{chapter.chapterName}</div>
                     <div style={{ fontSize: 12, color: "#64748b" }}>
-                      {chapter.correctAnswers}/{chapter.totalQuestions} 정답
+                      {chapter.correctAnswers}/{chapter.totalQuestions} ??
                     </div>
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: "bold", marginRight: 12 }}>
-                    {chapter.accuracy}%
-                  </div>
-                  <div style={{
-                    padding: "4px 8px",
-                    borderRadius: 4,
-                    fontSize: 12,
-                    fontWeight: "bold",
-                    color: "white",
-                    background: proficiency.color
-                  }}>
-                    {proficiency.level}
+                  <div style={{ fontSize: 14, fontWeight: 700, marginRight: 12 }}>{chapter.accuracy}%</div>
+                  <div
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: 999,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      background: info.color,
+                      color: "white",
+                    }}
+                  >
+                    {info.level}
                   </div>
                 </div>
               );
             })}
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* 유형별 분석 */}
-      {analysis.typeAnalysis && analysis.typeAnalysis.length > 0 && (
-        <div style={{
-          background: "white",
-          border: "1px solid #e2e8f0",
-          borderRadius: 12,
-          padding: 20
-        }}>
-          <h4 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>유형별 학습 분석</h4>
+      {analysis.typeAnalysis?.length ? (
+        <div
+          style={{
+            background: "white",
+            border: "1px solid #e2e8f0",
+            borderRadius: 12,
+            padding: 20,
+            boxShadow: "0 4px 12px rgba(15, 23, 42, 0.05)",
+          }}
+        >
+          <h3 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>??? ?? ??</h3>
           <div style={{ display: "grid", gap: 8 }}>
-            {analysis.typeAnalysis.slice(0, 10).map((type, index) => {
-              const proficiency = getProficiencyLevel(type.accuracy, type.totalQuestions);
-
+            {analysis.typeAnalysis.slice(0, 8).map((type, index) => {
+              const info = getProficiencyLevel(type.accuracy, type.totalQuestions);
               return (
-                <div key={index} style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr auto auto",
-                  alignItems: "center",
-                  padding: "8px 12px",
-                  background: "#f8fafc",
-                  borderRadius: 8
-                }}>
+                <div
+                  key={index}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr auto auto",
+                    alignItems: "center",
+                    padding: "10px 12px",
+                    background: "#f8fafc",
+                    borderRadius: 8,
+                  }}
+                >
                   <div>
-                    <div style={{ fontWeight: 500 }}>{type.typeName}</div>
+                    <div style={{ fontWeight: 600 }}>{type.typeName}</div>
                     <div style={{ fontSize: 12, color: "#64748b" }}>
-                      {type.chapterName} • {type.correctAnswers}/{type.totalQuestions} 정답
+                      {type.chapterName} ? {type.correctAnswers}/{type.totalQuestions} ??
                     </div>
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: "bold", marginRight: 12 }}>
-                    {type.accuracy}%
-                  </div>
-                  <div style={{
-                    padding: "4px 8px",
-                    borderRadius: 4,
-                    fontSize: 12,
-                    fontWeight: "bold",
-                    color: "white",
-                    background: proficiency.color
-                  }}>
-                    {proficiency.level}
+                  <div style={{ fontSize: 14, fontWeight: 700, marginRight: 12 }}>{type.accuracy}%</div>
+                  <div
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: 999,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      background: info.color,
+                      color: "white",
+                    }}
+                  >
+                    {info.level}
                   </div>
                 </div>
               );
             })}
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* 난이도별 분석 */}
-      {analysis.difficultyAnalysis && analysis.difficultyAnalysis.length > 0 && (
-        <div style={{
-          background: "white",
-          border: "1px solid #e2e8f0",
-          borderRadius: 12,
-          padding: 20
-        }}>
-          <h4 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>난이도별 학습 분석</h4>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+      {analysis.difficultyAnalysis?.length ? (
+        <div
+          style={{
+            background: "white",
+            border: "1px solid #e2e8f0",
+            borderRadius: 12,
+            padding: 20,
+            boxShadow: "0 4px 12px rgba(15, 23, 42, 0.05)",
+          }}
+        >
+          <h3 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>???? ?? ??</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
             {analysis.difficultyAnalysis.map((difficulty, index) => {
-              const proficiency = getProficiencyLevel(difficulty.accuracy, difficulty.totalQuestions);
-
+              const info = getProficiencyLevel(difficulty.accuracy, difficulty.totalQuestions);
               return (
-                <div key={index} style={{
-                  padding: 16,
+                <div
+                  key={index}
+                  style={{
+                    padding: 16,
+                    background: "#f8fafc",
+                    borderRadius: 10,
+                    textAlign: "center",
+                  }}
+                >
+                  <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{difficulty.difficulty} ???</div>
+                  <div style={{ fontSize: 26, fontWeight: 800, color: info.color, marginBottom: 4 }}>{difficulty.accuracy}%</div>
+                  <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8 }}>
+                    {difficulty.correctAnswers}/{difficulty.totalQuestions} ??
+                  </div>
+                  <div
+                    style={{
+                      display: "inline-block",
+                      padding: "4px 10px",
+                      borderRadius: 999,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      background: info.color,
+                      color: "white",
+                    }}
+                  >
+                    {info.level}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
+      {recentScores.length ? (
+        <div
+          style={{
+            background: "white",
+            border: "1px solid #e2e8f0",
+            borderRadius: 12,
+            padding: 20,
+            boxShadow: "0 4px 12px rgba(15, 23, 42, 0.05)",
+          }}
+        >
+          <h3 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>?? ?? ??</h3>
+          <div style={{ display: "grid", gap: 10 }}>
+            {recentScores.map((score, index) => (
+              <div
+                key={index}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: 14,
                   background: "#f8fafc",
                   borderRadius: 8,
-                  textAlign: "center"
-                }}>
-                  <div style={{ fontSize: 16, fontWeight: "bold", marginBottom: 8 }}>
-                    {difficulty.difficulty}급 문제
-                  </div>
-                  <div style={{ fontSize: 24, fontWeight: "bold", color: proficiency.color, marginBottom: 4 }}>
-                    {difficulty.accuracy}%
-                  </div>
-                  <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8 }}>
-                    {difficulty.correctAnswers}/{difficulty.totalQuestions} 정답
-                  </div>
-                  <div style={{
-                    padding: "4px 8px",
-                    borderRadius: 4,
-                    fontSize: 12,
-                    fontWeight: "bold",
-                    color: "white",
-                    background: proficiency.color
-                  }}>
-                    {proficiency.level}
+                  border: "1px solid #e2e8f0",
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 600, color: "#1e293b" }}>{score.testName}</div>
+                  <div style={{ fontSize: 12, color: "#64748b" }}>
+                    {score.testDate ? new Date(score.testDate).toLocaleDateString() : "-"}
                   </div>
                 </div>
-              );
-            })}
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: "#1e293b" }}>
+                    {score.score}/{score.totalScore}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#64748b" }}>{score.accuracy}%</div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-      )}
+      ) : null}
+
+      {weakness ? (
+        <div
+          style={{
+            background: "white",
+            border: "1px solid #e2e8f0",
+            borderRadius: 12,
+            padding: 20,
+            boxShadow: "0 4px 12px rgba(15, 23, 42, 0.05)",
+          }}
+        >
+          <h3 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>?? ?? ??</h3>
+          {weakness.recommendations?.length ? (
+            <div style={{ display: "grid", gap: 12 }}>
+              {weakness.recommendations.map((rec, index) => (
+                <div
+                  key={index}
+                  style={{
+                    padding: 16,
+                    background: rec.priority === 'high' ? '#fef2f2' : '#f0f9ff',
+                    border: `1px solid ${rec.priority === 'high' ? '#fecaca' : '#bfdbfe'}`,
+                    borderRadius: 10,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                    <span
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: '50%',
+                        background: rec.priority === 'high' ? '#ef4444' : '#2563eb',
+                        display: 'inline-block',
+                      }}
+                    />
+                    <strong style={{ color: "#1e293b" }}>{rec.title}</strong>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        padding: '2px 8px',
+                        borderRadius: 999,
+                        background: rec.priority === 'high' ? '#ef4444' : '#2563eb',
+                        color: 'white',
+                      }}
+                    >
+                      {rec.priority === 'high' ? '??' : '??'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.5 }}>{rec.description}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: 18, color: '#64748b', background: '#f8fafc', borderRadius: 8 }}>
+              ?? ??? ????. ??? ??? ??????!
+            </div>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -228,8 +424,12 @@ export default function ReportPublic() {
   const [activeTab, setActiveTab] = useState("report");
   const [testResults, setTestResults] = useState([]);
   const [loadingTests, setLoadingTests] = useState(false);
-  const [analysisData, setAnalysisData] = useState(null);
-  const [loadingAnalysis, setLoadingAnalysis] = useState(false);
+  const [analysisSummaries, setAnalysisSummaries] = useState([]);
+  const [analysisDetailMap, setAnalysisDetailMap] = useState({});
+  const [selectedCourseId, setSelectedCourseId] = useState("");
+  const [loadingAnalysisSummary, setLoadingAnalysisSummary] = useState(false);
+  const [loadingAnalysisDetail, setLoadingAnalysisDetail] = useState(false);
+  const [analysisError, setAnalysisError] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -262,28 +462,72 @@ export default function ReportPublic() {
   };
 
   // 분석 데이터 로드
-  const loadAnalysisData = async () => {
-    if (loadingAnalysis || analysisData) return;
+  const loadAnalysisDetail = async (courseId, { select = true, force = false } = {}) => {
+    if (!courseId) return;
+
+    if (select) {
+      setSelectedCourseId(courseId);
+    }
+
+    if (!force && analysisDetailMap[courseId]) {
+      return;
+    }
+
+    setAnalysisError("");
 
     try {
-      setLoadingAnalysis(true);
-      const { data } = await axios.get(`${API_URL}/api/tests/analysis/public/${code}`);
-      setAnalysisData(data);
+      setLoadingAnalysisDetail(true);
+      const { data } = await axios.get(`${API_URL}/api/tests/analysis/public/${code}/course/${courseId}`);
+      setAnalysisDetailMap((prev) => ({ ...prev, [courseId]: data }));
     } catch (error) {
-      console.error('분석 데이터 로드 실패:', error);
+      console.error('?? ?? ?? ??:', error);
+      setAnalysisError('?? ??? ???? ?????.');
     } finally {
-      setLoadingAnalysis(false);
+      setLoadingAnalysisDetail(false);
     }
   };
 
-  // 탭 클릭 시 데이터 로드
+  const loadAnalysisSummary = async () => {
+    if (loadingAnalysisSummary || analysisSummaries.length > 0) return;
+
+    try {
+      setLoadingAnalysisSummary(true);
+      setAnalysisError("");
+      const { data } = await axios.get(`${API_URL}/api/tests/analysis/public/${code}/summary`);
+      const summaries = Array.isArray(data?.summaries) ? data.summaries : [];
+      setAnalysisSummaries(summaries);
+
+      if (summaries.length > 0) {
+        const firstCourseId = summaries[0].courseId;
+        const nextCourseId = summaries.some((item) => item.courseId === selectedCourseId)
+          ? selectedCourseId
+          : firstCourseId;
+        setSelectedCourseId(nextCourseId);
+        if (!analysisDetailMap[nextCourseId]) {
+          await loadAnalysisDetail(nextCourseId, { select: false });
+        }
+      }
+    } catch (error) {
+      console.error('?? ?? ?? ??:', error);
+      setAnalysisError('?? ??? ???? ?????.');
+    } finally {
+      setLoadingAnalysisSummary(false);
+    }
+  };
+
+  // ? ?? ? ??? ??
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     if (tab === "tests") {
       loadTestResults();
     } else if (tab === "analysis") {
-      loadAnalysisData();
+      loadAnalysisSummary();
     }
+  };
+
+  const handleCourseSelect = (courseId) => {
+    if (!courseId) return;
+    loadAnalysisDetail(courseId);
   };
 
   if (err) return <div style={{ maxWidth: 920, margin: "32px auto", padding: 16 }}>{err}</div>;
@@ -455,7 +699,7 @@ export default function ReportPublic() {
                 </div>
               ) : (
                 <div style={{ display: "grid", gap: 16 }}>
-                  {testResults.map((result, index) => (
+                  {testResults.map((result) => (
                     <TestResultCard key={result._id} result={result} />
                   ))}
                 </div>
@@ -465,17 +709,42 @@ export default function ReportPublic() {
 
           {/* 학습 분석 탭 */}
           {activeTab === "analysis" && (
-            <div style={{ padding: "18px 26px" }}>
-              {loadingAnalysis ? (
-                <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>
-                  분석 데이터를 불러오는 중...
+            <div style={{ padding: "18px 26px", display: "grid", gap: 20 }}>
+              {analysisError ? (
+                <div style={{ textAlign: "center", padding: 40, color: "#ef4444", background: "#fef2f2", borderRadius: 12 }}>
+                  {analysisError}
                 </div>
-              ) : !analysisData ? (
+              ) : loadingAnalysisSummary ? (
                 <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>
-                  분석 데이터가 없습니다.
+                  ?? ??? ???? ????...
+                </div>
+              ) : analysisSummaries.length === 0 ? (
+                <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>
+                  ?? ?? ???? ????.
                 </div>
               ) : (
-                <AnalysisDisplay analysisData={analysisData} testResults={testResults} />
+                <>
+                  <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+                    {analysisSummaries.map((summary) => (
+                      <AnalysisSummaryCard
+                        key={summary.courseId}
+                        summary={summary}
+                        isActive={summary.courseId === selectedCourseId}
+                        onSelect={handleCourseSelect}
+                      />
+                    ))}
+                  </div>
+                  {loadingAnalysisDetail && !analysisDetailMap[selectedCourseId] ? (
+                    <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>
+                      ?? ??? ???? ????...
+                    </div>
+                  ) : (
+                    <CourseAnalysisPanel
+                      analysis={analysisDetailMap[selectedCourseId]?.analysis}
+                      weakness={analysisDetailMap[selectedCourseId]?.weakness}
+                    />
+                  )}
+                </>
               )}
             </div>
           )}

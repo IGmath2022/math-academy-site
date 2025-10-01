@@ -138,6 +138,38 @@ class AnalysisService {
    * @param {String} studentId - 학생 ID
    * @param {String} courseId - 교육과정 ID (선택)
    */
+
+  static async getStudentAnalysisSummary(studentId) {
+    try {
+      const summaries = await StudentAnalysis.find({ studentId })
+        .select('courseId courseName overallAccuracy totalTests totalQuestions lastUpdated recentScores')
+        .sort({ lastUpdated: -1 })
+        .lean();
+
+      return summaries.map((item) => ({
+        courseId: item.courseId,
+        courseName: item.courseName,
+        overallAccuracy: item.overallAccuracy,
+        totalTests: item.totalTests,
+        totalQuestions: item.totalQuestions,
+        lastUpdated: item.lastUpdated,
+        recentScore: Array.isArray(item.recentScores) && item.recentScores.length > 0 ? item.recentScores[0] : null,
+      }));
+    } catch (error) {
+      console.error('[AnalysisService] Failed to load student analysis summary:', error);
+      throw error;
+    }
+  }
+
+  static async getStudentAnalysisDetail(studentId, courseId) {
+    try {
+      return await StudentAnalysis.findOne({ studentId, courseId }).lean();
+    } catch (error) {
+      console.error('[AnalysisService] Failed to load student analysis detail:', error);
+      throw error;
+    }
+  }
+
   static async getStudentAnalysis(studentId, courseId = null) {
     try {
       const query = { studentId };
