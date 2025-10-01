@@ -1,4 +1,4 @@
-// client/src/pages/ReportPublic.jsx
+﻿// client/src/pages/ReportPublic.jsx
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
@@ -36,8 +36,6 @@ function getProficiencyLevel(accuracy, totalQuestions) {
   return { level: "많이 미흡", color: "#dc2626", description: "집중 보완 필요" };
 }
 
-// 분석 표시 컴포넌트
-// ?? ?? ?? ? ?? ??
 function AnalysisSummaryCard({ summary, isActive, onSelect }) {
   const recentScore = summary?.recentScore || null;
   const recentDate = recentScore?.testDate ? new Date(recentScore.testDate).toLocaleDateString() : null;
@@ -61,13 +59,15 @@ function AnalysisSummaryCard({ summary, isActive, onSelect }) {
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#1e293b" }}>{summary.courseName || summary.courseId || "??"}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#1e293b" }}>
+            {summary.courseName || summary.courseId || "과정"}
+          </div>
           <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
-            {(summary.totalTests ?? 0)}? ? {(summary.totalQuestions ?? 0)}??
+            {(summary.totalTests ?? 0)}회 · {(summary.totalQuestions ?? 0)}문항
           </div>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 12, color: "#64748b" }}>???</div>
+          <div style={{ fontSize: 12, color: "#64748b" }}>정답률</div>
           <div style={{ fontSize: 24, fontWeight: 800, color: "#2563eb" }}>
             {summary.overallAccuracy != null ? `${summary.overallAccuracy}%` : "-"}
           </div>
@@ -75,29 +75,32 @@ function AnalysisSummaryCard({ summary, isActive, onSelect }) {
       </div>
       {recentScore ? (
         <div style={{ fontSize: 12, color: "#64748b" }}>
-          ?? ??: {recentScore.testName || "-"}
-          {" "}?{" "}
+          최근 시험: {recentScore.testName || "-"}
+          {" · "}
           {recentDate || "-"}
-          {" "}?{" "}
+          {" · "}
           {recentScore.accuracy != null ? `${recentScore.accuracy}%` : "-"}
         </div>
       ) : (
-        <div style={{ fontSize: 12, color: "#94a3b8" }}>?? ?? ??? ????.</div>
+        <div style={{ fontSize: 12, color: "#94a3b8" }}>최근 시험 정보가 없습니다.</div>
       )}
       {summary.lastUpdated && (
         <div style={{ fontSize: 11, color: "#94a3b8" }}>
-          ????: {new Date(summary.lastUpdated).toLocaleDateString()}
+          업데이트: {new Date(summary.lastUpdated).toLocaleDateString()}
         </div>
       )}
     </button>
   );
 }
 
-function CourseAnalysisPanel({ analysis, weakness }) {
+function CourseAnalysisPanel({ detail }) {
+  const analysis = detail?.analysis;
+  const weakness = detail?.weakness;
+
   if (!analysis) {
     return (
-      <div style={{ textAlign: "center", padding: 32, color: "#64748b", background: "#f8fafc", borderRadius: 12 }}>
-        ?? ???? ?? ? ????.
+      <div style={{ textAlign: "center", padding: 40, color: "#64748b", background: "#f8fafc", borderRadius: 12 }}>
+        분석 데이터를 찾을 수 없습니다.
       </div>
     );
   }
@@ -109,10 +112,13 @@ function CourseAnalysisPanel({ analysis, weakness }) {
         ? Math.round((analysis.totalCorrect / analysis.totalQuestions) * 100)
         : 0;
 
+  const chapterList = Array.isArray(analysis.chapterAnalysis) ? analysis.chapterAnalysis : [];
+  const typeList = Array.isArray(analysis.typeAnalysis) ? analysis.typeAnalysis : [];
+  const difficultyList = Array.isArray(analysis.difficultyAnalysis) ? analysis.difficultyAnalysis : [];
   const recentScores = Array.isArray(analysis.recentScores) ? analysis.recentScores : [];
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
+    <div style={{ display: "grid", gap: 20 }}>
       <div
         style={{
           background: "linear-gradient(135deg, #4f46e5 0%, #2563eb 100%)",
@@ -126,32 +132,32 @@ function CourseAnalysisPanel({ analysis, weakness }) {
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
           <div>
-            <div style={{ fontSize: 13, opacity: 0.85 }}>?? ??</div>
+            <div style={{ fontSize: 13, opacity: 0.85 }}>학습 과정</div>
             <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>
-              {analysis.courseName || analysis.courseId || "??"}
+              {analysis.courseName || analysis.courseId || "과정"}
             </div>
           </div>
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 13, opacity: 0.85 }}>?? ???</div>
+            <div style={{ fontSize: 13, opacity: 0.85 }}>전체 정답률</div>
             <div style={{ fontSize: 32, fontWeight: 800 }}>{overallAccuracy}%</div>
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 12 }}>
           <div>
-            <div style={{ fontSize: 12, opacity: 0.85 }}>? ??</div>
-            <div style={{ fontSize: 20, fontWeight: 700 }}>{analysis.totalTests || 0}?</div>
+            <div style={{ fontSize: 12, opacity: 0.85 }}>총 시험</div>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>{analysis.totalTests || 0}회</div>
           </div>
           <div>
-            <div style={{ fontSize: 12, opacity: 0.85 }}>? ??</div>
-            <div style={{ fontSize: 20, fontWeight: 700 }}>{analysis.totalQuestions || 0}??</div>
+            <div style={{ fontSize: 12, opacity: 0.85 }}>총 문항</div>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>{analysis.totalQuestions || 0}문항</div>
           </div>
           <div>
-            <div style={{ fontSize: 12, opacity: 0.85 }}>?? ?</div>
-            <div style={{ fontSize: 20, fontWeight: 700 }}>{analysis.totalCorrect || 0}?</div>
+            <div style={{ fontSize: 12, opacity: 0.85 }}>정답 수</div>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>{analysis.totalCorrect || 0}개</div>
           </div>
           {analysis.lastUpdated && (
             <div>
-              <div style={{ fontSize: 12, opacity: 0.85 }}>??? ????</div>
+              <div style={{ fontSize: 12, opacity: 0.85 }}>마지막 업데이트</div>
               <div style={{ fontSize: 20, fontWeight: 700 }}>
                 {new Date(analysis.lastUpdated).toLocaleDateString()}
               </div>
@@ -160,7 +166,7 @@ function CourseAnalysisPanel({ analysis, weakness }) {
         </div>
       </div>
 
-      {analysis.chapterAnalysis?.length ? (
+      {chapterList.length > 0 && (
         <div
           style={{
             background: "white",
@@ -170,9 +176,9 @@ function CourseAnalysisPanel({ analysis, weakness }) {
             boxShadow: "0 4px 12px rgba(15, 23, 42, 0.05)",
           }}
         >
-          <h3 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>??? ?? ??</h3>
+          <h3 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>단원별 학습 분석</h3>
           <div style={{ display: "grid", gap: 8 }}>
-            {analysis.chapterAnalysis.slice(0, 8).map((chapter, index) => {
+            {chapterList.slice(0, 10).map((chapter, index) => {
               const info = getProficiencyLevel(chapter.accuracy, chapter.totalQuestions);
               return (
                 <div
@@ -181,7 +187,7 @@ function CourseAnalysisPanel({ analysis, weakness }) {
                     display: "grid",
                     gridTemplateColumns: "1fr auto auto",
                     alignItems: "center",
-                    padding: "10px 12px",
+                    padding: "8px 12px",
                     background: "#f8fafc",
                     borderRadius: 8,
                   }}
@@ -189,18 +195,18 @@ function CourseAnalysisPanel({ analysis, weakness }) {
                   <div>
                     <div style={{ fontWeight: 600 }}>{chapter.chapterName}</div>
                     <div style={{ fontSize: 12, color: "#64748b" }}>
-                      {chapter.correctAnswers}/{chapter.totalQuestions} ??
+                      {chapter.correctAnswers}/{chapter.totalQuestions} 정답
                     </div>
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 700, marginRight: 12 }}>{chapter.accuracy}%</div>
                   <div
                     style={{
-                      padding: "4px 10px",
-                      borderRadius: 999,
+                      padding: "4px 8px",
+                      borderRadius: 4,
                       fontSize: 12,
-                      fontWeight: 600,
-                      background: info.color,
+                      fontWeight: 700,
                       color: "white",
+                      background: info.color,
                     }}
                   >
                     {info.level}
@@ -210,9 +216,9 @@ function CourseAnalysisPanel({ analysis, weakness }) {
             })}
           </div>
         </div>
-      ) : null}
+      )}
 
-      {analysis.typeAnalysis?.length ? (
+      {typeList.length > 0 && (
         <div
           style={{
             background: "white",
@@ -222,9 +228,9 @@ function CourseAnalysisPanel({ analysis, weakness }) {
             boxShadow: "0 4px 12px rgba(15, 23, 42, 0.05)",
           }}
         >
-          <h3 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>??? ?? ??</h3>
+          <h3 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>유형별 학습 분석</h3>
           <div style={{ display: "grid", gap: 8 }}>
-            {analysis.typeAnalysis.slice(0, 8).map((type, index) => {
+            {typeList.slice(0, 10).map((type, index) => {
               const info = getProficiencyLevel(type.accuracy, type.totalQuestions);
               return (
                 <div
@@ -233,7 +239,7 @@ function CourseAnalysisPanel({ analysis, weakness }) {
                     display: "grid",
                     gridTemplateColumns: "1fr auto auto",
                     alignItems: "center",
-                    padding: "10px 12px",
+                    padding: "8px 12px",
                     background: "#f8fafc",
                     borderRadius: 8,
                   }}
@@ -241,18 +247,18 @@ function CourseAnalysisPanel({ analysis, weakness }) {
                   <div>
                     <div style={{ fontWeight: 600 }}>{type.typeName}</div>
                     <div style={{ fontSize: 12, color: "#64748b" }}>
-                      {type.chapterName} ? {type.correctAnswers}/{type.totalQuestions} ??
+                      {type.chapterName} · {type.correctAnswers}/{type.totalQuestions} 정답
                     </div>
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 700, marginRight: 12 }}>{type.accuracy}%</div>
                   <div
                     style={{
-                      padding: "4px 10px",
-                      borderRadius: 999,
+                      padding: "4px 8px",
+                      borderRadius: 4,
                       fontSize: 12,
-                      fontWeight: 600,
-                      background: info.color,
+                      fontWeight: 700,
                       color: "white",
+                      background: info.color,
                     }}
                   >
                     {info.level}
@@ -262,9 +268,9 @@ function CourseAnalysisPanel({ analysis, weakness }) {
             })}
           </div>
         </div>
-      ) : null}
+      )}
 
-      {analysis.difficultyAnalysis?.length ? (
+      {difficultyList.length > 0 && (
         <div
           style={{
             background: "white",
@@ -274,9 +280,9 @@ function CourseAnalysisPanel({ analysis, weakness }) {
             boxShadow: "0 4px 12px rgba(15, 23, 42, 0.05)",
           }}
         >
-          <h3 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>???? ?? ??</h3>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-            {analysis.difficultyAnalysis.map((difficulty, index) => {
+          <h3 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>난이도별 학습 분석</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+            {difficultyList.map((difficulty, index) => {
               const info = getProficiencyLevel(difficulty.accuracy, difficulty.totalQuestions);
               return (
                 <div
@@ -284,24 +290,27 @@ function CourseAnalysisPanel({ analysis, weakness }) {
                   style={{
                     padding: 16,
                     background: "#f8fafc",
-                    borderRadius: 10,
+                    borderRadius: 8,
                     textAlign: "center",
                   }}
                 >
-                  <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{difficulty.difficulty} ???</div>
-                  <div style={{ fontSize: 26, fontWeight: 800, color: info.color, marginBottom: 4 }}>{difficulty.accuracy}%</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>
+                    {difficulty.difficulty}급 문제
+                  </div>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: info.color, marginBottom: 4 }}>
+                    {difficulty.accuracy}%
+                  </div>
                   <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8 }}>
-                    {difficulty.correctAnswers}/{difficulty.totalQuestions} ??
+                    {difficulty.correctAnswers}/{difficulty.totalQuestions} 정답
                   </div>
                   <div
                     style={{
-                      display: "inline-block",
-                      padding: "4px 10px",
-                      borderRadius: 999,
+                      padding: "4px 8px",
+                      borderRadius: 4,
                       fontSize: 12,
-                      fontWeight: 600,
-                      background: info.color,
+                      fontWeight: 700,
                       color: "white",
+                      background: info.color,
                     }}
                   >
                     {info.level}
@@ -311,9 +320,9 @@ function CourseAnalysisPanel({ analysis, weakness }) {
             })}
           </div>
         </div>
-      ) : null}
+      )}
 
-      {recentScores.length ? (
+      {recentScores.length > 0 && (
         <div
           style={{
             background: "white",
@@ -323,7 +332,7 @@ function CourseAnalysisPanel({ analysis, weakness }) {
             boxShadow: "0 4px 12px rgba(15, 23, 42, 0.05)",
           }}
         >
-          <h3 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>?? ?? ??</h3>
+          <h3 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>최근 성적 추이</h3>
           <div style={{ display: "grid", gap: 10 }}>
             {recentScores.map((score, index) => (
               <div
@@ -354,65 +363,63 @@ function CourseAnalysisPanel({ analysis, weakness }) {
             ))}
           </div>
         </div>
-      ) : null}
+      )}
 
-      {weakness ? (
-        <div
-          style={{
-            background: "white",
-            border: "1px solid #e2e8f0",
-            borderRadius: 12,
-            padding: 20,
-            boxShadow: "0 4px 12px rgba(15, 23, 42, 0.05)",
-          }}
-        >
-          <h3 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>?? ?? ??</h3>
-          {weakness.recommendations?.length ? (
-            <div style={{ display: "grid", gap: 12 }}>
-              {weakness.recommendations.map((rec, index) => (
-                <div
-                  key={index}
-                  style={{
-                    padding: 16,
-                    background: rec.priority === 'high' ? '#fef2f2' : '#f0f9ff',
-                    border: `1px solid ${rec.priority === 'high' ? '#fecaca' : '#bfdbfe'}`,
-                    borderRadius: 10,
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                    <span
-                      style={{
-                        width: 10,
-                        height: 10,
-                        borderRadius: '50%',
-                        background: rec.priority === 'high' ? '#ef4444' : '#2563eb',
-                        display: 'inline-block',
-                      }}
-                    />
-                    <strong style={{ color: "#1e293b" }}>{rec.title}</strong>
-                    <span
-                      style={{
-                        fontSize: 11,
-                        padding: '2px 8px',
-                        borderRadius: 999,
-                        background: rec.priority === 'high' ? '#ef4444' : '#2563eb',
-                        color: 'white',
-                      }}
-                    >
-                      {rec.priority === 'high' ? '??' : '??'}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.5 }}>{rec.description}</div>
+      <div
+        style={{
+          background: "white",
+          border: "1px solid #e2e8f0",
+          borderRadius: 12,
+          padding: 20,
+          boxShadow: "0 4px 12px rgba(15, 23, 42, 0.05)",
+        }}
+      >
+        <h3 style={{ margin: "0 0 16px 0", color: "#1e293b" }}>학습 추천 사항</h3>
+        {weakness?.recommendations?.length ? (
+          <div style={{ display: "grid", gap: 12 }}>
+            {weakness.recommendations.map((rec, index) => (
+              <div
+                key={index}
+                style={{
+                  padding: 16,
+                  background: rec.priority === "high" ? "#fef2f2" : "#f0f9ff",
+                  border: `1px solid ${rec.priority === "high" ? "#fecaca" : "#bfdbfe"}`,
+                  borderRadius: 10,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                  <span
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: "50%",
+                      background: rec.priority === "high" ? "#ef4444" : "#2563eb",
+                      display: "inline-block",
+                    }}
+                  />
+                  <strong style={{ color: "#1e293b" }}>{rec.title}</strong>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      padding: "2px 8px",
+                      borderRadius: 999,
+                      background: rec.priority === "high" ? "#ef4444" : "#2563eb",
+                      color: "white",
+                    }}
+                  >
+                    {rec.priority === "high" ? "우선" : "권장"}
+                  </span>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ textAlign: 'center', padding: 18, color: '#64748b', background: '#f8fafc', borderRadius: 8 }}>
-              ?? ??? ????. ??? ??? ??????!
-            </div>
-          )}
-        </div>
-      ) : null}
+                <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5 }}>{rec.description}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ textAlign: "center", padding: 18, color: "#64748b", background: "#f8fafc", borderRadius: 8 }}>
+            추천 항목이 없습니다. 꾸준한 학습을 이어가 주세요!
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -424,6 +431,7 @@ export default function ReportPublic() {
   const [activeTab, setActiveTab] = useState("report");
   const [testResults, setTestResults] = useState([]);
   const [loadingTests, setLoadingTests] = useState(false);
+
   const [analysisSummaries, setAnalysisSummaries] = useState([]);
   const [analysisDetailMap, setAnalysisDetailMap] = useState({});
   const [selectedCourseId, setSelectedCourseId] = useState("");
@@ -446,7 +454,6 @@ export default function ReportPublic() {
     };
   }, [code]);
 
-  // 테스트 결과 로드
   const loadTestResults = async () => {
     if (loadingTests || testResults.length > 0) return;
 
@@ -455,13 +462,12 @@ export default function ReportPublic() {
       const { data } = await axios.get(`${API_URL}/api/tests/results/public/${code}`);
       setTestResults(data);
     } catch (error) {
-      console.error('테스트 결과 로드 실패:', error);
+      console.error("테스트 결과 로드 실패:", error);
     } finally {
       setLoadingTests(false);
     }
   };
 
-  // 분석 데이터 로드
   const loadAnalysisDetail = async (courseId, { select = true, force = false } = {}) => {
     if (!courseId) return;
 
@@ -480,8 +486,8 @@ export default function ReportPublic() {
       const { data } = await axios.get(`${API_URL}/api/tests/analysis/public/${code}/course/${courseId}`);
       setAnalysisDetailMap((prev) => ({ ...prev, [courseId]: data }));
     } catch (error) {
-      console.error('?? ?? ?? ??:', error);
-      setAnalysisError('?? ??? ???? ?????.');
+      console.error("분석 상세 로드 실패:", error);
+      setAnalysisError("분석 상세를 불러오지 못했습니다.");
     } finally {
       setLoadingAnalysisDetail(false);
     }
@@ -508,14 +514,13 @@ export default function ReportPublic() {
         }
       }
     } catch (error) {
-      console.error('?? ?? ?? ??:', error);
-      setAnalysisError('?? ??? ???? ?????.');
+      console.error("분석 요약 로드 실패:", error);
+      setAnalysisError("분석 요약을 불러오지 못했습니다.");
     } finally {
       setLoadingAnalysisSummary(false);
     }
   };
 
-  // ? ?? ? ??? ??
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     if (tab === "tests") {
@@ -526,7 +531,6 @@ export default function ReportPublic() {
   };
 
   const handleCourseSelect = (courseId) => {
-    if (!courseId) return;
     loadAnalysisDetail(courseId);
   };
 
@@ -538,10 +542,7 @@ export default function ReportPublic() {
   const teacherDisp = log?.teacherName || log?.teacher || "-";
   const durMin = data?.studyTimeMin ?? log?.durationMin;
 
-  // 최근 5회만 요약 (서버가 10회 줘도 5개 컷)
   const recent5 = recent.slice(0, 5);
-
-  // ✅ 다음 수업 계획: planNext 우선, 구버전 nextPlan 호환
   const nextPlan = log?.planNext || log?.nextPlan || "";
 
   return (
@@ -642,51 +643,48 @@ export default function ReportPublic() {
                 padding: "18px 26px",
               }}
             >
-            <div>
-              <Section title="과정" body={fmtNewline(log?.course)} />
-              <Section title="교재" body={fmtNewline(log?.book)} />
-              <Section title="수업내용" body={fmtNewline(log?.content)} />
-              <Section title="과제" body={fmtNewline(log?.homework)} />
-              <Section title="개별 피드백" body={fmtNewline(log?.feedback)} />
-              {/* ✅ (원한다면 왼쪽 칼럼으로 옮길 수도 있음) */}
-            </div>
+              <div>
+                <Section title="과정" body={fmtNewline(log?.course)} />
+                <Section title="교재" body={fmtNewline(log?.book)} />
+                <Section title="수업내용" body={fmtNewline(log?.content)} />
+                <Section title="과제" body={fmtNewline(log?.homework)} />
+                <Section title="개별 피드백" body={fmtNewline(log?.feedback)} />
+              </div>
 
-            <div>
-              <Section
-                title="출결"
-                body={
-                  <>
-                    등원 {attendance?.checkIn || log?.inTime || "-"} / 하원{" "}
-                    {attendance?.checkOut || log?.outTime || "-"}
-                  </>
-                }
-              />
-              <Section title="학습시간" body={fmtHM(durMin)} />
-              <Section title="형태·강사" body={<>{log?.classType || "-"} / {teacherDisp}</>} />
-              {!!log?.headline && <Section title="핵심 한줄" body={fmtNewline(log.headline)} />}
-              <Section
-                title="태그"
-                body={
-                  (log?.tags || []).length ? (
-                    <div>
-                      {log.tags.map((t, i) => (
-                        <span key={i} style={tag}>
-                          {t}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <>-</>
-                  )
-                }
-              />
-              {/* ✅ 다음 수업 계획 (planNext/nextPlan 호환) */}
-              <Section title="다음 수업 계획" body={fmtNewline(nextPlan)} />
-            </div>
+              <div>
+                <Section
+                  title="출결"
+                  body={
+                    <>
+                      등원 {attendance?.checkIn || log?.inTime || "-"} / 하원{" "}
+                      {attendance?.checkOut || log?.outTime || "-"}
+                    </>
+                  }
+                />
+                <Section title="학습시간" body={fmtHM(durMin)} />
+                <Section title="형태·강사" body={<>{log?.classType || "-"} / {teacherDisp}</>} />
+                {!!log?.headline && <Section title="핵심 한 줄" body={fmtNewline(log.headline)} />}
+                <Section
+                  title="태그"
+                  body={
+                    (log?.tags || []).length ? (
+                      <div>
+                        {log.tags.map((t, i) => (
+                          <span key={i} style={tag}>
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <>-</>
+                    )
+                  }
+                />
+                <Section title="다음 수업 계획" body={fmtNewline(nextPlan)} />
+              </div>
             </div>
           )}
 
-          {/* 테스트 성적 탭 */}
           {activeTab === "tests" && (
             <div style={{ padding: "18px 26px" }}>
               {loadingTests ? (
@@ -700,14 +698,13 @@ export default function ReportPublic() {
               ) : (
                 <div style={{ display: "grid", gap: 16 }}>
                   {testResults.map((result) => (
-                    <TestResultCard key={result._id} result={result} />
+                    <TestResultCard key={result._id || result.testTemplateId?._id} result={result} />
                   ))}
                 </div>
               )}
             </div>
           )}
 
-          {/* 학습 분석 탭 */}
           {activeTab === "analysis" && (
             <div style={{ padding: "18px 26px", display: "grid", gap: 20 }}>
               {analysisError ? (
@@ -716,11 +713,11 @@ export default function ReportPublic() {
                 </div>
               ) : loadingAnalysisSummary ? (
                 <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>
-                  ?? ??? ???? ????...
+                  분석 요약을 불러오는 중입니다...
                 </div>
               ) : analysisSummaries.length === 0 ? (
                 <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>
-                  ?? ?? ???? ????.
+                  아직 분석 데이터가 없습니다.
                 </div>
               ) : (
                 <>
@@ -736,13 +733,10 @@ export default function ReportPublic() {
                   </div>
                   {loadingAnalysisDetail && !analysisDetailMap[selectedCourseId] ? (
                     <div style={{ textAlign: "center", padding: 40, color: "#64748b" }}>
-                      ?? ??? ???? ????...
+                      상세 분석을 불러오는 중입니다...
                     </div>
                   ) : (
-                    <CourseAnalysisPanel
-                      analysis={analysisDetailMap[selectedCourseId]?.analysis}
-                      weakness={analysisDetailMap[selectedCourseId]?.weakness}
-                    />
+                    <CourseAnalysisPanel detail={analysisDetailMap[selectedCourseId]} />
                   )}
                 </>
               )}
@@ -750,7 +744,6 @@ export default function ReportPublic() {
           )}
         </div>
 
-        {/* 누적 5회 요약 - 일일 리포트 탭에만 표시 */}
         {activeTab === "report" && (
           <div
             style={{
@@ -761,79 +754,76 @@ export default function ReportPublic() {
               marginBottom: 18,
             }}
           >
-          <div
-            style={{
-              padding: "22px 26px",
-              background: "linear-gradient(180deg,#f7fbff,#eef4ff)",
-            }}
-          >
-            <div style={{ fontSize: 20, fontWeight: 800 }}>누적 5회 지표</div>
-          </div>
-          <div style={{ padding: "12px 18px 18px" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ background: "#f7f9ff" }}>
-                  <Th>날짜</Th>
-                  <Th>과정</Th>
-                  <Th>집중도</Th>
-                  <Th>진행률</Th>
-                  <Th>학습시간</Th>
-                  <Th>핵심/태그</Th>
-                  <Th>보기</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {recent5.map((r) => (
-                  <tr key={r._id}>
-                    <Td>{r.date}</Td>
-                    <Td>{r.course || "-"}</Td>
-                    <Td>{r.focus ?? "-"}</Td>
-                    <Td>{r.progressPct ?? "-"}</Td>
-                    <Td>{fmtHM(r.studyTimeMin)}</Td>
-                    <Td>
-                      {(r.headline || "")
-                        .split(/\r?\n/)
-                        .map((ln, i) => (
-                          <span key={i}>
-                            {ln}
-                            <br />
+            <div
+              style={{
+                padding: "22px 26px",
+                background: "linear-gradient(180deg,#f7fbff,#eef4ff)",
+              }}
+            >
+              <div style={{ fontSize: 20, fontWeight: 800 }}>누적 5회 지표</div>
+            </div>
+            <div style={{ padding: "12px 18px 18px" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "#f7f9ff" }}>
+                    <Th>날짜</Th>
+                    <Th>과정</Th>
+                    <Th>집중도</Th>
+                    <Th>진행률</Th>
+                    <Th>학습시간</Th>
+                    <Th>핵심/태그</Th>
+                    <Th>보기</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recent5.map((r) => (
+                    <tr key={r._id}>
+                      <Td>{r.date}</Td>
+                      <Td>{r.course || "-"}</Td>
+                      <Td>{r.focus ?? "-"}</Td>
+                      <Td>{r.progressPct ?? "-"}</Td>
+                      <Td>{fmtHM(r.studyTimeMin)}</Td>
+                      <Td>
+                        {(r.headline || "")
+                          .split(/\r?\n/)
+                          .map((ln, i) => (
+                            <span key={i}>
+                              {ln}
+                              <br />
+                            </span>
+                          ))}
+                        {(r.tags || []).map((t, i) => (
+                          <span key={i} style={tag}>
+                            {t}
                           </span>
                         ))}
-                      {(r.tags || []).map((t, i) => (
-                        <span key={i} style={tag}>
-                          {t}
-                        </span>
-                      ))}
-                    </Td>
-                    <Td>
-                      <a href={`/r/${r._id}`} target="_blank" rel="noreferrer">
-                        열람
-                      </a>
-                    </Td>
-                  </tr>
-                ))}
-                {recent5.length === 0 && (
-                  <tr>
-                    <Td colSpan={7} style={{ color: "#888", textAlign: "center" }}>
-                      표시할 기록이 없습니다.
-                    </Td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                      </Td>
+                      <Td>
+                        <a href={`/r/${r._id}`} target="_blank" rel="noreferrer">
+                          열람
+                        </a>
+                      </Td>
+                    </tr>
+                  ))}
+                  {recent5.length === 0 && (
+                    <tr>
+                      <Td colSpan={7} style={{ color: "#888", textAlign: "center" }}>
+                        표시할 기록이 없습니다.
+                      </Td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
-        {/* (선택) 프로필·로드맵 - 일일 리포트 탭에만 표시 */}
         {activeTab === "report" && profile?.publicOn && (
           <div style={card}>
             <div style={hd}>
               <div style={tit}>프로필 & 로드맵</div>
             </div>
-            <div
-              style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, padding: "18px 26px" }}
-            >
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, padding: "18px 26px" }}>
               <div>
                 <Section
                   title="학교/학년"
@@ -843,15 +833,10 @@ export default function ReportPublic() {
                     </>
                   }
                 />
-                <Section
-                  title="희망 진학"
-                  body={<>{profile.targetHigh || profile.targetUniv || "-"}</>}
-                />
+                <Section title="희망 진학" body={<>{profile.targetHigh || profile.targetUniv || "-"}</>} />
               </div>
               <div>
-                <div style={{ marginBottom: 10, fontWeight: 700, color: "#223" }}>
-                  목표(3/6/12개월)
-                </div>
+                <div style={{ marginBottom: 10, fontWeight: 700, color: "#223" }}>목표(3/6/12개월)</div>
                 <div style={box}>
                   <div>
                     <b>3개월</b> — {profile.roadmap3m || "-"}
@@ -868,7 +853,6 @@ export default function ReportPublic() {
           </div>
         )}
 
-        {/* (선택) 최근 상담 3건 - 일일 리포트 탭에만 표시 */}
         {activeTab === "report" && !!(counsels || []).length && (
           <div style={card}>
             <div style={hd}>
@@ -906,9 +890,7 @@ export default function ReportPublic() {
 function Section({ title, body }) {
   return (
     <div style={{ marginBottom: 14 }}>
-      <div style={{ margin: "4px 0 10px", fontSize: 16, color: "#223", fontWeight: 700 }}>
-        {title}
-      </div>
+      <div style={{ margin: "4px 0 10px", fontSize: 16, color: "#223", fontWeight: 700 }}>{title}</div>
       <div style={box}>{body || "-"}</div>
     </div>
   );
@@ -928,6 +910,7 @@ function Th({ children }) {
     </th>
   );
 }
+
 function Td({ children, colSpan }) {
   return (
     <td
@@ -982,14 +965,15 @@ function TestResultCard({ result }) {
   };
 
   return (
-    <div style={{
-      background: "#fff",
-      border: "1px solid #e2e8f0",
-      borderRadius: 12,
-      padding: 20,
-      boxShadow: "0 2px 8px rgba(0,0,0,0.04)"
-    }}>
-      {/* 헤더 */}
+    <div
+      style={{
+        background: "#fff",
+        border: "1px solid #e2e8f0",
+        borderRadius: 12,
+        padding: 20,
+        boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+      }}
+    >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
         <div>
           <h4 style={{ margin: "0 0 4px 0", fontSize: 18, fontWeight: 700, color: "#1e293b" }}>
@@ -1000,12 +984,14 @@ function TestResultCard({ result }) {
           </div>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{
-            fontSize: 24,
-            fontWeight: 800,
-            color: getGradeColor(scorePercentage),
-            marginBottom: 2
-          }}>
+          <div
+            style={{
+              fontSize: 24,
+              fontWeight: 800,
+              color: getGradeColor(scorePercentage),
+              marginBottom: 2,
+            }}
+          >
             {getGradeText(scorePercentage)}
           </div>
           <div style={{ fontSize: 14, color: "#64748b" }}>
@@ -1014,47 +1000,50 @@ function TestResultCard({ result }) {
         </div>
       </div>
 
-      {/* 점수 바 */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{
-          width: "100%",
-          height: 8,
-          background: "#f1f5f9",
-          borderRadius: 4,
-          overflow: "hidden"
-        }}>
-          <div style={{
-            width: `${scorePercentage}%`,
-            height: "100%",
-            background: getGradeColor(scorePercentage),
+        <div
+          style={{
+            width: "100%",
+            height: 8,
+            background: "#f1f5f9",
             borderRadius: 4,
-            transition: "width 0.3s ease"
-          }} />
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              width: `${scorePercentage}%`,
+              height: "100%",
+              background: getGradeColor(scorePercentage),
+              borderRadius: 4,
+              transition: "width 0.3s ease",
+            }}
+          />
         </div>
       </div>
 
-      {/* 난이도별 분석 */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
         {[
           { key: "easy", label: "하급", color: "#10b981" },
           { key: "medium", label: "중급", color: "#3b82f6" },
-          { key: "hard", label: "상급", color: "#ef4444" }
+          { key: "hard", label: "상급", color: "#ef4444" },
         ].map(({ key, label, color }) => {
           const stat = difficultyStats?.[key];
           const percentage = stat?.total > 0 ? Math.round((stat.correct / stat.total) * 100) : 0;
 
           return (
-            <div key={key} style={{
-              background: "#f8fafc",
-              border: "1px solid #e2e8f0",
-              borderRadius: 8,
-              padding: 12,
-              textAlign: "center"
-            }}>
+            <div
+              key={key}
+              style={{
+                background: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                borderRadius: 8,
+                padding: 12,
+                textAlign: "center",
+              }}
+            >
               <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>{label}</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color, marginBottom: 2 }}>
-                {percentage}%
-              </div>
+              <div style={{ fontSize: 16, fontWeight: 700, color, marginBottom: 2 }}>{percentage}%</div>
               <div style={{ fontSize: 11, color: "#94a3b8" }}>
                 {stat?.correct || 0}/{stat?.total || 0}
               </div>
@@ -1063,7 +1052,6 @@ function TestResultCard({ result }) {
         })}
       </div>
 
-      {/* 추가 정보 */}
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#64748b" }}>
         <span>총 {testTemplateId?.totalQuestions || 0}문항</span>
         {timeSpent && <span>소요시간: {timeSpent}분</span>}
