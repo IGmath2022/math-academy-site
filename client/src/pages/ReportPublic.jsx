@@ -410,7 +410,7 @@ function CourseAnalysisPanel({ detail }) {
                     {rec.priority === "high" ? "우선" : "권장"}
                   </span>
                 </div>
-                <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5 }}>{rec.description}</div>
+                <div style={{ fontSize: 13, color: "#475569", lineHeight: 1.5 }}>{fmtNewline(rec.description)}</div>
               </div>
             ))}
           </div>

@@ -257,7 +257,7 @@ class AnalysisService {
         recommendations: this.generateRecommendations(weakChapters, weakTypes)
       };
     } catch (error) {
-      console.error('?쎌젏 遺꾩꽍 ?ㅽ뙣:', error);
+      console.error('약점 분석 실패:', error);
       throw error;
     }
   }
