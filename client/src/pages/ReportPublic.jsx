@@ -27,7 +27,7 @@ function fmtHM(min) {
 
 // 숙련도 레벨 계산
 function getProficiencyLevel(accuracy, totalQuestions) {
-  if (totalQuestions < 3) return { level: "부족", color: "#94a3b8", description: "데이터 부족" };
+  if (totalQuestions <= 3) return { level: "데이터 부족", color: "#94a3b8", description: "데이터 부족" };
 
   if (accuracy >= 90) return { level: "잘 안다", color: "#059669", description: "매우 우수" };
   if (accuracy >= 70) return { level: "좋음", color: "#10b981", description: "우수" };
@@ -989,17 +989,17 @@ function TestResultCard({ result }) {
 
   const getGradeColor = (percentage) => {
     if (percentage >= 90) return "#10b981";
-    if (percentage >= 80) return "#3b82f6";
-    if (percentage >= 70) return "#f59e0b";
-    if (percentage >= 60) return "#ef4444";
+    if (percentage >= 75) return "#3b82f6";
+    if (percentage >= 60) return "#f59e0b";
+    if (percentage >= 50) return "#ef4444";
     return "#6b7280";
   };
 
   const getGradeText = (percentage) => {
     if (percentage >= 90) return "A";
-    if (percentage >= 80) return "B";
-    if (percentage >= 70) return "C";
-    if (percentage >= 60) return "D";
+    if (percentage >= 75) return "B";
+    if (percentage >= 60) return "C";
+    if (percentage >= 50) return "D";
     return "F";
   };
 
