@@ -438,6 +438,7 @@ export default function ReportPublic() {
   const [loadingAnalysisSummary, setLoadingAnalysisSummary] = useState(false);
   const [loadingAnalysisDetail, setLoadingAnalysisDetail] = useState(false);
   const [analysisError, setAnalysisError] = useState("");
+  const [refreshingAnalysis, setRefreshingAnalysis] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -524,6 +525,20 @@ export default function ReportPublic() {
     }
   };
 
+  const handleAnalysisRefresh = async () => {
+    if (refreshingAnalysis) return;
+    try {
+      setRefreshingAnalysis(true);
+      setAnalysisError("");
+      await axios.post(`${API_URL}/api/tests/analysis/public/${code}/recalculate`);
+      await loadAnalysisSummary({ force: true });
+    } catch (error) {
+      console.error("분석 재계산 실패:", error);
+      setAnalysisError("분석 데이터를 다시 계산하지 못했습니다.");
+    } finally {
+      setRefreshingAnalysis(false);
+    }
+  };
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     if (tab === "tests") {
@@ -724,6 +739,27 @@ export default function ReportPublic() {
                 </div>
               ) : (
                 <>
+                  <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
+                    <button
+                      type="button"
+                      onClick={handleAnalysisRefresh}
+                      disabled={refreshingAnalysis}
+                      style={{
+                        padding: "8px 16px",
+                        borderRadius: 999,
+                        border: "1px solid #2563eb",
+                        background: refreshingAnalysis ? "#dbeafe" : "#2563eb",
+                        color: "#fff",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: refreshingAnalysis ? "default" : "pointer",
+                        opacity: refreshingAnalysis ? 0.7 : 1,
+                        transition: "background 0.2s ease, opacity 0.2s ease",
+                      }}
+                    >
+                      {refreshingAnalysis ? "재계산 중..." : "새로고침"}
+                    </button>
+                  </div>
                   <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
                     {analysisSummaries.map((summary) => (
                       <AnalysisSummaryCard
