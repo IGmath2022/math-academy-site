@@ -4,6 +4,7 @@ const router = express.Router();
 const TestTemplate = require('../models/TestTemplate');
 const TestResult = require('../models/TestResult');
 const AnalysisService = require('../services/analysisService');
+const AnalysisRebuildService = require('../services/analysisRebuildService');
 const TestStatisticsService = require('../services/testStatisticsService');
 const { isAuthenticated, isAdmin } = require('../middleware/auth');
 
@@ -262,6 +263,24 @@ router.get('/analysis/public/:reportCode/summary', async (req, res) => {
   } catch (error) {
     console.error('Public student analysis summary failed:', error);
     res.status(500).json({ message: 'Failed to load analysis summary', error: error.message });
+  }
+});
+
+router.post('/analysis/public/:reportCode/recalculate', async (req, res) => {
+  try {
+    const LessonLog = require('../models/LessonLog');
+    const lessonLog = await LessonLog.findById(req.params.reportCode);
+
+    if (!lessonLog || !lessonLog.studentId) {
+      return res.status(404).json({ message: 'Report link not found.' });
+    }
+
+    await AnalysisRebuildService.recalculateStudentAnalysis(lessonLog.studentId);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Public student analysis recalc failed:', error);
+    res.status(500).json({ message: 'Failed to recalculate analysis data', error: error.message });
   }
 });
 
