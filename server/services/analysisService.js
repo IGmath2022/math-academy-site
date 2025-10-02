@@ -1,29 +1,29 @@
-﻿const StudentAnalysis = require('../models/StudentAnalysis');
+const StudentAnalysis = require('../models/StudentAnalysis');
 const TestTemplate = require('../models/TestTemplate');
 const Curriculum = require('../models/Curriculum');
 
 class AnalysisService {
   /**
-   * ?뚯뒪??寃곌낵瑜?湲곕컲?쇰줈 ?숈깮 遺꾩꽍 ?곗씠???낅뜲?댄듃
-   * @param {Object} testResult - ?뚯뒪??寃곌낵 ?곗씠??
+   * 테스트 결과를 기반으로 학생 분석 데이터 업데이트
+   * @param {Object} testResult - 테스트 결과 데이터
    */
   static async updateStudentAnalysis(testResult) {
     try {
       const { studentId, testTemplateId, totalScore, totalPossibleScore, answers } = testResult;
 
-      // ?뚯뒪???쒗뵆由??뺣낫 議고쉶
+      // 테스트 템플릿 정보 조회
       const template = await TestTemplate.findById(testTemplateId);
       if (!template) {
-        throw new Error('?뚯뒪???쒗뵆由우쓣 李얠쓣 ???놁뒿?덈떎.');
+        throw new Error('테스트 템플릿을 찾을 수 없습니다.');
       }
 
-      // 援먯쑁怨쇱젙 ?뺣낫 議고쉶
+      // 교육과정 정보 조회
       const curriculum = await Curriculum.findOne({ courseId: template.courseId });
       if (!curriculum) {
-        console.warn(`援먯쑁怨쇱젙??李얠쓣 ???놁뒿?덈떎: ${template.courseId}`);
+        console.warn(`교육과정을 찾을 수 없습니다: ${template.courseId}`);
       }
 
-      // ?숈깮 遺꾩꽍 ?곗씠??議고쉶 ?먮뒗 ?앹꽦
+      // 학생 분석 데이터 조회 또는 생성
       let analysis = await StudentAnalysis.findOne({
         studentId,
         courseId: template.courseId
@@ -41,13 +41,13 @@ class AnalysisService {
         });
       }
 
-      // ?꾩껜 ?듦퀎 ?낅뜲?댄듃
+      // 전체 통계 업데이트
       analysis.totalTests++;
       analysis.totalQuestions += answers.length;
 
       let correctCount = 0;
 
-      // 臾명빆蹂?遺꾩꽍 泥섎━
+      // 문항별 분석 처리
       for (const answer of answers) {
         const question = template.questions.find(q => q.questionNumber === answer.questionNumber);
         if (!question) continue;
@@ -58,7 +58,7 @@ class AnalysisService {
           analysis.totalCorrect++;
         }
 
-        // ?⑥썝蹂?遺꾩꽍 ?낅뜲?댄듃
+        // 단원별 분석 업데이트
         if (question.chapter) {
           analysis.updateChapterAnalysis(
             this.getChapterIdFromName(curriculum, question.chapter),
@@ -67,7 +67,7 @@ class AnalysisService {
           );
         }
 
-        // ?좏삎蹂?遺꾩꽍 ?낅뜲?댄듃
+        // 유형별 분석 업데이트
         if (question.chapter && question.questionType) {
           const chapterId = this.getChapterIdFromName(curriculum, question.chapter);
           const typeId = this.getTypeIdFromName(curriculum, chapterId, question.questionType);
@@ -81,13 +81,13 @@ class AnalysisService {
           );
         }
 
-        // ?쒖씠?꾨퀎 遺꾩꽍 ?낅뜲?댄듃
+        // 난이도별 분석 업데이트
         if (question.difficulty) {
           analysis.updateDifficultyAnalysis(question.difficulty, isCorrect);
         }
       }
 
-      // 理쒓렐 ?깆쟻 異붽?
+      // 최근 성적 추가
       analysis.addRecentScore({
         testId: testTemplateId,
         testName: template.name,
@@ -97,21 +97,21 @@ class AnalysisService {
         testDate: new Date()
       });
 
-      // ?꾩껜 ?듦퀎 ?ш퀎??
+      // 전체 통계 재계산
       analysis.updateOverallStats();
 
-      // ???
+      // 저장
       await analysis.save();
 
       return analysis;
     } catch (error) {
-      console.error('?숈깮 遺꾩꽍 ?곗씠???낅뜲?댄듃 ?ㅽ뙣:', error);
+      console.error('학생 분석 데이터 업데이트 실패:', error);
       throw error;
     }
   }
 
   /**
-   * ?⑥썝紐낆쑝濡쒕????⑥썝 ID 李얘린
+   * 단원명으로부터 단원 ID 찾기
    */
   static getChapterIdFromName(curriculum, chapterName) {
     if (!curriculum?.chapters) return chapterName;
@@ -121,7 +121,7 @@ class AnalysisService {
   }
 
   /**
-   * ?좏삎紐낆쑝濡쒕????좏삎 ID 李얘린
+   * 유형명으로부터 유형 ID 찾기
    */
   static getTypeIdFromName(curriculum, chapterId, typeName) {
     if (!curriculum?.chapters) return typeName;
@@ -134,9 +134,9 @@ class AnalysisService {
   }
 
   /**
-   * ?숈깮??遺꾩꽍 ?곗씠??議고쉶
-   * @param {String} studentId - ?숈깮 ID
-   * @param {String} courseId - 援먯쑁怨쇱젙 ID (?좏깮)
+   * 학생의 분석 데이터 조회
+   * @param {String} studentId - 학생 ID
+   * @param {String} courseId - 교육과정 ID (선택)
    */
 
   static async getStudentAnalysisSummary(studentId) {
@@ -181,14 +181,14 @@ class AnalysisService {
 
       return analyses;
     } catch (error) {
-      console.error('?숈깮 遺꾩꽍 ?곗씠??議고쉶 ?ㅽ뙣:', error);
+      console.error('학생 분석 데이터 조회 실패:', error);
       throw error;
     }
   }
 
   /**
-   * ?뱀젙 援먯쑁怨쇱젙???숈깮 ?쒖쐞 怨꾩궛
-   * @param {String} courseId - 援먯쑁怨쇱젙 ID
+   * 특정 교육과정의 학생 순위 계산
+   * @param {String} courseId - 교육과정 ID
    */
   static async calculateStudentRankings(courseId) {
     try {
@@ -206,40 +206,40 @@ class AnalysisService {
         percentile: Math.round(((analyses.length - index) / analyses.length) * 100)
       }));
     } catch (error) {
-      console.error('?숈깮 ?쒖쐞 怨꾩궛 ?ㅽ뙣:', error);
+      console.error('학생 순위 계산 실패:', error);
       throw error;
     }
   }
 
   /**
-   * ?⑥썝蹂??좏삎蹂??쎌젏 遺꾩꽍
-   * @param {String} studentId - ?숈깮 ID
-   * @param {String} courseId - 援먯쑁怨쇱젙 ID
+   * 단원별/유형별 약점 분석
+   * @param {String} studentId - 학생 ID
+   * @param {String} courseId - 교육과정 ID
    */
   static async getWeaknessAnalysis(studentId, courseId) {
     try {
       const analysis = await StudentAnalysis.findOne({ studentId, courseId });
       if (!analysis) return null;
 
-      // ?쎌젏 ?⑥썝 (?뺣떟瑜?70% 誘몃쭔)
+      // 약점 단원 (정답률 70% 미만)
       const weakChapters = analysis.chapterAnalysis
         .filter(c => c.accuracy < 70 && c.totalQuestions >= 3)
         .sort((a, b) => a.accuracy - b.accuracy)
         .slice(0, 5);
 
-      // ?쎌젏 ?좏삎 (?뺣떟瑜?70% 誘몃쭔)
+      // 약점 유형 (정답률 70% 미만)
       const weakTypes = analysis.typeAnalysis
         .filter(t => t.accuracy < 70 && t.totalQuestions >= 3)
         .sort((a, b) => a.accuracy - b.accuracy)
         .slice(0, 5);
 
-      // 媛뺤젏 ?⑥썝 (?뺣떟瑜?90% ?댁긽)
+      // 강점 단원 (정답률 90% 이상)
       const strongChapters = analysis.chapterAnalysis
         .filter(c => c.accuracy >= 90 && c.totalQuestions >= 3)
         .sort((a, b) => b.accuracy - a.accuracy)
         .slice(0, 5);
 
-      // 媛쒖꽑 異붿씠 遺꾩꽍 (理쒓렐 5???뚯뒪??
+      // 개선 추이 분석 (최근 5회 테스트)
       const recentTrend = analysis.recentScores.slice(0, 5).map(score => ({
         testName: score.testName,
         accuracy: score.accuracy,
@@ -263,7 +263,7 @@ class AnalysisService {
   }
 
   /**
-   * ?숈뒿 異붿쿇?ы빆 ?앹꽦
+   * 학습 추천사항 생성
    */
   static generateRecommendations(weakChapters, weakTypes) {
     const recommendations = [];
@@ -273,8 +273,8 @@ class AnalysisService {
       recommendations.push({
         type: 'chapter',
         priority: 'high',
-        title: `${worstChapter.chapterName} ?⑥썝 吏묒쨷 ?숈뒿`,
-        description: `?뺣떟瑜?${worstChapter.accuracy}%濡?媛??痍⑥빟???⑥썝?낅땲?? 湲곕낯 媛쒕뀗遺??李④렐李④렐 蹂듭뒿?섏꽭??`,
+        title: `${worstChapter.chapterName} 단원 집중 학습`,
+        description: `정답률 ${worstChapter.accuracy}%로 가장 취약한 단원입니다. 기본 개념부터 차근차근 복습하세요.`,
         target: worstChapter.chapterName
       });
     }
@@ -284,19 +284,19 @@ class AnalysisService {
       recommendations.push({
         type: 'type',
         priority: 'medium',
-        title: `${worstType.typeName} ?좏삎 臾몄젣 ?곗뒿`,
-        description: `${worstType.chapterName} ?⑥썝??${worstType.typeName} ?좏삎?먯꽌 ?뺣떟瑜?${worstType.accuracy}%?낅땲?? ?좎궗 臾몄젣瑜?????대낫?몄슂.`,
+        title: `${worstType.typeName} 유형 문제 연습`,
+        description: `${worstType.chapterName} 단원의 ${worstType.typeName} 유형에서 정답률 ${worstType.accuracy}%입니다. 유사 문제를 많이 풀어보세요.`,
         target: worstType.typeName
       });
     }
 
-    // ?쇰컲?곸씤 異붿쿇?ы빆
+    // 일반적인 추천사항
     if (weakChapters.length > 2) {
       recommendations.push({
         type: 'general',
         priority: 'medium',
-        title: '湲곕낯 媛쒕뀗 ?뺣━',
-        description: '?щ윭 ?⑥썝?먯꽌 ?쎌젏??諛쒓껄?섏뿀?듬땲?? ?꾩껜?곸씤 湲곕낯 媛쒕뀗???ㅼ떆 ?뺣━?대낫?몄슂.',
+        title: '기본 개념 정리',
+        description: '여러 단원에서 약점이 발견되었습니다. 전체적인 기본 개념을 다시 정리해보세요.',
         target: 'overall'
       });
     }
@@ -305,8 +305,8 @@ class AnalysisService {
   }
 
   /**
-   * 援먯쑁怨쇱젙蹂??꾩껜 ?듦퀎
-   * @param {String} courseId - 援먯쑁怨쇱젙 ID
+   * 교육과정별 전체 통계
+   * @param {String} courseId - 교육과정 ID
    */
   static async getCourseStatistics(courseId) {
     try {
@@ -323,17 +323,17 @@ class AnalysisService {
         };
       }
 
-      // ?꾩껜 ?됯퇏 ?뺣떟瑜?
+      // 전체 평균 정답률
       const totalAccuracy = analyses.reduce((sum, a) => sum + a.overallAccuracy, 0);
       const averageAccuracy = Math.round(totalAccuracy / analyses.length);
 
-      // ?⑥썝蹂??듦퀎
+      // 단원별 통계
       const chapterStats = this.aggregateChapterStats(analyses);
 
-      // ?좏삎蹂??듦퀎
+      // 유형별 통계
       const typeStats = this.aggregateTypeStats(analyses);
 
-      // ?쒖씠?꾨퀎 ?듦퀎
+      // 난이도별 통계
       const difficultyStats = this.aggregateDifficultyStats(analyses);
 
       return {
@@ -345,13 +345,13 @@ class AnalysisService {
         difficultyStats
       };
     } catch (error) {
-      console.error('援먯쑁怨쇱젙 ?듦퀎 怨꾩궛 ?ㅽ뙣:', error);
+      console.error('교육과정 통계 계산 실패:', error);
       throw error;
     }
   }
 
   /**
-   * ?⑥썝蹂??듦퀎 吏묎퀎
+   * 단원별 통계 집계
    */
   static aggregateChapterStats(analyses) {
     const chapterMap = new Map();
@@ -386,7 +386,7 @@ class AnalysisService {
   }
 
   /**
-   * ?좏삎蹂??듦퀎 吏묎퀎
+   * 유형별 통계 집계
    */
   static aggregateTypeStats(analyses) {
     const typeMap = new Map();
@@ -423,7 +423,7 @@ class AnalysisService {
   }
 
   /**
-   * ?쒖씠?꾨퀎 ?듦퀎 吏묎퀎
+   * 난이도별 통계 집계
    */
   static aggregateDifficultyStats(analyses) {
     const difficultyMap = new Map();
