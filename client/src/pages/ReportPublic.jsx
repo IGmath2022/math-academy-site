@@ -493,12 +493,17 @@ export default function ReportPublic() {
     }
   };
 
-  const loadAnalysisSummary = async () => {
-    if (loadingAnalysisSummary || analysisSummaries.length > 0) return;
+  const loadAnalysisSummary = async ({ force = false } = {}) => {
+    if (loadingAnalysisSummary) return;
+    if (!force && analysisSummaries.length > 0) return;
 
     try {
       setLoadingAnalysisSummary(true);
       setAnalysisError("");
+      if (force) {
+        setAnalysisSummaries([]);
+        setAnalysisDetailMap({});
+      }
       const { data } = await axios.get(`${API_URL}/api/tests/analysis/public/${code}/summary`);
       const summaries = Array.isArray(data?.summaries) ? data.summaries : [];
       setAnalysisSummaries(summaries);
@@ -509,9 +514,7 @@ export default function ReportPublic() {
           ? selectedCourseId
           : firstCourseId;
         setSelectedCourseId(nextCourseId);
-        if (!analysisDetailMap[nextCourseId]) {
-          await loadAnalysisDetail(nextCourseId, { select: false });
-        }
+        await loadAnalysisDetail(nextCourseId, { select: false, force: force || !analysisDetailMap[nextCourseId] });
       }
     } catch (error) {
       console.error("분석 요약 로드 실패:", error);
@@ -526,7 +529,7 @@ export default function ReportPublic() {
     if (tab === "tests") {
       loadTestResults();
     } else if (tab === "analysis") {
-      loadAnalysisSummary();
+      loadAnalysisSummary({ force: true });
     }
   };
 
