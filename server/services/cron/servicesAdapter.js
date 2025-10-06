@@ -50,14 +50,117 @@ async function computeStudyTimeMinFromAttendance(studentId, date) {
 
 // 프리뷰는 "무엇이 처리될지" 미리보기 목록/카운트만 반환
 async function previewAutoLeave({ limit = 500 }) {
-  // Auto leave 기능은 현재 구현되지 않은 상태이므로 빈 결과 반환
-  return { list: [], count: 0 };
+  try {
+    const m = moment().tz(KST);
+    const today = m.format('YYYY-MM-DD');
+
+    // 오늘 날짜에 IN은 있지만 OUT이 없는 학생 찾기
+    const studentsIn = await Attendance.find({ date: today, type: 'IN' }).lean();
+    const list = [];
+
+    for (const rec of studentsIn.slice(0, limit)) {
+      const outRec = await Attendance.findOne({ userId: rec.userId, date: today, type: 'OUT' });
+      if (!outRec) {
+        const student = await User.findById(rec.userId).lean();
+        if (student && student.parentPhone) {
+          list.push({
+            studentId: rec.userId,
+            studentName: student.name,
+            parentPhone: student.parentPhone,
+            checkInTime: rec.time
+          });
+        }
+      }
+    }
+
+    return { list, count: list.length };
+  } catch (error) {
+    console.error('[previewAutoLeave] 오류:', error);
+    return { list: [], count: 0 };
+  }
 }
 
 // 실제 처리. 멱등 설계 권장(같은 대상 중복 처리 방지)
 async function performAutoLeave({ limit = 500 }) {
-  // Auto leave 기능은 현재 구현되지 않은 상태이므로 빈 결과 반환
-  return { processed: 0, preview: [] };
+  console.log('[performAutoLeave] ★★★ 함수 호출됨 ★★★');
+  try {
+    console.log('[performAutoLeave] 자동 하원 처리 시작');
+
+    const m = moment().tz(KST);
+    const today = m.format('YYYY-MM-DD');
+    const now = m.format('HH:mm:ss');
+
+    console.log(`[performAutoLeave] 날짜: ${today}, 시각: ${now}`);
+
+    // 오늘 날짜에 IN은 있지만 OUT이 없는 학생 찾기
+    const studentsIn = await Attendance.find({ date: today, type: 'IN' });
+    console.log(`[performAutoLeave] 등원 학생 수: ${studentsIn.length}`);
+
+    let sent = 0, failed = 0;
+    const preview = [];
+
+    for (const rec of studentsIn.slice(0, limit)) {
+      try {
+        // 이미 OUT 처리되었는지 확인 (멱등성 보장)
+        const outRec = await Attendance.findOne({ userId: rec.userId, date: today, type: 'OUT' });
+        if (outRec) {
+          console.log(`[performAutoLeave] 학생 ${rec.userId} 이미 하원 처리됨, 스킵`);
+          continue;
+        }
+
+        const student = await User.findById(rec.userId);
+        if (!student || !student.parentPhone) {
+          console.log(`[performAutoLeave] 학생 ${rec.userId} 학부모 연락처 없음`);
+          failed++;
+          continue;
+        }
+
+        // OUT 레코드 생성
+        await Attendance.create({
+          userId: rec.userId,
+          date: today,
+          type: 'OUT',
+          time: now,
+          auto: true,
+          notified: false
+        });
+
+        // 알림톡 발송
+        const { sendAlimtalk } = require('../../utils/alimtalk');
+        const ok = await sendAlimtalk(student.parentPhone, 'UB_0082', {
+          name: student.name,
+          type: '하원',
+          time: m.format('HH:mm'),
+          automsg: '자동 하원 처리되었습니다.'
+        });
+
+        if (ok) {
+          sent++;
+          console.log(`[performAutoLeave] 자동 하원 성공: ${student.name} (${today})`);
+        } else {
+          failed++;
+          console.log(`[performAutoLeave] 알림톡 발송 실패: ${student.name} (${today})`);
+        }
+
+        preview.push({
+          studentName: student.name,
+          date: today,
+          status: ok ? '성공' : '실패'
+        });
+
+      } catch (error) {
+        console.error(`[performAutoLeave] 개별 처리 오류:`, error);
+        failed++;
+      }
+    }
+
+    console.log(`[performAutoLeave] 완료 - 성공: ${sent}, 실패: ${failed}`);
+    return { processed: sent, failed, preview };
+
+  } catch (error) {
+    console.error('[performAutoLeave] 전체 오류:', error);
+    return { processed: 0, preview: [] };
+  }
 }
 
 async function previewDailyReport({ limit = 500 }) {
